@@ -158,6 +158,22 @@
     border-radius:10px;padding:10px 14px;margin-top:2px;margin-bottom:14px;
   }
 
+  .rules-box{
+    background:#F5F8FF;border:1px solid #DCE6FF;border-radius:14px;margin-bottom:18px;overflow:hidden;
+  }
+  .rules-toggle{
+    width:100%;display:flex;align-items:center;justify-content:space-between;
+    border:none;background:none;padding:13px 16px;font-family:inherit;font-size:13px;font-weight:700;
+    color:var(--accent);cursor:pointer;
+  }
+  .rules-toggle .chevron{font-size:11px;transition:transform .2s ease;}
+  .rules-toggle.open .chevron{transform:rotate(180deg);}
+  .rules-icon-label{display:inline-flex;align-items:center;gap:7px;}
+  .rules-content{padding:0 18px 16px;font-size:12.5px;color:var(--ink);line-height:1.7;}
+  .rules-content ul{margin:0;padding-left:18px;}
+  .rules-content li{margin-bottom:6px;}
+  .rules-content li:last-child{margin-bottom:0;}
+
   .urgent-field{
     background:#FFF5F4;border:1px solid #F6CFCB;border-radius:14px;padding:16px 18px;
   }
@@ -249,6 +265,30 @@
       </div>
     </div>
   </header>
+
+  <div class="rules-box">
+    <button type="button" class="rules-toggle" onclick="toggleRules()">
+      <span class="rules-icon-label">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="9" stroke="#3E7BFA" stroke-width="2.4"/>
+          <circle cx="12" cy="7.8" r="1.35" fill="#3E7BFA"/>
+          <rect x="10.6" y="10.6" width="2.8" height="7" rx="1.4" fill="#3E7BFA"/>
+        </svg>
+        填單須知
+      </span>
+      <span class="chevron" id="rulesChevron">▾</span>
+    </button>
+    <div class="rules-content" id="rulesContent" style="display:none;">
+      <ul>
+        <li>每位設計師每天最多受理 <b>5 件</b>需求，額滿當天會被鎖住、無法選擇</li>
+        <li>被<b>退件</b>的案子不會占用當天名額，名額會空出來給其他需求</li>
+        <li>勾選<b>「急件」</b>可以突破每日 5 件上限，但無法突破設計師手動封鎖的日期</li>
+        <li>設計師手動封鎖的日期，<b>任何情況都無法選擇</b>（包含急件）</li>
+        <li>急件需要填寫原因，並確認了解可能影響你自己其他既有需求的排程</li>
+        <li>如需對既有案件內容做<b>微調</b>，請改用「急件」重新填寫需求</li>
+      </ul>
+    </div>
+  </div>
 
   <div class="card">
     <form id="requestForm" onsubmit="return handleSubmit(event)">
@@ -642,8 +682,16 @@ const STATUS_SHEET_ID = '1Q0b8dS3zKVoypKNh0hNuburvp4NMxmAwbdjoSQ4ibNg';
 const DESIGNER_TABS = { Nikki:'Nikki需求單', Yuly:'Yuly需求單', Luna:'Luna需求單', Daniel:'Daniel需求單' };
 const ALL_TABS = Object.values(DESIGNER_TABS);
 const DAILY_LIMIT = 5;
-let dateCounts = { S1:{}, S2:{}, S3:{} };
+let dateCounts = { Nikki:{}, Yuly:{}, Luna:{}, Daniel:{} };
 let calendarDate = new Date();
+
+function toggleRules(){
+  const content = document.getElementById('rulesContent');
+  const chevron = document.querySelector('.rules-toggle');
+  const isOpen = content.style.display === 'block';
+  content.style.display = isOpen ? 'none' : 'block';
+  chevron.classList.toggle('open', !isOpen);
+}
 
 function pad2(n){ return n < 10 ? '0' + n : '' + n; }
 function toDateStr(y,m,d){ return y + '-' + pad2(m+1) + '-' + pad2(d); }
@@ -686,17 +734,18 @@ const LOCK_TAB_NAME = '鎖定日期';
 function loadDateCounts(){
   loadAllTabRows().then(function(rows){
     try{
-      const counts = { S1:{}, S2:{}, S3:{} };
+      const counts = { Nikki:{}, Yuly:{}, Luna:{}, Daniel:{} };
       const urgentByDesigner = {};
       rows.forEach(function(r){
         const c = r.c || [];
         const rawDue = c[6] && (c[6].f || c[6].v) ? String(c[6].f || c[6].v) : '';
         const due = normalizeDateStr(rawDue);
-        const grp = c[21] && c[21].v ? String(c[21].v).trim() : '';
         const handler = c[19] && c[19].v ? String(c[19].v).trim() : '';
         const urgent = c[28] && c[28].v ? String(c[28].v).trim() : '';
+        const status = c[17] && c[17].v ? String(c[17].v).trim() : '';
         if(!due) return;
-        if(counts[grp]) counts[grp][due] = (counts[grp][due] || 0) + 1;
+        if(status === '退件') return; // 退件的案子不占每日名額
+        if(counts[handler]) counts[handler][due] = (counts[handler][due] || 0) + 1;
         if(urgent === 'Y' && handler){
           if(!urgentByDesigner[handler]) urgentByDesigner[handler] = {};
           urgentByDesigner[handler][due] = (urgentByDesigner[handler][due] || 0) + 1;
@@ -733,7 +782,7 @@ function isDateBlocked(dateStr){
     return true; // 設計師手動封鎖的日期，優先權最高，急件也不能跳過
   }
   if(document.getElementById('isUrgent').checked) return false; // 急件可跳過每日上限（但跳不過手動封鎖）
-  const g = dateCounts[currentGroup] || {};
+  const g = dateCounts[handler] || {};
   return (g[dateStr] || 0) >= DAILY_LIMIT;
 }
 
@@ -794,7 +843,8 @@ function renderCalendar(){
     const lockReason = lockedReasonFor(dateStr);
     const isLocked = lockReason !== null;
     const blocked = isDateBlocked(dateStr);
-    const count = (dateCounts[currentGroup] && dateCounts[currentGroup][dateStr]) || 0;
+    const handlerNow = currentHandler();
+    const count = (dateCounts[handlerNow] && dateCounts[handlerNow][dateStr]) || 0;
     let cls = 'cal-day';
     if(blocked) cls += ' blocked';
     if(isLocked) cls += ' manually-locked';
