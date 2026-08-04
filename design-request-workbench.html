@@ -77,6 +77,11 @@
     display:inline-flex;align-items:center;font-size:11px;font-weight:800;color:#C4372B;
     background:#FFF0EE;padding:5px 10px;border-radius:999px;white-space:nowrap;
   }
+  .new-supplement-badge{
+    display:inline-flex;align-items:center;font-size:11px;font-weight:800;color:#2F5FD6;
+    background:#EAF1FF;padding:5px 10px;border-radius:999px;white-space:nowrap;
+  }
+  .supplement-block{background:#EAF1FF;}
   .badge-group{display:flex;align-items:center;gap:6px;flex:none;}
 
   .case-detail{font-size:12.5px;color:var(--ink-soft);margin-top:12px;line-height:1.8;}
@@ -430,12 +435,15 @@ function renderCases(response){
       notes: cellText(c[16]),
       status: cellText(c[17]),
       rejectReason: cellText(c[18]),
+      updatedAt: cellText(c[20]),
       deliveryLink: cellText(c[27]),
       isUrgent: cellText(c[28]),
       urgentCat: cellText(c[29]),
       urgentOther: cellText(c[30]),
       hours: cellText(c[33]),
-      fee: cellText(c[34])
+      fee: cellText(c[34]),
+      supplement: cellText(c[35]),
+      supplementTime: cellText(c[36])
     });
   });
 
@@ -476,6 +484,12 @@ function renderCaseCard(m){
   if(m.notes){
     detailBlock += '<div class="detail-block"><div class="label">備註</div>' + m.notes + '</div>';
   }
+  if(m.supplement){
+    detailBlock += '<div class="detail-block supplement-block"><div class="label">補充紀錄</div>' + m.supplement + '</div>';
+  }
+
+  const hasNewSupplement = m.supplementTime && (!m.updatedAt || new Date(m.supplementTime) > new Date(m.updatedAt));
+  const newSupplementBadge = hasNewSupplement ? '<span class="new-supplement-badge">有新補充</span>' : '';
 
   return (
     '<div class="case-card' + (isUrgent ? ' urgent' : '') + '" id="card-' + m.id + '">' +
@@ -487,7 +501,7 @@ function renderCaseCard(m){
             '<span class="case-tag">' + m.reqType + '</span>' +
           '</div>' +
         '</div>' +
-        '<div class="badge-group"><span class="status-badge-static" style="background:' + si.bg + ';color:' + si.fg + ';font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;">' + si.label + '</span>' + urgentBadge + '</div>' +
+        '<div class="badge-group"><span class="status-badge-static" style="background:' + si.bg + ';color:' + si.fg + ';font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;">' + si.label + '</span>' + newSupplementBadge + urgentBadge + '</div>' +
       '</div>' +
       '<div class="case-detail">' +
         '<div class="row">需求人員：<b>' + m.reqPerson + '</b></div>' +
