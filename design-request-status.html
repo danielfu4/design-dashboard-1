@@ -296,7 +296,9 @@ function renderResults(rows, name){
       communication: cellText(c[25]),
       price: cellText(c[26]),
       deliveryLink: cellText(c[27]),
-      isUrgent: cellText(c[28])
+      isUrgent: cellText(c[28]),
+      hours: cellText(c[33]),
+      fee: cellText(c[34])
     });
   });
 
@@ -332,6 +334,14 @@ function renderResults(rows, name){
     const isUrgent = m.isUrgent === 'Y';
     const urgentBadge = isUrgent ? '<span class="urgent-badge">急件</span>' : '';
 
+    const hoursFeeHtml = (m.hours || m.fee)
+      ? '<div class="req-meta">' +
+          (m.hours ? '工時：<b>' + m.hours + '</b>' : '') +
+          (m.hours && m.fee ? '　・　' : '') +
+          (m.fee ? '案件費用：<b>' + m.fee + '</b>' : '') +
+        '</div>'
+      : '';
+
     return (
       '<div class="req-card' + (isUrgent ? ' urgent' : '') + '">' +
         '<div class="req-top">' +
@@ -345,6 +355,7 @@ function renderResults(rows, name){
           '<div class="badge-group"><span class="status-badge" style="background:' + si.bg + ';color:' + si.fg + '">' + si.label + '</span>' + urgentBadge + '</div>' +
         '</div>' +
         '<div class="req-meta">填單日期：<b>' + m.fillDate + '</b>　・　需求日期：<b>' + m.dueDate + '</b>' + handlerLine + '</div>' +
+        hoursFeeHtml +
         rejectHtml +
         deliveryHtml +
         rateHtml +

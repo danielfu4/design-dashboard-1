@@ -91,6 +91,7 @@
   .csel-item{
     padding:11px 14px;border-radius:10px;font-size:14px;color:var(--ink);cursor:pointer;line-height:1.4;
   }
+  .csel-item + .csel-item{margin-top:3px;}
   .csel-item:hover{background:#F1F1F3;}
   .csel-item.selected{background:#F1F1F3;font-weight:700;}
   .csel-empty{padding:14px;font-size:12.5px;color:var(--ink-faint);text-align:center;}
@@ -118,6 +119,7 @@
   .cal-day:hover{background:#F1F1F3;}
   .cal-day.empty{visibility:hidden;cursor:default;}
   .cal-day.blocked{color:var(--ink-faint);background:#F6F6F7;text-decoration:line-through;cursor:not-allowed;}
+  .cal-day.manually-locked{color:#B3324A;background:#FBEBEA;}
   .cal-day.blocked:hover{background:#F6F6F7;}
   .cal-day.selected{background:var(--accent);color:#fff;font-weight:700;}
   .cal-day.today{box-shadow:inset 0 0 0 1.5px var(--accent);}
@@ -679,6 +681,8 @@ function loadAllTabRows(){
   });
 }
 
+const LOCK_TAB_NAME = '鎖定日期';
+
 function loadDateCounts(){
   loadAllTabRows().then(function(rows){
     try{
@@ -703,12 +707,43 @@ function loadDateCounts(){
     }catch(err){ /* 讀取失敗就不擋日期 */ }
     renderCalendar();
   });
+
+  loadTabRows(LOCK_TAB_NAME).then(function(rows){
+    try{
+      const lockMap = {};
+      rows.forEach(function(r){
+        const c = r.c || [];
+        const designer = c[0] && c[0].v ? String(c[0].v).trim() : '';
+        const date = normalizeDateStr(c[1] && (c[1].f || c[1].v) ? String(c[1].f || c[1].v) : '');
+        const reason = c[2] && c[2].v ? String(c[2].v).trim() : '';
+        if(!designer || !date) return;
+        if(!lockMap[designer]) lockMap[designer] = {};
+        lockMap[designer][date] = reason;
+      });
+      window.__lockedByDesigner = lockMap;
+    }catch(err){ window.__lockedByDesigner = {}; }
+    renderCalendar();
+  });
 }
 
 function isDateBlocked(dateStr){
-  if(document.getElementById('isUrgent').checked) return false; // 急件不受每日上限限制
+  const handler = currentHandler();
+  const lockMap = window.__lockedByDesigner || {};
+  if(handler && lockMap[handler] && lockMap[handler].hasOwnProperty(dateStr)){
+    return true; // 設計師手動封鎖的日期，優先權最高，急件也不能跳過
+  }
+  if(document.getElementById('isUrgent').checked) return false; // 急件可跳過每日上限（但跳不過手動封鎖）
   const g = dateCounts[currentGroup] || {};
   return (g[dateStr] || 0) >= DAILY_LIMIT;
+}
+
+function lockedReasonFor(dateStr){
+  const handler = currentHandler();
+  const lockMap = window.__lockedByDesigner || {};
+  if(handler && lockMap[handler] && lockMap[handler].hasOwnProperty(dateStr)){
+    return lockMap[handler][dateStr] || '';
+  }
+  return null;
 }
 
 function toggleCalendar(){
@@ -756,13 +791,17 @@ function renderCalendar(){
   for(let i=0;i<firstDay;i++){ html += '<div class="cal-day empty"></div>'; }
   for(let d=1; d<=daysInMonth; d++){
     const dateStr = toDateStr(y, m, d);
+    const lockReason = lockedReasonFor(dateStr);
+    const isLocked = lockReason !== null;
     const blocked = isDateBlocked(dateStr);
     const count = (dateCounts[currentGroup] && dateCounts[currentGroup][dateStr]) || 0;
     let cls = 'cal-day';
     if(blocked) cls += ' blocked';
+    if(isLocked) cls += ' manually-locked';
     if(dateStr === todayStr) cls += ' today';
     if(dateStr === selected) cls += ' selected';
-    html += '<div class="' + cls + '" onclick="' + (blocked ? '' : ("selectDate('" + dateStr + "')")) + '">' +
+    const titleAttr = isLocked ? ' title="設計師已封鎖此日期' + (lockReason ? '：' + lockReason : '') + '"' : '';
+    html += '<div class="' + cls + '"' + titleAttr + ' onclick="' + (blocked ? '' : ("selectDate('" + dateStr + "')")) + '">' +
       '<span class="cal-day-num">' + d + '</span>' +
       '<span class="cal-day-count">' + count + '</span>' +
     '</div>';

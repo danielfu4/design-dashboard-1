@@ -420,7 +420,9 @@ function renderCases(response){
       deliveryLink: cellText(c[27]),
       isUrgent: cellText(c[28]),
       urgentCat: cellText(c[29]),
-      urgentOther: cellText(c[30])
+      urgentOther: cellText(c[30]),
+      hours: cellText(c[33]),
+      fee: cellText(c[34])
     });
   });
 
@@ -501,6 +503,14 @@ function renderCaseCard(m){
             '<label>交付檔案連結</label>' +
             '<input type="text" id="delivery-' + m.id + '" value="' + (m.deliveryLink || '').replace(/"/g,'&quot;') + '" placeholder="貼上雲端連結">' +
           '</div>' +
+          '<div class="edit-field" id="hoursWrap-' + m.id + '" style="display:none;">' +
+            '<label>工時</label>' +
+            '<input type="text" id="hours-' + m.id + '" value="' + (m.hours || '').replace(/"/g,'&quot;') + '" placeholder="例如：1.5hr">' +
+          '</div>' +
+          '<div class="edit-field">' +
+            '<label>案件費用</label>' +
+            '<input type="text" id="fee-' + m.id + '" value="' + (m.fee || '').replace(/"/g,'&quot;') + '" placeholder="例如：$3000">' +
+          '</div>' +
         '</div>' +
         '<div class="save-row">' +
           '<button class="save-btn" onclick="saveCase(\'' + m.id + '\')">儲存</button>' +
@@ -515,6 +525,7 @@ function toggleCaseFields(id){
   const status = document.getElementById('status-' + id).value;
   document.getElementById('rejectWrap-' + id).style.display = (status === '退件') ? 'block' : 'none';
   document.getElementById('deliveryWrap-' + id).style.display = (status === '已完成') ? 'block' : 'none';
+  document.getElementById('hoursWrap-' + id).style.display = (status === '已完成') ? 'block' : 'none';
 }
 
 // 初始依現有狀態決定要不要展開對應欄位，並初始化每張卡片自己的狀態下拉選單
@@ -530,6 +541,8 @@ function saveCase(id){
   const status = document.getElementById('status-' + id).value;
   const rejectEl = document.getElementById('reject-' + id);
   const deliveryEl = document.getElementById('delivery-' + id);
+  const hoursEl = document.getElementById('hours-' + id);
+  const feeEl = document.getElementById('fee-' + id);
   const msg = document.getElementById('saveMsg-' + id);
 
   const payload = {
@@ -538,7 +551,9 @@ function saveCase(id){
     id: id,
     status: status,
     rejectReason: (status === '退件' && rejectEl) ? rejectEl.value : '',
-    deliveryLink: (status === '已完成' && deliveryEl) ? deliveryEl.value : ''
+    deliveryLink: (status === '已完成' && deliveryEl) ? deliveryEl.value : '',
+    hours: (status === '已完成' && hoursEl) ? hoursEl.value : '',
+    fee: feeEl ? feeEl.value : ''
   };
 
   msg.textContent = '儲存中...';
