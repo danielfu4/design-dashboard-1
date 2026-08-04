@@ -217,13 +217,15 @@
 
   .donut-wrap{display:flex;align-items:center;gap:30px;flex-wrap:wrap;justify-content:center;margin-top:6px;}
   .donut-svg-wrap{position:relative;width:240px;height:240px;flex:none;}
+  .gauge-svg-wrap{display:flex;flex-direction:column;align-items:center;flex:none;}
   .donut-center{
     position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
     text-align:center;pointer-events:none;padding:0 24px;
   }
   .donut-center-label{font-size:13.5px;font-weight:700;color:var(--ink);margin-bottom:6px;}
-  .donut-center-value{font-size:26px;font-weight:800;color:var(--ink);line-height:1.1;letter-spacing:-.01em;}
+  .donut-center-value{font-weight:800;color:var(--ink);line-height:1.1;letter-spacing:-.01em;white-space:nowrap;}
   .donut-center-pct{font-size:14px;color:var(--ink-faint);margin-top:6px;}
+  .gauge-center{position:static;margin-top:-8px;pointer-events:auto;padding:0 16px;}
   .legend{display:flex;flex-direction:column;gap:14px;}
   .legend-item{display:flex;align-items:center;gap:8px;font-size:13.5px;min-width:200px;}
   .legend-item .leader{flex:1;border-bottom:1.5px dashed var(--ink-faint);min-width:20px;margin:0 2px;height:0;align-self:center;}
@@ -937,8 +939,8 @@ function render(cases, allCases){
       hoursBtn.style.display = 'inline-flex';
       hoursBtn.classList.toggle('expanded', hoursExpanded);
       hoursBtn.innerHTML = hoursExpanded
-        ? '收合 <span class="chevron">▾</span>'
-        : '顯示全部（還有 ' + (hoursSorted.length - HOURS_COLLAPSE) + ' 個品牌） <span class="chevron">▾</span>';
+        ? '收合 <span class="chevron"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polyline points="6 9 12 15 18 9"></polyline></svg></span>'
+        : '顯示全部（還有 ' + (hoursSorted.length - HOURS_COLLAPSE) + ' 個品牌） <span class="chevron"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polyline points="6 9 12 15 18 9"></polyline></svg></span>';
     }else{
       hoursBtn.style.display = 'none';
     }
@@ -964,8 +966,8 @@ function render(cases, allCases){
       ratingBtn.style.display = 'inline-flex';
       ratingBtn.classList.toggle('expanded', ratingExpanded);
       ratingBtn.innerHTML = ratingExpanded
-        ? '收合 <span class="chevron">▾</span>'
-        : '顯示全部（還有 ' + (brandList.length - RATING_COLLAPSE) + ' 個品牌） <span class="chevron">▾</span>';
+        ? '收合 <span class="chevron"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polyline points="6 9 12 15 18 9"></polyline></svg></span>'
+        : '顯示全部（還有 ' + (brandList.length - RATING_COLLAPSE) + ' 個品牌） <span class="chevron"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polyline points="6 9 12 15 18 9"></polyline></svg></span>';
     }else{
       ratingBtn.style.display = 'none';
     }
@@ -1067,7 +1069,7 @@ function renderCategoryPie(d, body){
     return;
   }
   const total = categories.reduce(function(s,cat){ return s + (d.catTotals[cat]||0); }, 0);
-  const r = 98, cx = 120, cy = 120, sw = 22;
+  const cx = 120, cy = 120, r = 98, sw = 22;
   const circumference = 2 * Math.PI * r;
   let offset = 0;
   let segsHtml = '<g transform="rotate(-90 120 120)">';
@@ -1098,9 +1100,7 @@ function renderCategoryPie(d, body){
     );
   }).join('');
 
-  window.__donutDefaultHtml =
-    '<div class="donut-center-label">總額</div>' +
-    '<div class="donut-center-value">' + fmtMoney(total) + '</div>';
+  window.__donutDefaultHtml = donutCenterHtml('總額', fmtMoney(total), null);
 
   body.innerHTML =
     '<div class="donut-wrap">' +
@@ -1112,13 +1112,27 @@ function renderCategoryPie(d, body){
     '</div>';
 }
 
+// 依數字長度自動縮小字級，避免長金額把圓圈中間的洞撐爆
+function donutValueFontSize(value){
+  const len = String(value).length;
+  if(len <= 10) return 26;
+  if(len <= 13) return 21;
+  if(len <= 16) return 17;
+  return 14;
+}
+
+function donutCenterHtml(label, value, pct){
+  return (
+    '<div class="donut-center-label">' + label + '</div>' +
+    '<div class="donut-center-value" style="font-size:' + donutValueFontSize(value) + 'px;">' + value + '</div>' +
+    (pct !== null ? '<div class="donut-center-pct">' + pct + '</div>' : '')
+  );
+}
+
 function showDonutCenter(label, value, pct){
   const el = document.getElementById('donutCenter');
   if(!el) return;
-  el.innerHTML =
-    '<div class="donut-center-label">' + label + '</div>' +
-    '<div class="donut-center-value">' + value + '</div>' +
-    '<div class="donut-center-pct">' + pct + '</div>';
+  el.innerHTML = donutCenterHtml(label, value, pct);
 }
 function resetDonutCenter(){
   const el = document.getElementById('donutCenter');

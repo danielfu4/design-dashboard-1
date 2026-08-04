@@ -201,7 +201,14 @@
   <div class="top-links">
     <a class="back-link" onclick="history.back()">← 返回設計案統計</a>
     <div style="display:flex;gap:10px;">
-      <button class="refresh-link" onclick="openLockModal()">📅 封鎖日期</button>
+      <button class="refresh-link" onclick="openLockModal()">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:4px;">
+          <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>設計師班表
+      </button>
       <button class="refresh-link" onclick="loadCases()">重新整理</button>
     </div>
   </div>
@@ -222,7 +229,7 @@
   <div class="modal-card">
     <div class="modal-head">
       <div>
-        <div class="modal-title">封鎖日期</div>
+        <div class="modal-title">設計師班表</div>
         <div class="modal-sub">鎖起來的日期，填單人員在需求日期就無法選到（連急件也擋）</div>
       </div>
       <button class="modal-close" onclick="closeLockModal()">✕</button>
@@ -489,7 +496,7 @@ function renderCaseCard(m){
             '<div class="csel" id="csel_status-' + m.id + '">' +
               '<button type="button" class="csel-trigger" onclick="toggleCsel(\'status-' + m.id + '\')">' +
                 '<span class="csel-trigger-text" id="csel_status-' + m.id + '_text"></span>' +
-                '<span class="csel-arrow">▾</span>' +
+                '<span class="csel-arrow"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polyline points="6 9 12 15 18 9"></polyline></svg></span>' +
               '</button>' +
               '<div class="csel-panel" id="csel_status-' + m.id + '_panel"></div>' +
             '</div>' +

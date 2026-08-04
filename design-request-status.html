@@ -98,6 +98,13 @@
     font-weight:700;font-size:12.5px;padding:8px 14px;border-radius:10px;text-decoration:none;
   }
   .delivery-btn:hover{opacity:.9;}
+  .cloud-icon{flex:none;}
+  .cloud-arrow{transition:transform .3s ease-in-out;transform-box:fill-box;}
+  .delivery-btn:hover .cloud-arrow{animation:cloud-arrow-down .6s ease-in-out infinite alternate;}
+  @keyframes cloud-arrow-down{
+    from{transform:translateY(0);}
+    to{transform:translateY(3px);}
+  }
 
   .modal-overlay{
     display:none;position:fixed;inset:0;background:rgba(20,20,30,.45);z-index:200;
@@ -329,8 +336,13 @@ function renderResults(rows, name){
         : '<div class="rate-row"><button class="rate-btn" onclick="openRateModalById(\'' + m.id + '\')">★ 評分</button></div>';
     }
 
+    const cloudIconSvg = '<svg class="cloud-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>' +
+      '<polyline class="cloud-arrow" points="8 17 12 21 16 17"></polyline>' +
+      '<line class="cloud-arrow" x1="12" y1="12" x2="12" y2="21"></line>' +
+    '</svg>';
     const deliveryHtml = m.deliveryLink
-      ? '<div class="rate-row"><a class="delivery-btn" href="' + m.deliveryLink + '" target="_blank">📁 查看交付檔案</a></div>'
+      ? '<div class="rate-row"><a class="delivery-btn" href="' + m.deliveryLink + '" target="_blank">' + cloudIconSvg + ' 查看交付檔案</a></div>'
       : '';
 
     const isUrgent = m.isUrgent === 'Y';
