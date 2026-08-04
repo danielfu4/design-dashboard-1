@@ -234,7 +234,7 @@ function loadTabRows(tabName){
     };
     const script = document.createElement('script');
     script.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
-      '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(tabName);
+      '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(tabName) + '&headers=1&_ts=' + Date.now();
     script.onerror = function(){ if(!done){ done = true; resolve([]); } };
     document.body.appendChild(script);
     setTimeout(function(){ if(!done){ done = true; resolve([]); } }, 12000);

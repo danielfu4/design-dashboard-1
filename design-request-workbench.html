@@ -393,7 +393,7 @@ function loadCases(){
   };
   const script = document.createElement('script');
   script.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
-    '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(TAB_NAME);
+    '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(TAB_NAME) + '&headers=1&_ts=' + Date.now();
   script.setAttribute('data-gsheet-loader','1');
   script.onerror = function(){
     list.innerHTML = '<div class="state-msg">無法連線到試算表，請確認分享權限為「知道連結的人皆可查看」。</div>';
@@ -639,7 +639,7 @@ function loadLockedDates(){
   };
   const script = document.createElement('script');
   script.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
-    '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(LOCK_TAB_NAME);
+    '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(LOCK_TAB_NAME) + '&headers=1&_ts=' + Date.now();
   script.setAttribute('data-lock-loader','1');
   script.onerror = function(){ lockedDatesMap = {}; renderLockCalendar(); };
   document.body.appendChild(script);

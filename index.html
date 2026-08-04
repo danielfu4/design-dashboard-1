@@ -718,7 +718,7 @@ function loadTab(tabName){
     };
     const script = document.createElement('script');
     script.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
-      '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(tabName);
+      '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(tabName) + '&headers=1&_ts=' + Date.now();
     script.onerror = function(){ clearTimeout(to); reject(new Error(tabName + '：無法連線')); };
     document.body.appendChild(script);
     const to = setTimeout(function(){ reject(new Error(tabName + '：連線逾時')); }, 12000);
