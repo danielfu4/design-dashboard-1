@@ -216,7 +216,7 @@
   <header>
     <p class="eyebrow">設計團隊 KPI</p>
     <h1>設計師工作台</h1>
-    <div class="subtitle">目前檢視：Daniel</div>
+    <div class="subtitle" id="viewingSubtitle">目前檢視：Daniel</div>
   </header>
 
   <div id="caseList">
@@ -331,21 +331,27 @@ function initCsel(id, options, value, onChange){
 
 
 const SHEET_ID = '1Q0b8dS3zKVoypKNh0hNuburvp4NMxmAwbdjoSQ4ibNg';
-const TAB_NAME = 'Daniel需求單';
-const CURRENT_DESIGNER = 'Daniel';
 const LOCK_TAB_NAME = '鎖定日期';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_cLlF17JTPJBdhcqcLG0gn9g7Tfjub9qiCj8SM7ScATew3VoJ-7Kbfrfi_LJyk05SZA/exec';
-const GATE_PASSWORD = '1008925';
+const DESIGNER_PASSWORDS = { 'Nikki':'8416', 'Yuly':'8901', 'Luna':'8780', 'Daniel':'8925' };
 const STATUS_OPTIONS = ['待處理','進行中','請校稿','已完成','退件'];
 
+let TAB_NAME = '';
+let CURRENT_DESIGNER = '';
 let verifiedPassword = null;
 
 function checkPassword(){
   const val = document.getElementById('gatePassword').value;
-  if(val === GATE_PASSWORD){
+  const matched = Object.keys(DESIGNER_PASSWORDS).filter(function(name){
+    return DESIGNER_PASSWORDS[name] === val;
+  })[0];
+  if(matched){
     verifiedPassword = val;
+    CURRENT_DESIGNER = matched;
+    TAB_NAME = matched + '需求單';
     document.getElementById('gateWrap').style.display = 'none';
     document.getElementById('mainView').classList.add('show');
+    document.getElementById('viewingSubtitle').textContent = '目前檢視：' + matched;
     loadCases();
   }else{
     document.getElementById('gateError').classList.add('show');
@@ -555,6 +561,7 @@ function saveCase(id){
   const payload = {
     action: 'updateStatus',
     password: verifiedPassword,
+    handler: CURRENT_DESIGNER,
     id: id,
     status: status,
     rejectReason: (status === '退件' && rejectEl) ? rejectEl.value : '',
@@ -710,7 +717,7 @@ function confirmLockDate(){
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action:'lockDate', password: GATE_PASSWORD, handler: CURRENT_DESIGNER, date: pendingLockDate, reason: reason })
+    body: JSON.stringify({ action:'lockDate', password: verifiedPassword, handler: CURRENT_DESIGNER, date: pendingLockDate, reason: reason })
   })
   .then(function(res){ return res.json(); })
   .then(function(data){
@@ -733,7 +740,7 @@ function doUnlockDate(dateStr){
   fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action:'unlockDate', password: GATE_PASSWORD, handler: CURRENT_DESIGNER, date: dateStr })
+    body: JSON.stringify({ action:'unlockDate', password: verifiedPassword, handler: CURRENT_DESIGNER, date: dateStr })
   })
   .then(function(res){ return res.json(); })
   .then(function(data){
