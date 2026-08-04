@@ -212,6 +212,16 @@
   }
   .modal-submit:disabled{opacity:.4;cursor:not-allowed;}
   .modal-submit:not(:disabled):hover{opacity:.88;}
+  .feedback-submit-btn{
+    display:flex;align-items:center;justify-content:center;gap:.5em;overflow:hidden;transition:all .2s;
+  }
+  .feedback-submit-btn:not(:disabled):hover{opacity:1;}
+  .feedback-submit-btn .svg-wrapper-1,.feedback-submit-btn .svg-wrapper{display:flex;align-items:center;justify-content:center;}
+  .feedback-submit-btn svg{display:block;transform-origin:center center;transition:transform .3s ease-in-out;}
+  .feedback-submit-btn span{display:block;transition:all .3s ease-in-out;}
+  .feedback-submit-btn:hover .svg-wrapper{animation:submit-fly-1 .6s ease-in-out infinite alternate;}
+  .feedback-submit-btn:hover svg{transform:translateX(.9em) rotate(45deg) scale(1.1);}
+  .feedback-submit-btn:hover span{transform:translateX(3em);opacity:0;}
   .modal-msg{font-size:12px;margin-top:10px;text-align:center;}
   .modal-msg.error{color:#B3324A;}
   .modal-msg.success{color:#1F8A4C;}
@@ -248,8 +258,15 @@
   .feedback-btn{
     display:inline-flex;align-items:center;border:none;background:var(--accent);color:#fff;
     font-family:inherit;font-weight:700;font-size:14px;padding:12px 22px;border-radius:12px;cursor:pointer;
+    position:relative;overflow:hidden;
   }
-  .feedback-btn:hover{opacity:.88;}
+  .feedback-btn-text{display:block;transition:transform .3s ease-in-out, opacity .3s ease-in-out;}
+  .feedback-btn:hover .feedback-btn-text{transform:translateX(1.6em);opacity:0;}
+  .feedback-btn-icon{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.6);
+    opacity:0;transition:transform .3s ease-in-out, opacity .3s ease-in-out;pointer-events:none;
+  }
+  .feedback-btn:hover .feedback-btn-icon{transform:translate(-50%,-50%) scale(1);opacity:1;}
 
   .preview-note{
     font-size:11.5px;color:var(--ink-soft);
@@ -457,7 +474,15 @@
           <span>送出需求</span>
         </button>
         <a href="design-request-status.html" class="status-link">查看案件進度</a>
-        <button type="button" class="feedback-btn" onclick="openFeedbackModal()">意見箱</button>
+        <button type="button" class="feedback-btn" onclick="openFeedbackModal()">
+          <span class="feedback-btn-text">意見箱</span>
+          <span class="feedback-btn-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <rect x="2" y="4" width="20" height="16" rx="4" fill="currentColor"></rect>
+              <polyline points="4 6.5 12 13.5 20 6.5" fill="none" stroke="#3E7BFA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></polyline>
+            </svg>
+          </span>
+        </button>
       </div>
       <div class="preview-note" style="margin-top:8px;">送出後會存進試算表「設計需求單」分頁</div>
 
@@ -503,7 +528,17 @@
       <label>意見內容 <span class="required">*</span></label>
       <textarea id="feedbackContent" placeholder="請寫下你遇到的問題或想法" style="min-height:110px;"></textarea>
     </div>
-    <button class="modal-submit" id="feedbackSubmitBtn" onclick="submitFeedback()">送出意見</button>
+    <button class="modal-submit feedback-submit-btn" id="feedbackSubmitBtn" onclick="submitFeedback()">
+      <div class="svg-wrapper-1">
+        <div class="svg-wrapper">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18">
+            <path fill="none" d="M0 0h24v24H0z"></path>
+            <path fill="currentColor" d="M1.946 9.315c-.522-.174-.527-.455.01-.634l19.087-6.362c.529-.176.832.12.684.638l-5.454 19.086c-.15.529-.455.547-.679.045L12 14l6-8-8 6-8.054-2.685z"></path>
+          </svg>
+        </div>
+      </div>
+      <span>送出</span>
+    </button>
     <div class="modal-msg" id="feedbackModalMsg"></div>
   </div>
 </div>
