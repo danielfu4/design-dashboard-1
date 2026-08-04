@@ -115,9 +115,11 @@
   .modal-close:hover{color:var(--ink);}
   .star-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
   .star-row .crit-label{font-size:13.5px;font-weight:700;}
-  .star-picker{display:flex;gap:3px;}
-  .star-picker span{font-size:22px;color:var(--ink-faint);cursor:pointer;line-height:1;}
-  .star-picker span.filled{color:#F5C518;}
+  .star-picker{display:flex;gap:5px;}
+  .star-item{cursor:pointer;display:inline-flex;color:var(--ink-faint);transform-origin:center;transition:color .3s ease-in-out,transform .3s ease-in-out;}
+  .star-item svg{display:block;transition:fill .3s ease-in-out;}
+  .star-item.active,.star-item.preview{color:#F5A623;transform:scale(1.2);animation:star-bounce .5s ease-in-out alternate;}
+  @keyframes star-bounce{ to{ transform:scale(1.32); } }
   .modal-submit{
     width:100%;margin-top:6px;border:none;background:var(--ink);color:#fff;font:inherit;font-weight:700;
     font-size:14px;padding:12px;border-radius:12px;cursor:pointer;
@@ -370,12 +372,31 @@ let currentRatingId = null;
 
 function buildStarPicker(crit){
   const wrap = document.querySelector('.star-picker[data-crit="' + crit + '"]');
+  const starSvg = '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 2.5l2.9 6.6 7.2.6-5.5 4.8 1.7 7-6.3-3.9-6.3 3.9 1.7-7-5.5-4.8 7.2-.6z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path></svg>';
   let html = '';
   for(let i=1;i<=5;i++){
     const isFilled = i <= currentRating[crit];
-    html += '<span class="' + (isFilled ? 'filled' : '') + '" data-v="' + i + '" onclick="setStar(\'' + crit + '\',' + i + ')">' + (isFilled ? '★' : '☆') + '</span>';
+    html += '<span class="star-item' + (isFilled ? ' active' : '') + '" data-v="' + i + '" ' +
+      'onclick="setStar(\'' + crit + '\',' + i + ')" ' +
+      'onmouseenter="previewStars(\'' + crit + '\',' + i + ')" ' +
+      'onmouseleave="clearStarPreview(\'' + crit + '\')">' + starSvg + '</span>';
   }
   wrap.innerHTML = html;
+}
+
+function previewStars(crit, hoverV){
+  const wrap = document.querySelector('.star-picker[data-crit="' + crit + '"]');
+  wrap.querySelectorAll('.star-item').forEach(function(el){
+    const v = parseInt(el.getAttribute('data-v'), 10);
+    el.classList.toggle('preview', v <= hoverV);
+  });
+}
+
+function clearStarPreview(crit){
+  const wrap = document.querySelector('.star-picker[data-crit="' + crit + '"]');
+  wrap.querySelectorAll('.star-item').forEach(function(el){
+    el.classList.remove('preview');
+  });
 }
 
 function setStar(crit, v){
