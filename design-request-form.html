@@ -181,7 +181,18 @@
     display:flex;align-items:center;gap:9px;font-size:14px;font-weight:800;color:#C4372B;
     cursor:pointer;
   }
-  .urgent-check-label input{width:17px;height:17px;accent-color:#E0453A;cursor:pointer;}
+  .uiverse-checkbox{display:inline-flex;align-items:center;justify-content:center;line-height:0;cursor:pointer;}
+  .uiverse-checkbox input{display:none;}
+  .uiverse-checkbox svg{overflow:visible;display:block;}
+  .uiverse-path{
+    fill:none;stroke:#E0453A;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;
+    transition:stroke-dasharray .5s ease, stroke-dashoffset .5s ease;
+    stroke-dasharray:241 9999999;stroke-dashoffset:0;
+  }
+  .uiverse-checkbox input:checked ~ svg .uiverse-path{
+    stroke-dasharray:70.5096664428711 9999999;
+    stroke-dashoffset:-262.2723388671875;
+  }
   .urgent-detail{margin-top:14px;padding-top:14px;border-top:1px solid #F6CFCB;}
   .urgent-counter{font-size:11.5px;color:#C4372B;margin-top:8px;}
 
@@ -390,7 +401,12 @@
 
       <div class="field urgent-field">
         <label class="urgent-check-label">
-          <input type="checkbox" id="isUrgent" onchange="toggleUrgent(this.checked)">
+          <span class="uiverse-checkbox">
+            <input type="checkbox" id="isUrgent" onchange="toggleUrgent(this.checked)">
+            <svg viewBox="0 0 64 64" height="1.15em" width="1.15em">
+              <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541381835938" class="uiverse-path"></path>
+            </svg>
+          </span>
           <span>此案件為急件</span>
         </label>
         <div class="urgent-detail" id="urgentDetailWrap" style="display:none;">
