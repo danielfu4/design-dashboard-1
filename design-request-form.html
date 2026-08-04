@@ -255,6 +255,18 @@
   .submit-btn:hover svg{transform:rotate(45deg) scale(1.1);}
   .submit-btn:hover span{transform:translateX(5em);opacity:0;}
   .submit-btn:active{transform:scale(0.95);}
+  .submit-success-check{
+    position:absolute;inset:0;background:var(--ink);border-radius:inherit;
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;pointer-events:none;transition:opacity .3s ease;
+  }
+  .submit-btn.success-state .submit-success-check{
+    opacity:1;
+  }
+  .submit-success-check .check-mark{
+    stroke-dasharray:16;stroke-dashoffset:16;transition:stroke-dashoffset .35s ease .15s;
+  }
+  .submit-btn.success-state .submit-success-check .check-mark{stroke-dashoffset:0;}
   @keyframes submit-fly-1{
     from{transform:translateY(0.1em);}
     to{transform:translateY(-0.1em);}
@@ -487,7 +499,13 @@
               </svg>
             </div>
           </div>
-          <span>送出需求</span>
+          <span id="submitBtnText">送出需求</span>
+          <div class="submit-success-check" id="submitSuccessCheck">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path class="check-mark" d="M7 12.5 L10.5 16 L17 8.5"></path>
+            </svg>
+          </div>
         </button>
         <a href="design-request-status.html" class="status-link">查看案件進度</a>
         <button type="button" class="feedback-btn" onclick="openFeedbackModal()">
@@ -1357,8 +1375,9 @@ function confirmUrgentAndSubmit(){
 
 function doActualSubmit(payload){
   const btn = document.getElementById('submitBtn');
+  const btnText = document.getElementById('submitBtnText');
   btn.disabled = true;
-  btn.textContent = '送出中...';
+  btnText.textContent = '送出中...';
   document.getElementById('confirmBanner').classList.remove('show');
 
   fetch(APPS_SCRIPT_URL, {
@@ -1382,16 +1401,23 @@ function doActualSubmit(payload){
       document.getElementById('urgentCounter').textContent = '';
       calendarDate = new Date();
       loadDateCounts();
+
+      btnText.textContent = '送出需求';
+      btn.classList.add('success-state');
+      setTimeout(function(){
+        btn.classList.remove('success-state');
+        btn.disabled = false;
+      }, 2500);
     }else{
       showBanner('error', '送出失敗：' + (data.message || '未知錯誤，請稍後再試。'));
+      btnText.textContent = '送出需求';
+      btn.disabled = false;
     }
   })
   .catch(function(err){
     showBanner('error', '送出失敗，請確認網路連線或稍後再試。（' + err.message + '）');
-  })
-  .finally(function(){
+    btnText.textContent = '送出需求';
     btn.disabled = false;
-    btn.textContent = '送出需求';
   });
 }
 
