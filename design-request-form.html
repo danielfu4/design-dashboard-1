@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>設計需求申請單</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F1F1F3; --card:#FFFFFF;
+    --shadow:0 1px 2px rgba(20,20,30,.05), 0 6px 16px rgba(20,20,30,.04);
+    --ink:#17181C; --ink-soft:#8A8A93; --ink-faint:#C2C2C8; --line:#ECECEE;
+    --accent:#3E7BFA;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:'Noto Sans TC','Noto Sans',ui-sans-serif,sans-serif;
+    padding:32px 20px 60px;
+  }
+  .wrap{max-width:620px;margin:0 auto;}
+
+  .back-link{
+    display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);
+    text-decoration:none;font-weight:600;cursor:pointer;margin-bottom:18px;
+  }
+  .back-link:hover{color:var(--ink);}
+
+  header{margin-bottom:22px;}
+  .header-top{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;}
+  .segmented{display:inline-flex;background:#E7E7EA;border-radius:12px;padding:3px;gap:2px;flex:none;}
+  .seg-btn{border:none;background:transparent;color:var(--ink-soft);font:inherit;font-weight:700;font-size:12.5px;padding:8px 16px;border-radius:9px;cursor:pointer;}
+  .seg-btn.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(20,20,30,.14);}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--ink-soft);margin:0 0 4px;text-transform:uppercase;}
+  h1{font-size:26px;font-weight:800;margin:0 0 6px;letter-spacing:-.01em;}
+  .subtitle{font-size:13px;color:var(--ink-soft);}
+
+  .card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:28px 26px;}
+
+  .field{margin-bottom:20px;}
+  .field label{display:block;font-size:13px;font-weight:700;margin-bottom:8px;}
+  .field .required{color:#F1516E;margin-left:2px;}
+  .field .hint{font-size:11.5px;color:var(--ink-soft);margin-top:6px;}
+
+  .field input[type=text],
+  .field input[type=date],
+  .field select,
+  .field textarea{
+    width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 14px;
+    font-family:inherit;font-size:14px;color:var(--ink);background:#FAFAFB;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus{
+    outline:none;border-color:var(--accent);background:#fff;
+  }
+  .field textarea{resize:vertical;min-height:80px;line-height:1.6;}
+
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media (max-width:520px){ .row2{grid-template-columns:1fr;} }
+
+  .date-field{position:relative;}
+  .date-picker-input{cursor:pointer;background:#FAFAFB;}
+
+  .csel{position:relative;}
+  .csel-trigger{
+    width:100%;display:flex;align-items:center;justify-content:space-between;
+    border:1px solid var(--line);border-radius:12px;padding:11px 14px;
+    font-family:inherit;font-size:14px;color:var(--ink);background:#FAFAFB;cursor:pointer;text-align:left;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .csel-trigger:hover{background:#F5F5F6;}
+  .csel.open .csel-trigger{border-color:var(--accent);background:#fff;}
+  .csel-trigger-text.csel-placeholder{color:var(--ink-faint);}
+  .csel-arrow{font-size:10px;color:var(--ink-soft);transition:transform .15s ease;margin-left:8px;flex:none;}
+  .csel.open .csel-arrow{transform:rotate(180deg);}
+  .csel-panel{
+    display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;
+    background:#fff;border-radius:16px;box-shadow:0 14px 32px rgba(20,20,30,.16);
+    padding:8px;max-height:280px;overflow-y:auto;
+    scrollbar-width:thin;scrollbar-color:var(--ink-faint) var(--track);
+  }
+  .csel-panel.show{display:block;}
+  .csel-panel::-webkit-scrollbar{width:6px;}
+  .csel-panel::-webkit-scrollbar-track{background:transparent;}
+  .csel-panel::-webkit-scrollbar-thumb{background:var(--ink-faint);border-radius:3px;}
+  .csel-item{
+    padding:11px 14px;border-radius:10px;font-size:14px;color:var(--ink);cursor:pointer;line-height:1.4;
+  }
+  .csel-item:hover{background:#F1F1F3;}
+  .csel-item.selected{background:#F1F1F3;font-weight:700;}
+  .csel-empty{padding:14px;font-size:12.5px;color:var(--ink-faint);text-align:center;}
+
+  .calendar-popup{
+    display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:50;
+    background:#fff;border:1px solid var(--line);border-radius:16px;
+    box-shadow:0 12px 30px rgba(20,20,30,.16);padding:14px;width:280px;
+  }
+  .calendar-popup.show{display:block;}
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .cal-header button{
+    border:none;background:#F1F1F3;color:var(--ink);width:28px;height:28px;border-radius:8px;
+    cursor:pointer;font-size:15px;font-weight:700;
+  }
+  .cal-header button:hover{background:#E7E7EA;}
+  #calMonthLabel, #fillCalMonthLabel{font-size:13.5px;font-weight:800;font-family:inherit;}
+  .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;color:var(--ink-soft);margin-bottom:4px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+  .cal-day{
+    aspect-ratio:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;
+    font-size:12.5px;border-radius:8px;cursor:pointer;color:var(--ink);
+    transition:background-color .2s ease, color .2s ease;
+  }
+  .cal-day:hover{background:#F1F1F3;}
+  .cal-day.empty{visibility:hidden;cursor:default;}
+  .cal-day.blocked{color:var(--ink-faint);background:#F6F6F7;text-decoration:line-through;cursor:not-allowed;}
+  .cal-day.blocked:hover{background:#F6F6F7;}
+  .cal-day.selected{background:var(--accent);color:#fff;font-weight:700;}
+  .cal-day.today{box-shadow:inset 0 0 0 1.5px var(--accent);}
+  .cal-day-num{transition:opacity .2s ease;}
+  .cal-day-count{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    opacity:0;font-weight:800;color:#fff;transition:opacity .2s ease;pointer-events:none;
+  }
+  #calGrid .cal-day:not(.empty):not(.blocked):hover{background:var(--accent);color:#fff;}
+  #calGrid .cal-day:not(.empty):not(.blocked):hover .cal-day-num{opacity:0;}
+  #calGrid .cal-day:not(.empty):not(.blocked):hover .cal-day-count{opacity:1;}
+
+  .cal-hover-tag{
+    position:fixed;z-index:400;background:var(--accent);color:#fff;font-size:11.5px;font-weight:700;
+    padding:6px 11px;border-radius:8px;pointer-events:none;opacity:0;transition:opacity .15s ease;
+    white-space:nowrap;box-shadow:0 6px 16px rgba(20,20,30,.18);
+  }
+  .cal-hover-tag.show{opacity:1;}
+  .cal-legend{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-soft);margin-top:10px;}
+  .cal-legend .cal-dot{width:8px;height:8px;border-radius:2px;background:#F6F6F7;box-shadow:inset 0 0 0 1px var(--ink-faint);}
+
+  .other-brand{margin-top:10px;display:none;}
+  .other-brand.show{display:block;}
+
+  .materials-generic.hide{display:none;}
+
+  .ec-detail{
+    display:none;background:#F5F8FF;border:1px solid #DCE6FF;border-radius:14px;
+    padding:18px 18px 4px;margin-bottom:20px;
+  }
+  .ec-detail.show{display:block;}
+  .ec-detail-title{font-size:13px;font-weight:800;color:var(--accent);margin-bottom:16px;}
+  .ec-detail .field textarea{min-height:60px;}
+  .case-warning{
+    background:#FFF3E0;border:1px solid #F5D9A8;color:#96650C;font-size:12px;line-height:1.6;
+    border-radius:10px;padding:10px 14px;margin-top:2px;margin-bottom:14px;
+  }
+
+  .urgent-field{
+    background:#FFF5F4;border:1px solid #F6CFCB;border-radius:14px;padding:16px 18px;
+  }
+  .urgent-check-label{
+    display:flex;align-items:center;gap:9px;font-size:14px;font-weight:800;color:#C4372B;
+    cursor:pointer;
+  }
+  .urgent-check-label input{width:17px;height:17px;accent-color:#E0453A;cursor:pointer;}
+  .urgent-detail{margin-top:14px;padding-top:14px;border-top:1px solid #F6CFCB;}
+  .urgent-counter{font-size:11.5px;color:#C4372B;margin-top:8px;}
+
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(20,20,30,.5);z-index:300;
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal-card{
+    background:#fff;border-radius:20px;box-shadow:0 20px 50px rgba(20,20,30,.3);
+    padding:26px 26px 22px;max-width:420px;width:100%;max-height:86vh;overflow-y:auto;
+  }
+  .modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
+  .modal-title{font-size:16px;font-weight:800;}
+  .modal-sub{font-size:12px;color:var(--ink-soft);margin-top:3px;}
+  .modal-close{border:none;background:none;font-size:18px;color:var(--ink-faint);cursor:pointer;line-height:1;}
+  .modal-close:hover{color:var(--ink);}
+  .urgent-modal-body{font-size:13px;color:var(--ink);line-height:1.75;background:#FAFAFB;border-radius:12px;padding:14px 16px;}
+  .urgent-modal-body ul{margin:8px 0 0;padding-left:18px;}
+  .urgent-agree-label{
+    display:flex;align-items:flex-start;gap:9px;font-size:12.5px;color:var(--ink-soft);
+    margin-top:16px;cursor:pointer;line-height:1.5;
+  }
+  .urgent-agree-label input{width:16px;height:16px;flex:none;margin-top:1px;cursor:pointer;}
+  .modal-submit{
+    width:100%;margin-top:16px;border:none;background:var(--ink);color:#fff;font:inherit;font-weight:700;
+    font-size:14px;padding:12px;border-radius:12px;cursor:pointer;
+  }
+  .modal-submit:disabled{opacity:.4;cursor:not-allowed;}
+  .modal-submit:not(:disabled):hover{opacity:.88;}
+  .modal-msg{font-size:12px;margin-top:10px;text-align:center;}
+  .modal-msg.error{color:#B3324A;}
+  .modal-msg.success{color:#1F8A4C;}
+
+  .submit-row{display:flex;align-items:center;gap:14px;margin-top:8px;flex-wrap:wrap;}
+  .submit-btn{
+    border:none;background:var(--ink);color:#fff;font:inherit;font-weight:700;font-size:14px;
+    padding:13px 26px;border-radius:12px;cursor:pointer;
+  }
+  .status-link{
+    display:inline-flex;align-items:center;
+    border:1px solid var(--line);background:#fff;color:var(--ink);font-weight:700;font-size:14px;
+    padding:12px 22px;border-radius:12px;text-decoration:none;font-family:inherit;cursor:pointer;
+  }
+  .status-link:hover{background:#F7F7F8;}
+  .feedback-btn{
+    display:inline-flex;align-items:center;border:none;background:var(--accent);color:#fff;
+    font-family:inherit;font-weight:700;font-size:14px;padding:12px 22px;border-radius:12px;cursor:pointer;
+  }
+  .feedback-btn:hover{opacity:.88;}
+  .submit-btn:hover{opacity:.88;}
+
+  .preview-note{
+    font-size:11.5px;color:var(--ink-soft);
+  }
+
+  .confirm-banner{
+    display:none;margin-top:16px;background:#EAF7EF;border:1px solid #BEE6CB;color:#1F8A4C;
+    padding:12px 16px;border-radius:12px;font-size:13px;font-weight:600;
+  }
+  .confirm-banner.show{display:block;}
+  .confirm-banner.error{background:#FBEBEA;border-color:#F3C5C0;color:#B3324A;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a class="back-link" href="index.html" onclick="if(window.history.length>1){history.back();return false;}">← 返回設計案統計</a>
+
+  <header>
+    <div class="header-top">
+      <div>
+        <p class="eyebrow">設計團隊 KPI</p>
+        <h1>設計需求申請單</h1>
+        <div class="subtitle">請填寫以下資訊送出設計需求</div>
+      </div>
+      <div class="segmented" id="groupSwitch">
+        <button type="button" class="seg-btn active" data-g="S1">S1</button>
+        <button type="button" class="seg-btn" data-g="S2">S2</button>
+        <button type="button" class="seg-btn" data-g="S3">S3</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="card">
+    <form id="requestForm" onsubmit="return handleSubmit(event)">
+
+      <div class="field">
+        <label>品牌 <span class="required">*</span></label>
+        <div class="csel" id="csel_brand">
+          <button type="button" class="csel-trigger" onclick="toggleCsel('brand')">
+            <span class="csel-trigger-text csel-placeholder" id="csel_brand_text">請選擇品牌</span>
+            <span class="csel-arrow">▾</span>
+          </button>
+          <div class="csel-panel" id="csel_brand_panel"></div>
+        </div>
+        <input type="hidden" id="brand">
+        <div class="other-brand" id="otherBrandWrap">
+          <input type="text" id="otherBrand" placeholder="請輸入品牌名稱">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>需求名稱 <span class="required">*</span></label>
+        <input type="text" id="reqName" placeholder="例如：官網首頁改版 Banner" required>
+      </div>
+
+      <div class="field">
+        <label>設計類型 <span class="required">*</span></label>
+        <div class="csel" id="csel_reqType">
+          <button type="button" class="csel-trigger" onclick="toggleCsel('reqType')">
+            <span class="csel-trigger-text csel-placeholder" id="csel_reqType_text">請選擇設計類型</span>
+            <span class="csel-arrow">▾</span>
+          </button>
+          <div class="csel-panel" id="csel_reqType_panel"></div>
+        </div>
+        <input type="hidden" id="reqType">
+      </div>
+
+      <div class="field" id="caseTypeWrap" style="display:none;">
+        <label>案件類型 <span class="required">*</span></label>
+        <div class="csel" id="csel_caseType">
+          <button type="button" class="csel-trigger" onclick="toggleCsel('caseType')">
+            <span class="csel-trigger-text csel-placeholder" id="csel_caseType_text">請選擇案件類型</span>
+            <span class="csel-arrow">▾</span>
+          </button>
+          <div class="csel-panel" id="csel_caseType_panel"></div>
+        </div>
+        <input type="hidden" id="caseType">
+      </div>
+
+      <div class="field" id="assignDesignerWrap" style="display:none;">
+        <label>指定設計師 <span class="required">*</span></label>
+        <div class="csel" id="csel_assignDesigner">
+          <button type="button" class="csel-trigger" onclick="toggleCsel('assignDesigner')">
+            <span class="csel-trigger-text csel-placeholder" id="csel_assignDesigner_text">請選擇設計師</span>
+            <span class="csel-arrow">▾</span>
+          </button>
+          <div class="csel-panel" id="csel_assignDesigner_panel"></div>
+        </div>
+        <input type="hidden" id="assignDesigner">
+      </div>
+
+      <div class="field">
+        <label>需求人員 <span class="required">*</span></label>
+        <input type="text" id="reqPerson" placeholder="提出需求的人員姓名" required onblur="updateUrgentCounter()">
+      </div>
+
+      <div class="field urgent-field">
+        <label class="urgent-check-label">
+          <input type="checkbox" id="isUrgent" onchange="toggleUrgent(this.checked)">
+          <span>此案件為急件</span>
+        </label>
+        <div class="urgent-detail" id="urgentDetailWrap" style="display:none;">
+          <div class="field" style="margin-bottom:12px;">
+            <label>急件原因 <span class="required">*</span></label>
+            <div class="csel" id="csel_urgentReasonCat">
+              <button type="button" class="csel-trigger" onclick="toggleCsel('urgentReasonCat')">
+                <span class="csel-trigger-text csel-placeholder" id="csel_urgentReasonCat_text">請選擇原因</span>
+                <span class="csel-arrow">▾</span>
+              </button>
+              <div class="csel-panel" id="csel_urgentReasonCat_panel"></div>
+            </div>
+            <input type="hidden" id="urgentReasonCat">
+          </div>
+          <div class="field" id="urgentOtherWrap" style="display:none;margin-bottom:0;">
+            <input type="text" id="urgentOtherText" placeholder="請說明原因">
+          </div>
+          <div class="urgent-counter" id="urgentCounter"></div>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field date-field">
+          <label>填單日期</label>
+          <input type="text" id="fillDateDisplay" class="date-picker-input" placeholder="請選擇日期" readonly onclick="toggleFillCalendar()">
+          <input type="hidden" id="fillDate">
+          <div class="calendar-popup" id="fillCalendarPopup">
+            <div class="cal-header">
+              <button type="button" onclick="changeFillMonth(-1)">‹</button>
+              <div id="fillCalMonthLabel"></div>
+              <button type="button" onclick="changeFillMonth(1)">›</button>
+            </div>
+            <div class="cal-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+            <div class="cal-grid" id="fillCalGrid"></div>
+          </div>
+        </div>
+        <div class="field date-field">
+          <label>需求日期 <span class="required">*</span></label>
+          <input type="text" id="dueDateDisplay" class="date-picker-input" placeholder="請選擇日期" readonly onclick="toggleCalendar()">
+          <input type="hidden" id="dueDate" required>
+          <div class="calendar-popup" id="calendarPopup">
+            <div class="cal-header">
+              <button type="button" onclick="changeMonth(-1)">‹</button>
+              <div id="calMonthLabel"></div>
+              <button type="button" onclick="changeMonth(1)">›</button>
+            </div>
+            <div class="cal-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+            <div class="cal-grid" id="calGrid"></div>
+            <div class="cal-legend"><span class="cal-dot"></span>當日已滿 5 件，暫不可選</div>
+          </div>
+          <div class="cal-hover-tag" id="calHoverTag">案件數量：0</div>
+        </div>
+      </div>
+
+      <div class="field" id="materialsGenericWrap">
+        <label>提供素材</label>
+        <textarea id="materials" placeholder="請貼上雲端連結，或說明素材存放位置"></textarea>
+      </div>
+
+      <div class="ec-detail" id="caseFieldsWrap" style="display:none;">
+        <div class="ec-detail-title" id="caseFieldsTitle">案件所需資料</div>
+        <div id="caseFieldsBody"></div>
+        <div class="case-warning" id="caseWarningBox" style="display:none;"></div>
+      </div>
+
+      <div class="field">
+        <label>備註</label>
+        <textarea id="notes" placeholder="其他補充說明"></textarea>
+      </div>
+
+      <div class="submit-row">
+        <button type="submit" class="submit-btn" id="submitBtn">送出需求</button>
+        <a href="design-request-status.html" class="status-link">查看案件進度</a>
+        <button type="button" class="feedback-btn" onclick="openFeedbackModal()">意見箱</button>
+      </div>
+      <div class="preview-note" style="margin-top:8px;">送出後會存進試算表「設計需求單」分頁</div>
+
+      <div class="confirm-banner" id="confirmBanner"></div>
+
+    </form>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="urgentModalOverlay" onclick="if(event.target===this) closeUrgentModal()">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">急件確認</div>
+        <div class="modal-sub">請確認以下內容後再送出</div>
+      </div>
+      <button class="modal-close" onclick="closeUrgentModal()">✕</button>
+    </div>
+    <div class="urgent-modal-body" id="urgentModalBody"></div>
+    <label class="urgent-agree-label">
+      <input type="checkbox" id="urgentAgreeCheck" onchange="document.getElementById('urgentConfirmBtn').disabled = !this.checked;">
+      <span>我已了解並同意：因急件插入而延後申請人其他既有需求，或因此衍伸的其他部門問題，設計師一概不負責，相關排程調整由申請人自行承擔。</span>
+    </label>
+    <button class="modal-submit" id="urgentConfirmBtn" disabled onclick="confirmUrgentAndSubmit()">確認送出</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="feedbackModalOverlay" onclick="if(event.target===this) closeFeedbackModal()">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">意見箱</div>
+        <div class="modal-sub">使用上有任何問題或想法，都歡迎留言給我們</div>
+      </div>
+      <button class="modal-close" onclick="closeFeedbackModal()">✕</button>
+    </div>
+    <div class="field" style="margin-bottom:14px;">
+      <label>姓名（選填）</label>
+      <input type="text" id="feedbackName" placeholder="方便我們回覆你可以填寫">
+    </div>
+    <div class="field" style="margin-bottom:0;">
+      <label>意見內容 <span class="required">*</span></label>
+      <textarea id="feedbackContent" placeholder="請寫下你遇到的問題或想法" style="min-height:110px;"></textarea>
+    </div>
+    <button class="modal-submit" id="feedbackSubmitBtn" onclick="submitFeedback()">送出意見</button>
+    <div class="modal-msg" id="feedbackModalMsg"></div>
+  </div>
+</div>
+
+<script>
+// ---- 自訂下拉選單元件（必須放最前面，因為下面很多地方一開始就會用到）----
+const cselState = {};
+
+function cselSetOptions(id, options, placeholder){
+  if(!cselState[id]) cselState[id] = {};
+  cselState[id].options = options; // [{value,label}]
+  cselState[id].value = '';
+  if(placeholder) cselState[id].placeholder = placeholder;
+  document.getElementById(id).value = '';
+  const textEl = document.getElementById('csel_' + id + '_text');
+  textEl.textContent = cselState[id].placeholder;
+  textEl.classList.add('csel-placeholder');
+  renderCselPanel(id);
+}
+
+function renderCselPanel(id){
+  const st = cselState[id];
+  const panel = document.getElementById('csel_' + id + '_panel');
+  if(!st.options || st.options.length === 0){
+    panel.innerHTML = '<div class="csel-empty">目前沒有可選項目</div>';
+    return;
+  }
+  panel.innerHTML = st.options.map(function(opt){
+    const selected = opt.value === st.value;
+    const safeVal = opt.value.replace(/'/g, "\\'");
+    return '<div class="csel-item' + (selected ? ' selected' : '') + '" onclick="cselChoose(\'' + id + '\',\'' + safeVal + '\')">' + opt.label + '</div>';
+  }).join('');
+}
+
+function cselChoose(id, val){
+  const st = cselState[id];
+  const opt = st.options.filter(function(o){ return o.value === val; })[0];
+  st.value = val;
+  document.getElementById(id).value = val;
+  const textEl = document.getElementById('csel_' + id + '_text');
+  textEl.textContent = opt ? opt.label : val;
+  textEl.classList.remove('csel-placeholder');
+  closeAllCsel();
+  renderCselPanel(id);
+  if(st.onChange) st.onChange(val);
+}
+
+function toggleCsel(id){
+  const panel = document.getElementById('csel_' + id + '_panel');
+  const wasOpen = panel.classList.contains('show');
+  closeAllCsel();
+  if(!wasOpen){
+    panel.classList.add('show');
+    document.getElementById('csel_' + id).classList.add('open');
+  }
+}
+
+function closeAllCsel(){
+  document.querySelectorAll('.csel-panel.show').forEach(function(p){ p.classList.remove('show'); });
+  document.querySelectorAll('.csel.open').forEach(function(c){ c.classList.remove('open'); });
+}
+
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.csel')) closeAllCsel();
+});
+
+function cselReset(id){
+  const st = cselState[id];
+  if(!st) return;
+  st.value = '';
+  document.getElementById(id).value = '';
+  const textEl = document.getElementById('csel_' + id + '_text');
+  textEl.textContent = st.placeholder;
+  textEl.classList.add('csel-placeholder');
+  renderCselPanel(id);
+}
+
+function initCsel(id, options, placeholder, onChange){
+  cselState[id] = { options: options, value: '', placeholder: placeholder, onChange: onChange };
+  document.getElementById('csel_' + id + '_text').textContent = placeholder;
+  renderCselPanel(id);
+}
+
+// 填單日期預設今天，實際設定在檔案底部 initFillDate() 呼叫
+
+// 部署完 Apps Script 後，把 /exec 結尾的網址貼在這裡
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_cLlF17JTPJBdhcqcLG0gn9g7Tfjub9qiCj8SM7ScATew3VoJ-7Kbfrfi_LJyk05SZA/exec';
+
+const BRAND_GROUPS = {
+  S1: ['TESCOM','康定','PMZ','舒福德','方太','sOlac','KOHLER','DoctorAir','Santeco','Siroca','brinno','VELOSAN','INIU','YAMAZEN','HAWRIN','Townew','群光選品','ITD部門相關','支援其他部門','其他'],
+  S2: ['ACER','ANDES','ANKER','Breo','Doshisha','Epson','Govee','HUTT','Soundcore','群光選品','ITD部門相關','支援其他部門','其他'],
+  S3: ['TCL','BALMUDA','LUPLUP','IRIS','WINIX','Majority','群光選品','ITD部門相關','支援其他部門','其他']
+};
+const GROUP_DESIGNERS = { S1: ['Nikki','Yuly'], S2: ['Luna'], S3: ['Daniel'] };
+let currentGroup = 'S1';
+
+function populateBrands(group){
+  const options = BRAND_GROUPS[group].map(function(b){ return { value: b, label: b }; });
+  cselSetOptions('brand', options, '請選擇品牌');
+  toggleOtherBrand('');
+}
+
+function toggleDesignerPicker(group){
+  const wrap = document.getElementById('assignDesignerWrap');
+  const designers = GROUP_DESIGNERS[group];
+  if(designers.length > 1){
+    wrap.style.display = 'block';
+    document.getElementById('assignDesigner').required = true;
+    cselSetOptions('assignDesigner', designers.map(function(d){ return { value: d, label: d }; }), '請選擇設計師');
+  }else{
+    wrap.style.display = 'none';
+    document.getElementById('assignDesigner').required = false;
+  }
+}
+
+function currentHandler(){
+  const designers = GROUP_DESIGNERS[currentGroup];
+  return designers.length > 1 ? document.getElementById('assignDesigner').value : designers[0];
+}
+
+function toggleUrgent(checked){
+  document.getElementById('urgentDetailWrap').style.display = checked ? 'block' : 'none';
+  document.getElementById('urgentReasonCat').required = checked;
+  if(!checked){
+    document.getElementById('urgentOtherWrap').style.display = 'none';
+    document.getElementById('urgentOtherText').required = false;
+  }
+  if(typeof renderCalendar === 'function' && document.getElementById('calGrid')) renderCalendar();
+  updateUrgentCounter();
+}
+
+function toggleUrgentOther(v){
+  const show = v === '其他';
+  document.getElementById('urgentOtherWrap').style.display = show ? 'block' : 'none';
+  document.getElementById('urgentOtherText').required = show;
+}
+
+function updateUrgentCounter(){
+  const el = document.getElementById('urgentCounter');
+  if(!document.getElementById('isUrgent').checked){ el.textContent = ''; return; }
+  const name = document.getElementById('reqPerson').value.trim();
+  if(!name){ el.textContent = ''; return; }
+  el.textContent = '查詢中...';
+
+  loadAllTabRows().then(function(rows){
+    try{
+      const now = new Date();
+      const ymPrefix = now.getFullYear() + '-' + pad2(now.getMonth()+1);
+      let count = 0;
+      rows.forEach(function(r){
+        const c = r.c || [];
+        const person = c[4] && c[4].v ? String(c[4].v).trim() : '';
+        const urgent = c[28] && c[28].v ? String(c[28].v).trim() : '';
+        const fill = normalizeDateStr(c[5] && (c[5].f || c[5].v) ? String(c[5].f || c[5].v) : '');
+        if(person === name && urgent === 'Y' && fill && fill.indexOf(ymPrefix) === 0) count++;
+      });
+      el.textContent = '本月已標急件 ' + count + ' 次';
+    }catch(err){ el.textContent = ''; }
+  });
+}
+
+document.getElementById('groupSwitch').addEventListener('click', function(e){
+  const btn = e.target.closest('.seg-btn');
+  if(!btn) return;
+  document.querySelectorAll('#groupSwitch .seg-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  currentGroup = btn.getAttribute('data-g');
+  populateBrands(currentGroup);
+  toggleDesignerPicker(currentGroup);
+  renderCalendar();
+  const sel = document.getElementById('dueDate').value;
+  if(sel && isDateBlocked(sel)){
+    document.getElementById('dueDate').value = '';
+    document.getElementById('dueDateDisplay').value = '';
+  }
+});
+
+initCsel('brand', [], '請選擇品牌', function(v){ toggleOtherBrand(v); });
+initCsel('reqType', [
+  { value:'包材設計', label:'包材設計' },
+  { value:'產品素材', label:'產品素材' },
+  { value:'EC電商/品牌官網', label:'EC電商/品牌官網（官網/蝦皮/momo...）' },
+  { value:'數位行銷', label:'數位行銷（社群/GDN/YT/EDM/電視牆...等）' },
+  { value:'實體協銷', label:'實體協銷' },
+  { value:'專案', label:'專案（團購/募資）' },
+  { value:'ITD部門相關', label:'ITD部門相關' }
+], '請選擇設計類型', function(v){ toggleRequestType(v); });
+initCsel('caseType', [], '請選擇案件類型', function(v){ toggleCaseFields(v); });
+initCsel('assignDesigner', [], '請選擇設計師', null);
+initCsel('urgentReasonCat', [
+  { value:'客戶臨時要求', label:'客戶臨時要求' },
+  { value:'活動時間提前或異動', label:'活動時間提前或異動' },
+  { value:'主管臨時指示', label:'主管臨時指示' },
+  { value:'系統/平台緊急問題', label:'系統/平台緊急問題' },
+  { value:'其他', label:'其他' }
+], '請選擇原因', function(v){ toggleUrgentOther(v); });
+
+populateBrands(currentGroup);
+toggleDesignerPicker(currentGroup);
+
+// ---- 需求日期日曆：依目前選擇的 S1/S2/S3，該天累積滿 5 件就鎖住 ----
+const STATUS_SHEET_ID = '1Q0b8dS3zKVoypKNh0hNuburvp4NMxmAwbdjoSQ4ibNg';
+const DESIGNER_TABS = { Nikki:'Nikki需求單', Yuly:'Yuly需求單', Luna:'Luna需求單', Daniel:'Daniel需求單' };
+const ALL_TABS = Object.values(DESIGNER_TABS);
+const DAILY_LIMIT = 5;
+let dateCounts = { S1:{}, S2:{}, S3:{} };
+let calendarDate = new Date();
+
+function pad2(n){ return n < 10 ? '0' + n : '' + n; }
+function toDateStr(y,m,d){ return y + '-' + pad2(m+1) + '-' + pad2(d); }
+function normalizeDateStr(str){
+  if(!str) return null;
+  const m = String(str).match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if(!m) return null;
+  return m[1] + '-' + pad2(parseInt(m[2],10)) + '-' + pad2(parseInt(m[3],10));
+}
+
+// 讀單一分頁（回傳 Promise，讀不到就回傳空陣列，不擋流程）
+function loadTabRows(tabName){
+  return new Promise(function(resolve){
+    const cbName = 'gsheetCb_' + tabName.replace(/[^a-zA-Z0-9]/g,'') + '_' + Date.now() + '_' + Math.floor(Math.random()*1e6);
+    let done = false;
+    window[cbName] = function(response){
+      done = true;
+      resolve((response && response.table && response.table.rows) || []);
+      delete window[cbName];
+      if(script.parentNode) script.remove();
+    };
+    const script = document.createElement('script');
+    script.src = 'https://docs.google.com/spreadsheets/d/' + STATUS_SHEET_ID +
+      '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(tabName);
+    script.onerror = function(){ if(!done){ done = true; resolve([]); } };
+    document.body.appendChild(script);
+    setTimeout(function(){ if(!done){ done = true; resolve([]); } }, 12000);
+  });
+}
+
+// 讀取所有設計師分頁並合併成一個陣列
+function loadAllTabRows(){
+  return Promise.all(ALL_TABS.map(loadTabRows)).then(function(results){
+    return results.reduce(function(acc, rows){ return acc.concat(rows); }, []);
+  });
+}
+
+function loadDateCounts(){
+  loadAllTabRows().then(function(rows){
+    try{
+      const counts = { S1:{}, S2:{}, S3:{} };
+      const urgentByDesigner = {};
+      rows.forEach(function(r){
+        const c = r.c || [];
+        const rawDue = c[6] && (c[6].f || c[6].v) ? String(c[6].f || c[6].v) : '';
+        const due = normalizeDateStr(rawDue);
+        const grp = c[21] && c[21].v ? String(c[21].v).trim() : '';
+        const handler = c[19] && c[19].v ? String(c[19].v).trim() : '';
+        const urgent = c[28] && c[28].v ? String(c[28].v).trim() : '';
+        if(!due) return;
+        if(counts[grp]) counts[grp][due] = (counts[grp][due] || 0) + 1;
+        if(urgent === 'Y' && handler){
+          if(!urgentByDesigner[handler]) urgentByDesigner[handler] = {};
+          urgentByDesigner[handler][due] = (urgentByDesigner[handler][due] || 0) + 1;
+        }
+      });
+      dateCounts = counts;
+      window.__urgentByDesigner = urgentByDesigner;
+    }catch(err){ /* 讀取失敗就不擋日期 */ }
+    renderCalendar();
+  });
+}
+
+function isDateBlocked(dateStr){
+  if(document.getElementById('isUrgent').checked) return false; // 急件不受每日上限限制
+  const g = dateCounts[currentGroup] || {};
+  return (g[dateStr] || 0) >= DAILY_LIMIT;
+}
+
+function toggleCalendar(){
+  const popup = document.getElementById('calendarPopup');
+  popup.classList.toggle('show');
+  if(popup.classList.contains('show')) renderCalendar();
+  else document.getElementById('calHoverTag').classList.remove('show');
+}
+
+document.getElementById('calGrid').addEventListener('mousemove', function(e){
+  const tag = document.getElementById('calHoverTag');
+  const cell = e.target.closest('.cal-day');
+  if(!cell || cell.classList.contains('empty')){
+    tag.classList.remove('show');
+    return;
+  }
+  const countEl = cell.querySelector('.cal-day-count');
+  const count = countEl ? countEl.textContent : '0';
+  tag.textContent = '案件數量：' + count;
+  tag.style.left = (e.clientX + 16) + 'px';
+  tag.style.top = (e.clientY + 16) + 'px';
+  tag.classList.add('show');
+});
+document.getElementById('calGrid').addEventListener('mouseleave', function(){
+  document.getElementById('calHoverTag').classList.remove('show');
+});
+
+function changeMonth(delta){
+  calendarDate.setMonth(calendarDate.getMonth() + delta);
+  renderCalendar();
+}
+
+function renderCalendar(){
+  const y = calendarDate.getFullYear();
+  const m = calendarDate.getMonth();
+  document.getElementById('calMonthLabel').textContent = y + ' 年 ' + (m+1) + ' 月';
+
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const now = new Date();
+  const todayStr = toDateStr(now.getFullYear(), now.getMonth(), now.getDate());
+  const selected = document.getElementById('dueDate').value;
+
+  let html = '';
+  for(let i=0;i<firstDay;i++){ html += '<div class="cal-day empty"></div>'; }
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = toDateStr(y, m, d);
+    const blocked = isDateBlocked(dateStr);
+    const count = (dateCounts[currentGroup] && dateCounts[currentGroup][dateStr]) || 0;
+    let cls = 'cal-day';
+    if(blocked) cls += ' blocked';
+    if(dateStr === todayStr) cls += ' today';
+    if(dateStr === selected) cls += ' selected';
+    html += '<div class="' + cls + '" onclick="' + (blocked ? '' : ("selectDate('" + dateStr + "')")) + '">' +
+      '<span class="cal-day-num">' + d + '</span>' +
+      '<span class="cal-day-count">' + count + '</span>' +
+    '</div>';
+  }
+  document.getElementById('calGrid').innerHTML = html;
+}
+
+function selectDate(dateStr){
+  if(document.getElementById('isUrgent').checked){
+    const handler = currentHandler();
+    const map = window.__urgentByDesigner || {};
+    const existing = (handler && map[handler] && map[handler][dateStr]) || 0;
+    if(existing >= 1){
+      const ok = confirm((handler || '這位設計師') + ' 今天已經有 ' + existing + ' 件急件在處理，確定要再新增一件嗎？');
+      if(!ok) return;
+    }
+  }
+  document.getElementById('dueDate').value = dateStr;
+  document.getElementById('dueDateDisplay').value = dateStr;
+  document.getElementById('calendarPopup').classList.remove('show');
+  renderCalendar();
+}
+
+document.addEventListener('click', function(e){
+  document.querySelectorAll('.date-field').forEach(function(wrap){
+    if(!wrap.contains(e.target)){
+      const popup = wrap.querySelector('.calendar-popup');
+      if(popup) popup.classList.remove('show');
+    }
+  });
+  document.getElementById('calHoverTag').classList.remove('show');
+});
+
+loadDateCounts();
+
+// ---- 填單日期日曆（同樣式，不套用鎖定機制）----
+let fillCalendarDate = new Date();
+
+function toggleFillCalendar(){
+  const popup = document.getElementById('fillCalendarPopup');
+  popup.classList.toggle('show');
+  if(popup.classList.contains('show')) renderFillCalendar();
+}
+function changeFillMonth(delta){
+  fillCalendarDate.setMonth(fillCalendarDate.getMonth() + delta);
+  renderFillCalendar();
+}
+function renderFillCalendar(){
+  const y = fillCalendarDate.getFullYear();
+  const m = fillCalendarDate.getMonth();
+  document.getElementById('fillCalMonthLabel').textContent = y + ' 年 ' + (m+1) + ' 月';
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const now = new Date();
+  const todayStr = toDateStr(now.getFullYear(), now.getMonth(), now.getDate());
+  const selected = document.getElementById('fillDate').value;
+  let html = '';
+  for(let i=0;i<firstDay;i++){ html += '<div class="cal-day empty"></div>'; }
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = toDateStr(y, m, d);
+    let cls = 'cal-day';
+    if(dateStr === todayStr) cls += ' today';
+    if(dateStr === selected) cls += ' selected';
+    html += '<div class="' + cls + '" onclick="selectFillDate(\'' + dateStr + '\')">' + d + '</div>';
+  }
+  document.getElementById('fillCalGrid').innerHTML = html;
+}
+function selectFillDate(dateStr){
+  document.getElementById('fillDate').value = dateStr;
+  document.getElementById('fillDateDisplay').value = dateStr;
+  document.getElementById('fillCalendarPopup').classList.remove('show');
+  renderFillCalendar();
+}
+function initFillDate(){
+  const now = new Date();
+  const dateStr = toDateStr(now.getFullYear(), now.getMonth(), now.getDate());
+  document.getElementById('fillDate').value = dateStr;
+  document.getElementById('fillDateDisplay').value = dateStr;
+  fillCalendarDate = new Date();
+}
+initFillDate();
+
+const CASE_TYPE_MAP = {
+  '包材設計': ['絲印/中標貼紙','說明書','彩盒','外箱'],
+  '產品素材': ['情境合成','產品修圖','插畫設計'],
+  'EC電商/品牌官網': ['產品詳情頁','商品主圖','靜態Banner','動態Banner'],
+  '數位行銷': ['靜態Banner','動態Banner','影片剪輯'],
+  '實體協銷': ['DM/規格DM/A4立牌','型錄','海報','輔銷物','DP點','場勘/手做加工/現場支援'],
+  '專案': ['產品詳情頁','商品主圖','靜態Banner','動態Banner'],
+  'ITD部門相關': ['歡迎牌','主管交辦事項','支援其他工作']
+};
+
+// 每種案件類型所需的必要資料欄位（依附件「設計發案需求表單明細」整理）
+const CASE_FIELD_MAP = {
+  '絲印/中標貼紙': [
+    {label:'品名', type:'text'},
+    {label:'型號', type:'text'},
+    {label:'詳細規格', type:'textarea'},
+    {label:'線稿三視圖', type:'textarea', placeholder:'請貼上檔案連結'},
+    {label:'產品圖', type:'textarea', placeholder:'請貼上檔案連結'},
+    {label:'參考的沿用型號', type:'text'}
+  ],
+  '說明書': [
+    {label:'品名', type:'text'},
+    {label:'型號', type:'text'},
+    {label:'原廠檔案', type:'textarea', placeholder:'請貼上檔案連結'},
+    {label:'翻譯檔案', type:'textarea', placeholder:'請貼上檔案連結'},
+    {label:'重製/參考的型號', type:'text'},
+    {label:'頁數', type:'text'}
+  ],
+  '彩盒': [
+    {label:'品名', type:'text'},
+    {label:'型號', type:'text'},
+    {label:'刀模檔案', type:'textarea', placeholder:'請貼上檔案連結'},
+    {label:'參考的型號', type:'text'}
+  ],
+  '外箱': [
+    {label:'品名', type:'text'},
+    {label:'型號', type:'text'},
+    {label:'刀模檔案', type:'textarea', placeholder:'請貼上檔案連結'},
+    {label:'參考的型號', type:'text'}
+  ],
+  '情境合成': [
+    {label:'品名', type:'text'},
+    {label:'型號', type:'text'},
+    {label:'通路', type:'text'},
+    {label:'風格需求', type:'textarea'},
+    {label:'尺寸/檔案大小/dpi', type:'text'}
+  ],
+  '產品修圖': [
+    {label:'品名', type:'text'},
+    {label:'型號', type:'text'},
+    {label:'通路', type:'text'},
+    {label:'尺寸/檔案大小/dpi', type:'text'}
+  ],
+  '插畫設計': [
+    {label:'品名', type:'text'},
+    {label:'型號', type:'text'},
+    {label:'通路', type:'text'}
+  ],
+  '產品詳情頁': [
+    {label:'品名', type:'text'},
+    {label:'型號', type:'text'},
+    {label:'風格需求', type:'textarea', placeholder:'可以給競品網址或參考圖'},
+    {label:'需要設計協助文案產出', type:'text', placeholder:'是 / 否'},
+    {label:'文案內容', type:'textarea', placeholder:'每一卡須包含：大標、小標、內文、規格表'},
+    {label:'素材網址', type:'textarea', placeholder:'情境圖1500x1500px以上／產品圖1500x1500px以上／解析度150dpi以上／情境圖最少5張／產品圖最少3個角度'}
+  ],
+  '商品主圖': [
+    {label:'品名', type:'text'},
+    {label:'型號', type:'text'},
+    {label:'素材網址', type:'textarea', placeholder:'情境圖1500x1500px以上／產品圖1500x1500px以上／解析度72dpi以上'}
+  ],
+  '靜態Banner': [
+    {label:'活動大標', type:'text'},
+    {label:'活動小標', type:'text'},
+    {label:'風格需求', type:'textarea'},
+    {label:'活動價格方案', type:'textarea', placeholder:'品名型號、贈品、組合包等／活動價、原價、折數'}
+  ],
+  '動態Banner': [
+    {label:'活動大標', type:'text'},
+    {label:'活動小標', type:'text'},
+    {label:'風格需求', type:'textarea'},
+    {label:'活動價格方案', type:'textarea', placeholder:'品名型號、贈品、組合包等／活動價、原價、折數'}
+  ],
+  '影片剪輯': [
+    {label:'素材網址', type:'textarea'},
+    {label:'腳本', type:'textarea'},
+    {label:'秒數', type:'text'},
+    {label:'上字幕', type:'text', placeholder:'是 / 否'},
+    {label:'音樂需求', type:'text', placeholder:'不需要／需要（風格？）'}
+  ],
+  'DM/規格DM/A4立牌': [
+    {label:'完稿尺寸', type:'text'},
+    {label:'單面/雙面/三折', type:'text'},
+    {label:'DM規格說明', type:'textarea', placeholder:'品牌DM：品名型號、完整規格；活動DM：活動大標小標、品名型號、贈品組合包、活動價原價折數'}
+  ],
+  '型錄': [
+    {label:'原廠檔案網址', type:'textarea'},
+    {label:'需求', type:'textarea'}
+  ],
+  '海報': [
+    {label:'類型', type:'text', placeholder:'海報／燈箱／其他'},
+    {label:'完稿尺寸', type:'text'},
+    {label:'大標', type:'text'},
+    {label:'小標', type:'text'},
+    {label:'風格需求', type:'textarea'},
+    {label:'其他需求', type:'textarea'}
+  ],
+  '輔銷物': [
+    {label:'類型', type:'text', placeholder:'跳卡／價格卡／搖搖卡／其他'},
+    {label:'完稿尺寸', type:'text'},
+    {label:'大標', type:'text'},
+    {label:'小標', type:'text'},
+    {label:'風格需求', type:'textarea'},
+    {label:'其他需求', type:'textarea'}
+  ],
+  'DP點': [
+    {label:'現場照片', type:'textarea', placeholder:'請貼上照片連結'},
+    {label:'現場尺寸', type:'text'},
+    {label:'品名/型號', type:'text'},
+    {label:'風格需求', type:'textarea'},
+    {label:'其他需求', type:'textarea'}
+  ],
+  '場勘/手做加工/現場支援': [],
+  '歡迎牌': [
+    {label:'職務/人名/性別', type:'text'}
+  ],
+  '主管交辦事項': [
+    {label:'交辦內容', type:'textarea'}
+  ],
+  '支援其他工作': [
+    {label:'支援內容', type:'textarea'}
+  ]
+};
+
+const CASE_WARNINGS = {
+  'DP點': '⚠ 大型 DP 點已屬於整間門市設計或快閃店設計範疇，此狀況請找專業活動廠商或室內設計師協助設計。'
+};
+
+function toggleRequestType(v){
+  const wrap = document.getElementById('caseTypeWrap');
+  const options = CASE_TYPE_MAP[v];
+  if(options && options.length){
+    cselSetOptions('caseType', options.map(function(o){ return { value: o, label: o }; }), '請選擇案件類型');
+    document.getElementById('caseType').required = true;
+    wrap.style.display = 'block';
+  }else{
+    cselSetOptions('caseType', [], '請選擇案件類型');
+    document.getElementById('caseType').required = false;
+    wrap.style.display = 'none';
+  }
+  toggleCaseFields('');
+}
+
+function toggleCaseFields(caseTypeValue){
+  const wrap = document.getElementById('caseFieldsWrap');
+  const body = document.getElementById('caseFieldsBody');
+  const title = document.getElementById('caseFieldsTitle');
+  const warnBox = document.getElementById('caseWarningBox');
+  const fields = CASE_FIELD_MAP[caseTypeValue];
+
+  if(!fields || fields.length === 0){
+    wrap.style.display = 'none';
+    body.innerHTML = '';
+    return;
+  }
+
+  title.textContent = caseTypeValue + '　所需資料';
+  body.innerHTML = fields.map(function(f, i){
+    const fieldId = 'caseField_' + i;
+    const inputHtml = f.type === 'textarea'
+      ? '<textarea id="' + fieldId + '" data-label="' + f.label + '" placeholder="' + (f.placeholder || '') + '" required></textarea>'
+      : '<input type="text" id="' + fieldId + '" data-label="' + f.label + '" placeholder="' + (f.placeholder || '') + '" required>';
+    return (
+      '<div class="field" style="margin-bottom:14px;">' +
+        '<label>' + f.label + ' <span class="required">*</span></label>' +
+        inputHtml +
+      '</div>'
+    );
+  }).join('');
+
+  const warning = CASE_WARNINGS[caseTypeValue];
+  if(warning){
+    warnBox.textContent = warning;
+    warnBox.style.display = 'block';
+  }else{
+    warnBox.style.display = 'none';
+  }
+
+  wrap.style.display = 'block';
+}
+
+function collectCaseFieldValues(){
+  const inputs = document.querySelectorAll('#caseFieldsBody [data-label]');
+  const lines = [];
+  inputs.forEach(function(el){
+    const label = el.getAttribute('data-label');
+    const val = el.value.trim();
+    if(val) lines.push(label + '：' + val);
+  });
+  return lines.join('\n');
+}
+
+function toggleOtherBrand(v){
+  document.getElementById('otherBrandWrap').classList.toggle('show', v === '其他');
+}
+
+function showBanner(type, msg){
+  const el = document.getElementById('confirmBanner');
+  el.innerHTML = msg;
+  el.classList.toggle('error', type === 'error');
+  el.classList.add('show');
+}
+
+function buildPayload(){
+  const brandVal = document.getElementById('brand').value === '其他'
+    ? document.getElementById('otherBrand').value
+    : document.getElementById('brand').value;
+  const isUrgent = document.getElementById('isUrgent').checked;
+  const urgentCat = document.getElementById('urgentReasonCat').value;
+  const urgentOther = document.getElementById('urgentOtherText').value;
+
+  return {
+    group: currentGroup,
+    handler: currentHandler(),
+    brand: brandVal,
+    reqType: document.getElementById('reqType').value,
+    caseType: document.getElementById('caseType').value,
+    reqName: document.getElementById('reqName').value,
+    reqPerson: document.getElementById('reqPerson').value,
+    fillDate: document.getElementById('fillDate').value,
+    dueDate: document.getElementById('dueDate').value,
+    materials: document.getElementById('materials').value,
+    caseFields: collectCaseFieldValues(),
+    notes: document.getElementById('notes').value,
+    isUrgent: isUrgent ? 'Y' : '',
+    urgentReasonCat: isUrgent ? urgentCat : '',
+    urgentReasonOther: isUrgent ? urgentOther : ''
+  };
+}
+
+function validateCselFields(){
+  const checks = [
+    { id:'brand', label:'品牌' },
+    { id:'reqType', label:'設計類型' },
+    { id:'caseType', label:'案件類型' },
+    { id:'assignDesigner', label:'指定設計師' },
+    { id:'urgentReasonCat', label:'急件原因' }
+  ];
+  const missing = [];
+  checks.forEach(function(c){
+    const el = document.getElementById(c.id);
+    if(el && el.required && !el.value) missing.push(c.label);
+  });
+  return missing;
+}
+
+function handleSubmit(e){
+  e.preventDefault();
+
+  if(APPS_SCRIPT_URL.indexOf('http') !== 0){
+    showBanner('error', '尚未設定送出網址——請先完成 Apps Script 部署，把拿到的網址貼到程式碼裡的 APPS_SCRIPT_URL。');
+    return false;
+  }
+
+  const form = document.getElementById('requestForm');
+  if(!form.checkValidity()){
+    form.reportValidity();
+    return false;
+  }
+  const missing = validateCselFields();
+  if(missing.length > 0){
+    showBanner('error', '請完成以下欄位：' + missing.join('、'));
+    return false;
+  }
+
+  const payload = buildPayload();
+
+  if(payload.isUrgent === 'Y'){
+    openUrgentModal(payload);
+  }else{
+    doActualSubmit(payload);
+  }
+
+  return false;
+}
+
+// ---- 急件確認彈窗：列出該申請人目前其他還在進行中的需求 ----
+let pendingUrgentPayload = null;
+
+function openUrgentModal(payload){
+  pendingUrgentPayload = payload;
+  document.getElementById('urgentAgreeCheck').checked = false;
+  document.getElementById('urgentConfirmBtn').disabled = true;
+  document.getElementById('urgentModalBody').innerHTML = '查詢中...';
+  document.getElementById('urgentModalOverlay').classList.add('show');
+
+  loadAllTabRows().then(function(rows){
+    try{
+      const name = payload.reqPerson.trim();
+      const others = [];
+      rows.forEach(function(r){
+        const c = r.c || [];
+        const person = c[4] && c[4].v ? String(c[4].v).trim() : '';
+        if(person !== name) return;
+        const status = (c[17] && c[17].v ? String(c[17].v).trim() : '') || '待處理';
+        if(status === '已完成' || status === '退件') return;
+        const due = normalizeDateStr(c[6] && (c[6].f || c[6].v) ? String(c[6].f || c[6].v) : '');
+        const reqName = c[3] && c[3].v ? String(c[3].v).trim() : '';
+        others.push({ reqName: reqName, due: due, status: status });
+      });
+      renderUrgentModalBody(others);
+    }catch(err){
+      renderUrgentModalBody([]);
+    }
+  });
+}
+
+function renderUrgentModalBody(others){
+  let html = '';
+  if(others.length > 0){
+    html += '⚠️ 你目前還有 <b>' + others.length + '</b> 筆需求排定在進行中：';
+    html += '<ul>' + others.map(function(o){
+      return '<li>' + (o.reqName || '（未命名）') + '　' + (o.due ? o.due : '（尚無需求日期）') + '　[' + o.status + ']</li>';
+    }).join('') + '</ul>';
+    html += '插入這筆急件，可能會延後這些既有案件的處理順序。';
+  }else{
+    html += '目前沒有查到你其他進行中的需求。此筆急件送出後將插入排程，可能影響設計師既有的工作安排。';
+  }
+  document.getElementById('urgentModalBody').innerHTML = html;
+}
+
+function closeUrgentModal(){
+  document.getElementById('urgentModalOverlay').classList.remove('show');
+  pendingUrgentPayload = null;
+}
+
+function confirmUrgentAndSubmit(){
+  if(!document.getElementById('urgentAgreeCheck').checked) return;
+  const payload = pendingUrgentPayload;
+  closeUrgentModal();
+  if(payload) doActualSubmit(payload);
+}
+
+function doActualSubmit(payload){
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '送出中...';
+  document.getElementById('confirmBanner').classList.remove('show');
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data){
+    if(data.status === 'success'){
+      showBanner('success', '✓ 需求已送出，已存進「設計需求單」分頁。　<a href="design-request-status.html" style="color:#1F8A4C;font-weight:800;">查看我的需求狀態 →</a>');
+      document.getElementById('requestForm').reset();
+      initFillDate();
+      toggleRequestType('');
+      toggleOtherBrand('');
+      populateBrands(currentGroup);
+      cselReset('reqType');
+      cselReset('urgentReasonCat');
+      toggleDesignerPicker(currentGroup);
+      toggleUrgent(false);
+      document.getElementById('urgentCounter').textContent = '';
+      calendarDate = new Date();
+      loadDateCounts();
+    }else{
+      showBanner('error', '送出失敗：' + (data.message || '未知錯誤，請稍後再試。'));
+    }
+  })
+  .catch(function(err){
+    showBanner('error', '送出失敗，請確認網路連線或稍後再試。（' + err.message + '）');
+  })
+  .finally(function(){
+    btn.disabled = false;
+    btn.textContent = '送出需求';
+  });
+}
+
+// ---- 意見箱 ----
+function openFeedbackModal(){
+  document.getElementById('feedbackName').value = document.getElementById('reqPerson').value || '';
+  document.getElementById('feedbackContent').value = '';
+  document.getElementById('feedbackModalMsg').textContent = '';
+  document.getElementById('feedbackModalMsg').className = 'modal-msg';
+  document.getElementById('feedbackModalOverlay').classList.add('show');
+}
+
+function closeFeedbackModal(){
+  document.getElementById('feedbackModalOverlay').classList.remove('show');
+}
+
+function submitFeedback(){
+  const content = document.getElementById('feedbackContent').value.trim();
+  const msg = document.getElementById('feedbackModalMsg');
+  if(!content){
+    msg.textContent = '請先填寫意見內容再送出。';
+    msg.className = 'modal-msg error';
+    return;
+  }
+  if(APPS_SCRIPT_URL.indexOf('http') !== 0){
+    msg.textContent = '尚未設定送出網址。';
+    msg.className = 'modal-msg error';
+    return;
+  }
+
+  const btn = document.getElementById('feedbackSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = '送出中...';
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      action: 'feedback',
+      name: document.getElementById('feedbackName').value.trim(),
+      content: content
+    })
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data){
+    if(data.status === 'success'){
+      msg.textContent = '✓ 意見已送出，謝謝你！';
+      msg.className = 'modal-msg success';
+      setTimeout(closeFeedbackModal, 1000);
+    }else{
+      msg.textContent = '送出失敗：' + (data.message || '未知錯誤');
+      msg.className = 'modal-msg error';
+    }
+  })
+  .catch(function(err){
+    msg.textContent = '送出失敗，請確認網路連線。（' + err.message + '）';
+    msg.className = 'modal-msg error';
+  })
+  .finally(function(){
+    btn.disabled = false;
+    btn.textContent = '送出意見';
+  });
+}
+</script>
+</body>
+</html>

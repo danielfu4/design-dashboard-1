@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>設計師工作台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F1F1F3; --card:#FFFFFF;
+    --shadow:0 1px 2px rgba(20,20,30,.05), 0 6px 16px rgba(20,20,30,.04);
+    --ink:#17181C; --ink-soft:#8A8A93; --ink-faint:#C2C2C8; --line:#ECECEE;
+    --accent:#3E7BFA;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:'Noto Sans TC','Noto Sans',ui-sans-serif,sans-serif;
+    padding:32px 20px 60px;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+
+  /* ---- 密碼閘 ---- */
+  .gate-wrap{
+    max-width:380px;margin:14vh auto 0;background:var(--card);border-radius:20px;
+    box-shadow:var(--shadow);padding:32px 28px;text-align:center;
+  }
+  .gate-wrap h1{font-size:19px;font-weight:800;margin:0 0 6px;}
+  .gate-wrap p{font-size:12.5px;color:var(--ink-soft);margin:0 0 20px;}
+  .gate-wrap input{
+    width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+    font-family:inherit;font-size:15px;text-align:center;letter-spacing:.1em;background:#FAFAFB;
+    margin-bottom:12px;
+  }
+  .gate-wrap input:focus{outline:none;border-color:var(--accent);background:#fff;}
+  .gate-wrap button{
+    width:100%;border:none;background:var(--ink);color:#fff;font:inherit;font-weight:700;font-size:14px;
+    padding:12px;border-radius:12px;cursor:pointer;
+  }
+  .gate-wrap button:hover{opacity:.88;}
+  .gate-error{color:#B3324A;font-size:12px;margin-top:10px;display:none;}
+  .gate-error.show{display:block;}
+
+  /* ---- 主畫面 ---- */
+  #mainView{display:none;}
+  #mainView.show{display:block;}
+
+  .top-links{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+  .back-link{
+    display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);
+    text-decoration:none;font-weight:600;cursor:pointer;
+  }
+  .back-link:hover{color:var(--ink);}
+  .refresh-link{
+    border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-weight:700;
+    font-size:12.5px;padding:8px 14px;border-radius:10px;cursor:pointer;
+  }
+  .refresh-link:hover{background:#F7F7F8;}
+
+  header{margin-bottom:20px;}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--ink-soft);margin:0 0 4px;text-transform:uppercase;}
+  h1{font-size:26px;font-weight:800;margin:0 0 6px;letter-spacing:-.01em;}
+  .subtitle{font-size:13px;color:var(--ink-soft);}
+
+  .state-msg{text-align:center;color:var(--ink-soft);font-size:13px;padding:40px 20px;}
+
+  .case-card{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:20px 22px;margin-bottom:14px;}
+  .case-card.urgent{box-shadow:0 0 0 1.5px #F3C5C0, 0 6px 16px rgba(20,20,30,.04);}
+  .case-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
+  .case-name{font-size:16px;font-weight:800;}
+  .case-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+  .case-tag{font-size:11px;font-weight:700;color:var(--ink-soft);background:#F1F1F3;padding:3px 9px;border-radius:7px;}
+  .urgent-badge{
+    display:inline-flex;align-items:center;font-size:11px;font-weight:800;color:#C4372B;
+    background:#FFF0EE;padding:5px 10px;border-radius:999px;white-space:nowrap;
+  }
+  .badge-group{display:flex;align-items:center;gap:6px;flex:none;}
+
+  .case-detail{font-size:12.5px;color:var(--ink-soft);margin-top:12px;line-height:1.8;}
+  .case-detail b{color:var(--ink);font-weight:700;}
+  .case-detail .row{margin-bottom:2px;}
+  .detail-block{
+    margin-top:10px;background:#FAFAFB;border-radius:12px;padding:12px 14px;font-size:12.5px;
+    color:var(--ink);line-height:1.7;
+  }
+  .detail-block .label{font-size:11px;font-weight:800;color:var(--ink-soft);margin-bottom:2px;}
+
+  .edit-row{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);}
+  .edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;}
+  @media (max-width:520px){ .edit-grid{grid-template-columns:1fr;} }
+  .edit-field label{display:block;font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-bottom:6px;}
+  .edit-field select, .edit-field input{
+    width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;
+    font-family:inherit;font-size:13px;color:var(--ink);background:#FAFAFB;
+  }
+  .edit-field select:focus, .edit-field input:focus{outline:none;border-color:var(--accent);background:#fff;}
+
+  .csel{position:relative;}
+  .csel-trigger{
+    width:100%;display:flex;align-items:center;justify-content:space-between;
+    border:1px solid var(--line);border-radius:10px;padding:9px 12px;
+    font-family:inherit;font-size:13px;color:var(--ink);background:#FAFAFB;cursor:pointer;text-align:left;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .csel-trigger:hover{background:#F5F5F6;}
+  .csel.open .csel-trigger{border-color:var(--accent);background:#fff;}
+  .csel-arrow{font-size:10px;color:var(--ink-soft);transition:transform .15s ease;margin-left:8px;flex:none;}
+  .csel.open .csel-arrow{transform:rotate(180deg);}
+  .csel-panel{
+    display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;
+    background:#fff;border-radius:14px;box-shadow:0 14px 32px rgba(20,20,30,.16);
+    padding:6px;max-height:220px;overflow-y:auto;
+  }
+  .csel-panel.show{display:block;}
+  .csel-item{padding:9px 12px;border-radius:9px;font-size:13px;color:var(--ink);cursor:pointer;}
+  .csel-item + .csel-item{margin-top:3px;}
+  .csel-item:hover{background:#F1F1F3;}
+  .csel-item.selected{background:#F1F1F3;font-weight:700;}
+
+  .save-row{display:flex;align-items:center;gap:12px;margin-top:12px;}
+  .save-btn{
+    border:none;background:var(--ink);color:#fff;font:inherit;font-weight:700;font-size:13px;
+    padding:9px 18px;border-radius:10px;cursor:pointer;
+  }
+  .save-btn:hover{opacity:.88;}
+  .save-msg{font-size:11.5px;}
+  .save-msg.success{color:#1F8A4C;}
+  .save-msg.error{color:#B3324A;}
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(20,20,30,.5);z-index:300;
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal-card{
+    background:#fff;border-radius:20px;box-shadow:0 20px 50px rgba(20,20,30,.3);
+    padding:26px 26px 22px;max-width:400px;width:100%;max-height:86vh;overflow-y:auto;
+  }
+  .modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;}
+  .modal-title{font-size:16px;font-weight:800;}
+  .modal-sub{font-size:12px;color:var(--ink-soft);margin-top:3px;}
+  .modal-close{border:none;background:none;font-size:18px;color:var(--ink-faint);cursor:pointer;line-height:1;}
+  .modal-close:hover{color:var(--ink);}
+  .modal-submit{
+    width:100%;margin-top:14px;border:none;background:var(--ink);color:#fff;font:inherit;font-weight:700;
+    font-size:14px;padding:12px;border-radius:12px;cursor:pointer;
+  }
+  .modal-submit:hover{opacity:.88;}
+  .modal-msg{font-size:12px;margin-top:10px;text-align:center;}
+  .modal-msg.error{color:#B3324A;}
+  .modal-msg.success{color:#1F8A4C;}
+
+  .field-simple label{display:block;font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:8px;}
+  .field-simple input{
+    width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+    font-family:inherit;font-size:13.5px;color:var(--ink);background:#FAFAFB;
+  }
+  .field-simple input:focus{outline:none;border-color:var(--accent);background:#fff;}
+
+  .lock-cal-wrap{width:100%;}
+  .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .cal-header button{
+    border:none;background:#F1F1F3;color:var(--ink);width:28px;height:28px;border-radius:8px;
+    cursor:pointer;font-size:15px;font-weight:700;
+  }
+  .cal-header button:hover{background:#E7E7EA;}
+  #lockCalMonthLabel{font-size:13.5px;font-weight:800;}
+  .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;color:var(--ink-soft);margin-bottom:4px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+  .cal-day{
+    aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:12px;border-radius:8px;cursor:pointer;color:var(--ink);position:relative;
+  }
+  .cal-day:hover{background:#F1F1F3;}
+  .cal-day.empty{visibility:hidden;cursor:default;}
+  .cal-day.locked{background:#FBEBEA;color:#B3324A;text-decoration:line-through;}
+  .cal-day.locked:hover{background:#F6D9D6;}
+  .cal-day.today{box-shadow:inset 0 0 0 1.5px var(--accent);}
+  .cal-day .case-count{font-size:9px;color:var(--ink-faint);margin-top:1px;}
+  .cal-day.locked .case-count{color:#C4726A;}
+  .lock-legend{display:flex;gap:16px;margin-top:12px;font-size:11px;color:var(--ink-soft);}
+  .lock-dot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:5px;}
+  .lock-dot.locked{background:#FBEBEA;box-shadow:inset 0 0 0 1px #B3324A;}
+  .lock-dot.has-case{background:#EAF1FF;box-shadow:inset 0 0 0 1px var(--accent);}
+</style>
+</head>
+<body>
+
+<div class="gate-wrap" id="gateWrap">
+  <h1>設計師工作台</h1>
+  <p>請輸入密碼進入</p>
+  <input type="password" id="gatePassword" placeholder="密碼" onkeydown="if(event.key==='Enter') checkPassword()">
+  <button onclick="checkPassword()">進入</button>
+  <div class="gate-error" id="gateError">密碼不正確，請再試一次。</div>
+</div>
+
+<div class="wrap" id="mainView">
+
+  <div class="top-links">
+    <a class="back-link" onclick="history.back()">← 返回設計案統計</a>
+    <div style="display:flex;gap:10px;">
+      <button class="refresh-link" onclick="openLockModal()">📅 封鎖日期</button>
+      <button class="refresh-link" onclick="loadCases()">重新整理</button>
+    </div>
+  </div>
+
+  <header>
+    <p class="eyebrow">設計團隊 KPI</p>
+    <h1>設計師工作台</h1>
+    <div class="subtitle">目前檢視：Daniel</div>
+  </header>
+
+  <div id="caseList">
+    <div class="state-msg">讀取中...</div>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="lockModalOverlay" onclick="if(event.target===this) closeLockModal()">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">封鎖日期</div>
+        <div class="modal-sub">鎖起來的日期，填單人員在需求日期就無法選到（連急件也擋）</div>
+      </div>
+      <button class="modal-close" onclick="closeLockModal()">✕</button>
+    </div>
+    <div class="lock-cal-wrap">
+      <div class="cal-header">
+        <button type="button" onclick="changeLockMonth(-1)">‹</button>
+        <div id="lockCalMonthLabel"></div>
+        <button type="button" onclick="changeLockMonth(1)">›</button>
+      </div>
+      <div class="cal-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+      <div class="cal-grid" id="lockCalGrid"></div>
+      <div class="lock-legend">
+        <span><i class="lock-dot locked"></i>已封鎖</span>
+        <span><i class="lock-dot has-case"></i>有案件</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="lockReasonOverlay" onclick="if(event.target===this) closeLockReasonModal()">
+  <div class="modal-card" style="max-width:340px;">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">封鎖這一天？</div>
+        <div class="modal-sub" id="lockReasonDate"></div>
+      </div>
+      <button class="modal-close" onclick="closeLockReasonModal()">✕</button>
+    </div>
+    <div class="field-simple">
+      <label>原因（選填，不會給填單人員看到）</label>
+      <input type="text" id="lockReasonInput" placeholder="例如：休假、客戶驗收日">
+    </div>
+    <button class="modal-submit" onclick="confirmLockDate()">確認封鎖</button>
+    <div class="modal-msg" id="lockModalMsg"></div>
+  </div>
+</div>
+
+<script>
+// ---- 自訂下拉選單元件（放最前面，確保其他程式碼執行時已經可用）----
+const cselState = {};
+
+function cselSetOptions(id, options, placeholder){
+  if(!cselState[id]) cselState[id] = {};
+  cselState[id].options = options; // [{value,label}]
+  if(placeholder) cselState[id].placeholder = placeholder;
+  renderCselPanel(id);
+}
+
+function renderCselPanel(id){
+  const st = cselState[id];
+  const panel = document.getElementById('csel_' + id + '_panel');
+  if(!panel || !st.options) return;
+  panel.innerHTML = st.options.map(function(opt){
+    const selected = opt.value === st.value;
+    const safeVal = opt.value.replace(/'/g, "\\'");
+    return '<div class="csel-item' + (selected ? ' selected' : '') + '" onclick="cselChoose(\'' + id + '\',\'' + safeVal + '\')">' + opt.label + '</div>';
+  }).join('');
+}
+
+function cselChoose(id, val){
+  const st = cselState[id];
+  const opt = st.options.filter(function(o){ return o.value === val; })[0];
+  st.value = val;
+  document.getElementById(id).value = val;
+  const textEl = document.getElementById('csel_' + id + '_text');
+  if(textEl) textEl.textContent = opt ? opt.label : val;
+  closeAllCsel();
+  renderCselPanel(id);
+  if(st.onChange) st.onChange(val);
+}
+
+function toggleCsel(id){
+  const panel = document.getElementById('csel_' + id + '_panel');
+  const wasOpen = panel.classList.contains('show');
+  closeAllCsel();
+  if(!wasOpen){
+    panel.classList.add('show');
+    document.getElementById('csel_' + id).classList.add('open');
+  }
+}
+
+function closeAllCsel(){
+  document.querySelectorAll('.csel-panel.show').forEach(function(p){ p.classList.remove('show'); });
+  document.querySelectorAll('.csel.open').forEach(function(c){ c.classList.remove('open'); });
+}
+
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.csel')) closeAllCsel();
+});
+
+function initCsel(id, options, value, onChange){
+  const opt = options.filter(function(o){ return o.value === value; })[0];
+  cselState[id] = { options: options, value: value, placeholder: options[0] ? options[0].label : '', onChange: onChange };
+  const textEl = document.getElementById('csel_' + id + '_text');
+  if(textEl) textEl.textContent = opt ? opt.label : (options[0] ? options[0].label : '');
+  renderCselPanel(id);
+}
+
+
+const SHEET_ID = '1Q0b8dS3zKVoypKNh0hNuburvp4NMxmAwbdjoSQ4ibNg';
+const TAB_NAME = 'Daniel需求單';
+const CURRENT_DESIGNER = 'Daniel';
+const LOCK_TAB_NAME = '鎖定日期';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_cLlF17JTPJBdhcqcLG0gn9g7Tfjub9qiCj8SM7ScATew3VoJ-7Kbfrfi_LJyk05SZA/exec';
+const GATE_PASSWORD = '1008925';
+const STATUS_OPTIONS = ['待處理','進行中','請校稿','已完成','退件'];
+
+let verifiedPassword = null;
+
+function checkPassword(){
+  const val = document.getElementById('gatePassword').value;
+  if(val === GATE_PASSWORD){
+    verifiedPassword = val;
+    document.getElementById('gateWrap').style.display = 'none';
+    document.getElementById('mainView').classList.add('show');
+    loadCases();
+  }else{
+    document.getElementById('gateError').classList.add('show');
+  }
+}
+
+function cellText(c){
+  if(!c) return '';
+  if(c.f !== undefined && c.f !== null && c.f !== '') return c.f;
+  if(c.v === null || c.v === undefined) return '';
+  return String(c.v);
+}
+
+function statusInfo(status){
+  const s = (status || '待處理').trim();
+  switch(s){
+    case '已完成': return {label:s, bg:'#EAF7EF', fg:'#1F8A4C'};
+    case '進行中': return {label:s, bg:'#FFF3E0', fg:'#C2720C'};
+    case '請校稿': return {label:s, bg:'#F1EDFC', fg:'#6B46C1'};
+    case '退件':   return {label:s, bg:'#FBEBEA', fg:'#B3324A'};
+    default:       return {label:'待處理', bg:'#F1F1F3', fg:'#6B6B75'};
+  }
+}
+
+function loadCases(){
+  const list = document.getElementById('caseList');
+  list.innerHTML = '<div class="state-msg">讀取中...</div>';
+
+  const cbName = 'gsheetCb_' + Date.now();
+  window[cbName] = function(response){
+    try{
+      renderCases(response);
+    }catch(err){
+      list.innerHTML = '<div class="state-msg">資料讀取失敗：' + err.message + '</div>';
+    }
+    delete window[cbName];
+    const s = document.querySelector('script[data-gsheet-loader]');
+    if(s) s.remove();
+  };
+  const script = document.createElement('script');
+  script.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+    '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(TAB_NAME);
+  script.setAttribute('data-gsheet-loader','1');
+  script.onerror = function(){
+    list.innerHTML = '<div class="state-msg">無法連線到試算表，請確認分享權限為「知道連結的人皆可查看」。</div>';
+  };
+  document.body.appendChild(script);
+}
+
+function renderCases(response){
+  const list = document.getElementById('caseList');
+  const rows = (response && response.table && response.table.rows) || [];
+  const cases = [];
+
+  rows.forEach(function(r){
+    const c = r.c || [];
+    const id = cellText(c[22]);
+    if(!id) return; // 沒有需求ID的舊資料先不顯示在工作台（無法安全寫回）
+    cases.push({
+      id: id,
+      brand: cellText(c[1]),
+      reqType: cellText(c[2]),
+      reqName: cellText(c[3]),
+      reqPerson: cellText(c[4]),
+      fillDate: cellText(c[5]),
+      dueDate: cellText(c[6]),
+      materials: cellText(c[7]),
+      ecHeadline: cellText(c[8]),
+      ecSubheadline: cellText(c[9]),
+      ecStart: cellText(c[10]),
+      ecEnd: cellText(c[11]),
+      ecStyleRef: cellText(c[12]),
+      ecChannel: cellText(c[13]),
+      ecSize: cellText(c[14]),
+      ecFileSize: cellText(c[15]),
+      notes: cellText(c[16]),
+      status: cellText(c[17]),
+      rejectReason: cellText(c[18]),
+      deliveryLink: cellText(c[27]),
+      isUrgent: cellText(c[28]),
+      urgentCat: cellText(c[29]),
+      urgentOther: cellText(c[30])
+    });
+  });
+
+  if(cases.length === 0){
+    list.innerHTML = '<div class="state-msg">目前沒有案件資料。</div>';
+    return;
+  }
+
+  cases.sort(function(a,b){ return (b.isUrgent === 'Y' ? 1 : 0) - (a.isUrgent === 'Y' ? 1 : 0); });
+  window.__cases = cases;
+
+  list.innerHTML = cases.map(renderCaseCard).join('');
+  initCaseFieldVisibility();
+}
+
+function renderCaseCard(m){
+  const si = statusInfo(m.status);
+  const isUrgent = m.isUrgent === 'Y';
+  const urgentBadge = isUrgent ? '<span class="urgent-badge">急件</span>' : '';
+  const urgentReasonLine = isUrgent
+    ? '<div class="row">急件原因：<b>' + m.urgentCat + (m.urgentOther ? '（' + m.urgentOther + '）' : '') + '</b></div>'
+    : '';
+
+  let detailBlock = '';
+  if(m.reqType === 'EC電商/品牌官網' && (m.ecHeadline || m.ecSubheadline)){
+    detailBlock =
+      '<div class="detail-block">' +
+        '<div class="label">EC電商需求細節</div>' +
+        '大標：' + (m.ecHeadline || '－') + '<br>' +
+        '小標：' + (m.ecSubheadline || '－') + '<br>' +
+        '活動時間：' + (m.ecStart || '－') + ' ～ ' + (m.ecEnd || '－') + '<br>' +
+        '視覺風格參考：' + (m.ecStyleRef || '－') + '<br>' +
+        '通路：' + (m.ecChannel || '－') + '　尺寸：' + (m.ecSize || '－') + '　檔案大小：' + (m.ecFileSize || '－') +
+      '</div>';
+  }else if(m.materials){
+    detailBlock = '<div class="detail-block"><div class="label">提供素材</div>' + m.materials + '</div>';
+  }
+  if(m.notes){
+    detailBlock += '<div class="detail-block"><div class="label">備註</div>' + m.notes + '</div>';
+  }
+
+  return (
+    '<div class="case-card' + (isUrgent ? ' urgent' : '') + '" id="card-' + m.id + '">' +
+      '<div class="case-top">' +
+        '<div>' +
+          '<div class="case-name">' + m.reqName + '</div>' +
+          '<div class="case-tags">' +
+            '<span class="case-tag">' + m.brand + '</span>' +
+            '<span class="case-tag">' + m.reqType + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="badge-group"><span class="status-badge-static" style="background:' + si.bg + ';color:' + si.fg + ';font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;">' + si.label + '</span>' + urgentBadge + '</div>' +
+      '</div>' +
+      '<div class="case-detail">' +
+        '<div class="row">需求人員：<b>' + m.reqPerson + '</b></div>' +
+        '<div class="row">填單日期：<b>' + m.fillDate + '</b>　・　需求日期：<b>' + m.dueDate + '</b></div>' +
+        urgentReasonLine +
+      '</div>' +
+      detailBlock +
+      '<div class="edit-row">' +
+        '<div class="edit-grid">' +
+          '<div class="edit-field">' +
+            '<label>狀態</label>' +
+            '<div class="csel" id="csel_status-' + m.id + '">' +
+              '<button type="button" class="csel-trigger" onclick="toggleCsel(\'status-' + m.id + '\')">' +
+                '<span class="csel-trigger-text" id="csel_status-' + m.id + '_text"></span>' +
+                '<span class="csel-arrow">▾</span>' +
+              '</button>' +
+              '<div class="csel-panel" id="csel_status-' + m.id + '_panel"></div>' +
+            '</div>' +
+            '<input type="hidden" id="status-' + m.id + '" value="' + (m.status || '待處理') + '">' +
+          '</div>' +
+          '<div class="edit-field" id="rejectWrap-' + m.id + '" style="display:none;">' +
+            '<label>退件原因</label>' +
+            '<input type="text" id="reject-' + m.id + '" value="' + (m.rejectReason || '').replace(/"/g,'&quot;') + '" placeholder="請說明退件原因">' +
+          '</div>' +
+          '<div class="edit-field" id="deliveryWrap-' + m.id + '" style="display:none;">' +
+            '<label>交付檔案連結</label>' +
+            '<input type="text" id="delivery-' + m.id + '" value="' + (m.deliveryLink || '').replace(/"/g,'&quot;') + '" placeholder="貼上雲端連結">' +
+          '</div>' +
+        '</div>' +
+        '<div class="save-row">' +
+          '<button class="save-btn" onclick="saveCase(\'' + m.id + '\')">儲存</button>' +
+          '<span class="save-msg" id="saveMsg-' + m.id + '"></span>' +
+        '</div>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function toggleCaseFields(id){
+  const status = document.getElementById('status-' + id).value;
+  document.getElementById('rejectWrap-' + id).style.display = (status === '退件') ? 'block' : 'none';
+  document.getElementById('deliveryWrap-' + id).style.display = (status === '已完成') ? 'block' : 'none';
+}
+
+// 初始依現有狀態決定要不要展開對應欄位，並初始化每張卡片自己的狀態下拉選單
+function initCaseFieldVisibility(){
+  const statusOptions = STATUS_OPTIONS.map(function(s){ return { value: s, label: s }; });
+  (window.__cases || []).forEach(function(m){
+    initCsel('status-' + m.id, statusOptions, m.status || '待處理', function(v){ toggleCaseFields(m.id); });
+    toggleCaseFields(m.id);
+  });
+}
+
+function saveCase(id){
+  const status = document.getElementById('status-' + id).value;
+  const rejectEl = document.getElementById('reject-' + id);
+  const deliveryEl = document.getElementById('delivery-' + id);
+  const msg = document.getElementById('saveMsg-' + id);
+
+  const payload = {
+    action: 'updateStatus',
+    password: verifiedPassword,
+    id: id,
+    status: status,
+    rejectReason: (status === '退件' && rejectEl) ? rejectEl.value : '',
+    deliveryLink: (status === '已完成' && deliveryEl) ? deliveryEl.value : ''
+  };
+
+  msg.textContent = '儲存中...';
+  msg.className = 'save-msg';
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data){
+    if(data.status === 'success'){
+      msg.textContent = '✓ 已儲存';
+      msg.className = 'save-msg success';
+    }else{
+      msg.textContent = '儲存失敗：' + (data.message || '未知錯誤');
+      msg.className = 'save-msg error';
+    }
+  })
+  .catch(function(err){
+    msg.textContent = '儲存失敗，請確認網路連線。';
+    msg.className = 'save-msg error';
+  });
+}
+
+// ---- 封鎖日期 ----
+let lockCalendarDate = new Date();
+let lockedDatesMap = {}; // { 'YYYY-MM-DD': reason }
+let pendingLockDate = null;
+
+function pad2(n){ return n < 10 ? '0' + n : '' + n; }
+function toDateStr(y,m,d){ return y + '-' + pad2(m+1) + '-' + pad2(d); }
+function normalizeDateStr(str){
+  if(!str) return null;
+  const m = String(str).match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if(!m) return null;
+  return m[1] + '-' + pad2(parseInt(m[2],10)) + '-' + pad2(parseInt(m[3],10));
+}
+
+function openLockModal(){
+  document.getElementById('lockModalOverlay').classList.add('show');
+  loadLockedDates();
+}
+
+function closeLockModal(){
+  document.getElementById('lockModalOverlay').classList.remove('show');
+}
+
+function loadLockedDates(){
+  const cbName = 'gsheetCb_' + Date.now();
+  window[cbName] = function(response){
+    try{
+      const map = {};
+      const rows = (response && response.table && response.table.rows) || [];
+      rows.forEach(function(r){
+        const c = r.c || [];
+        const designer = c[0] && c[0].v ? String(c[0].v).trim() : '';
+        const date = normalizeDateStr(c[1] && (c[1].f || c[1].v) ? String(c[1].f || c[1].v) : '');
+        const reason = c[2] && c[2].v ? String(c[2].v).trim() : '';
+        if(designer === CURRENT_DESIGNER && date) map[date] = reason;
+      });
+      lockedDatesMap = map;
+    }catch(err){ lockedDatesMap = {}; }
+    delete window[cbName];
+    const s = document.querySelector('script[data-lock-loader]');
+    if(s) s.remove();
+    renderLockCalendar();
+  };
+  const script = document.createElement('script');
+  script.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+    '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(LOCK_TAB_NAME);
+  script.setAttribute('data-lock-loader','1');
+  script.onerror = function(){ lockedDatesMap = {}; renderLockCalendar(); };
+  document.body.appendChild(script);
+}
+
+function changeLockMonth(delta){
+  lockCalendarDate.setMonth(lockCalendarDate.getMonth() + delta);
+  renderLockCalendar();
+}
+
+function caseCountsByDate(){
+  const counts = {};
+  (window.__cases || []).forEach(function(c){
+    const d = normalizeDateStr(c.dueDate);
+    if(!d) return;
+    counts[d] = (counts[d] || 0) + 1;
+  });
+  return counts;
+}
+
+function renderLockCalendar(){
+  const y = lockCalendarDate.getFullYear();
+  const m = lockCalendarDate.getMonth();
+  document.getElementById('lockCalMonthLabel').textContent = y + ' 年 ' + (m+1) + ' 月';
+
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const now = new Date();
+  const todayStr = toDateStr(now.getFullYear(), now.getMonth(), now.getDate());
+  const counts = caseCountsByDate();
+
+  let html = '';
+  for(let i=0;i<firstDay;i++){ html += '<div class="cal-day empty"></div>'; }
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = toDateStr(y, m, d);
+    const isLocked = lockedDatesMap.hasOwnProperty(dateStr);
+    const count = counts[dateStr] || 0;
+    let cls = 'cal-day';
+    if(isLocked) cls += ' locked';
+    if(dateStr === todayStr) cls += ' today';
+    html += '<div class="' + cls + '" onclick="onLockDayClick(\'' + dateStr + '\')">' +
+      '<span>' + d + '</span>' +
+      (count > 0 ? '<span class="case-count">' + count + '件</span>' : '') +
+    '</div>';
+  }
+  document.getElementById('lockCalGrid').innerHTML = html;
+}
+
+function onLockDayClick(dateStr){
+  if(lockedDatesMap.hasOwnProperty(dateStr)){
+    const reason = lockedDatesMap[dateStr];
+    const ok = confirm('解除封鎖 ' + dateStr + '？' + (reason ? '（原因：' + reason + '）' : ''));
+    if(ok) doUnlockDate(dateStr);
+  }else{
+    pendingLockDate = dateStr;
+    document.getElementById('lockReasonDate').textContent = dateStr;
+    document.getElementById('lockReasonInput').value = '';
+    document.getElementById('lockModalMsg').textContent = '';
+    document.getElementById('lockReasonOverlay').classList.add('show');
+  }
+}
+
+function closeLockReasonModal(){
+  document.getElementById('lockReasonOverlay').classList.remove('show');
+  pendingLockDate = null;
+}
+
+function confirmLockDate(){
+  if(!pendingLockDate) return;
+  const reason = document.getElementById('lockReasonInput').value.trim();
+  const msg = document.getElementById('lockModalMsg');
+  msg.textContent = '處理中...';
+  msg.className = 'modal-msg';
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action:'lockDate', password: GATE_PASSWORD, handler: CURRENT_DESIGNER, date: pendingLockDate, reason: reason })
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data){
+    if(data.status === 'success'){
+      lockedDatesMap[pendingLockDate] = reason;
+      closeLockReasonModal();
+      renderLockCalendar();
+    }else{
+      msg.textContent = '失敗：' + (data.message || '未知錯誤');
+      msg.className = 'modal-msg error';
+    }
+  })
+  .catch(function(err){
+    msg.textContent = '失敗，請確認網路連線。';
+    msg.className = 'modal-msg error';
+  });
+}
+
+function doUnlockDate(dateStr){
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action:'unlockDate', password: GATE_PASSWORD, handler: CURRENT_DESIGNER, date: dateStr })
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data){
+    if(data.status === 'success'){
+      delete lockedDatesMap[dateStr];
+      renderLockCalendar();
+    }else{
+      alert('解除失敗：' + (data.message || '未知錯誤'));
+    }
+  })
+  .catch(function(){ alert('解除失敗，請確認網路連線。'); });
+}
+</script>
+</body>
+</html>
