@@ -399,8 +399,7 @@ function renderResults(rows, name){
       ? '<div class="detail-block"><div class="label">補充紀錄</div>' + m.supplement + '</div>'
       : '';
 
-    const SUPPLEMENT_ALLOWED = ['待處理','進行中','請校稿'];
-    const supplementBtnHtml = (m.id && SUPPLEMENT_ALLOWED.indexOf(si.label) !== -1)
+    const supplementBtnHtml = m.id
       ? '<div class="rate-row"><button class="supplement-btn" onclick="openSupplementModalById(\'' + m.id + '\')">＋ 補充內容</button></div>'
       : '';
 
