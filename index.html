@@ -44,6 +44,42 @@
     padding:28px 22px 60px;
   }
   .wrap{max-width:1180px;margin:0 auto;}
+  .wrap.locked{filter:blur(7px);pointer-events:none;user-select:none;}
+
+  .gate-overlay{
+    position:fixed;inset:0;z-index:500;background:rgba(241,241,243,.55);
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .gate-card{
+    max-width:380px;width:100%;background:var(--card);border-radius:20px;
+    box-shadow:0 20px 50px rgba(20,20,30,.25);padding:32px 28px;text-align:center;
+  }
+  .gate-card h1{font-size:19px;font-weight:800;margin:0 0 6px;}
+  .gate-card p{font-size:12.5px;color:var(--ink-soft);margin:0 0 20px;}
+  .gate-card input{
+    width:100%;border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+    font-family:inherit;font-size:15px;text-align:center;letter-spacing:.1em;background:#FAFAFB;
+    margin-bottom:12px;box-sizing:border-box;
+  }
+  .gate-card input:focus{outline:none;border-color:var(--accent);background:#fff;}
+  .gate-card button{
+    width:100%;border:none;background:var(--ink);color:#fff;font:inherit;font-weight:700;font-size:14px;
+    padding:12px;border-radius:12px;cursor:pointer;
+  }
+  .gate-card button:hover{opacity:.88;}
+  .gate-action-row{display:flex;align-items:center;gap:10px;}
+  .gate-action-row button{flex:1;}
+  .lock-icon-wrap{
+    display:flex;align-items:center;justify-content:center;flex:none;
+    width:38px;height:38px;border-radius:10px;background:#F1F1F3;color:var(--ink-soft);
+    transition:background-color .3s ease, color .3s ease;
+  }
+  .lock-shackle{transition:transform .45s cubic-bezier(.34,1.56,.64,1);transform-box:fill-box;transform-origin:0% 100%;}
+  .lock-icon-wrap.unlocked{background:#EAF7EF;color:#1F8A4C;}
+  .lock-icon-wrap.unlocked .lock-shackle{transform:rotate(-35deg);}
+  .gate-error{color:#B3324A;font-size:12px;margin-top:10px;display:none;}
+  .gate-error.show{display:block;}
 
   /* header */
   header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:22px;}
@@ -332,7 +368,26 @@
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div class="gate-overlay" id="gateOverlay">
+  <div class="gate-card">
+    <h1>設計團隊 KPI</h1>
+    <p>請輸入密碼查看統計面板</p>
+    <input type="password" id="gatePassword" placeholder="密碼" onkeydown="if(event.key==='Enter') checkDashboardPassword()">
+    <div class="gate-action-row">
+      <span class="lock-icon-wrap" id="lockIconWrap">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="overflow:visible;">
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+          <path class="lock-shackle" d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+      </span>
+      <button onclick="checkDashboardPassword()">進入</button>
+    </div>
+    <div class="gate-error" id="gateError">密碼不正確，請再試一次。</div>
+  </div>
+</div>
+
+<div class="wrap locked" id="dashboardWrap">
 
   <header>
     <div>
@@ -1275,8 +1330,22 @@ function scheduleHourlyRefresh(){
 
 initYearSelect();
 initChartTooltip();
-loadAll(false);
-scheduleHourlyRefresh();
+const DASHBOARD_PASSWORDS = ['5805', '5790', '5806', '6352', '7729', '6870', '6034', '6052', '6594', '6030', '8403', '8925', '8416', '8901', '8780'];
+
+function checkDashboardPassword(){
+  const val = document.getElementById('gatePassword').value;
+  if(DASHBOARD_PASSWORDS.indexOf(val) !== -1){
+    document.getElementById('lockIconWrap').classList.add('unlocked');
+    setTimeout(function(){
+      document.getElementById('gateOverlay').style.display = 'none';
+      document.getElementById('dashboardWrap').classList.remove('locked');
+      loadAll(false);
+      scheduleHourlyRefresh();
+    }, 500);
+  }else{
+    document.getElementById('gateError').classList.add('show');
+  }
+}
 </script>
 </body>
 </html>
