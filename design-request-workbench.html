@@ -440,6 +440,8 @@ function renderCases(response){
       isUrgent: cellText(c[28]),
       urgentCat: cellText(c[29]),
       urgentOther: cellText(c[30]),
+      caseType: cellText(c[31]),
+      caseFields: cellText(c[32]),
       hours: cellText(c[33]),
       fee: cellText(c[34]),
       supplement: cellText(c[35]),
@@ -478,8 +480,12 @@ function renderCaseCard(m){
         '視覺風格參考：' + (m.ecStyleRef || '－') + '<br>' +
         '通路：' + (m.ecChannel || '－') + '　尺寸：' + (m.ecSize || '－') + '　檔案大小：' + (m.ecFileSize || '－') +
       '</div>';
-  }else if(m.materials){
-    detailBlock = '<div class="detail-block"><div class="label">提供素材</div>' + m.materials + '</div>';
+  }
+  if(m.materials){
+    detailBlock += '<div class="detail-block"><div class="label">提供素材</div>' + m.materials + '</div>';
+  }
+  if(m.caseFields){
+    detailBlock += '<div class="detail-block"><div class="label">案件所需資料' + (m.caseType ? '（' + m.caseType + '）' : '') + '</div>' + m.caseFields + '</div>';
   }
   if(m.notes){
     detailBlock += '<div class="detail-block"><div class="label">備註</div>' + m.notes + '</div>';
@@ -499,6 +505,7 @@ function renderCaseCard(m){
           '<div class="case-tags">' +
             '<span class="case-tag">' + m.brand + '</span>' +
             '<span class="case-tag">' + m.reqType + '</span>' +
+            (m.caseType ? '<span class="case-tag">' + m.caseType + '</span>' : '') +
           '</div>' +
         '</div>' +
         '<div class="badge-group"><span class="status-badge-static" style="background:' + si.bg + ';color:' + si.fg + ';font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;">' + si.label + '</span>' + newSupplementBadge + urgentBadge + '</div>' +
