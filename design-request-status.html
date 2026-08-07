@@ -62,7 +62,25 @@
   .req-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
   .req-name{font-size:16px;font-weight:800;}
   .badge-group{display:flex;align-items:center;gap:6px;flex:none;}
-  .req-top-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+  .req-top-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+
+  .progress-bar{display:flex;align-items:flex-start;}
+  .progress-step{display:flex;flex-direction:column;align-items:center;gap:8px;flex:none;width:64px;}
+  .progress-dot{
+    width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;
+    background:#D3E2FF;box-sizing:border-box;transition:background-color .2s ease, border-color .2s ease;
+  }
+  .progress-step.done .progress-dot{background:var(--accent);}
+  .progress-step.current .progress-dot{background:#fff;border:2.5px solid var(--accent);}
+  .progress-step.current .inner-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);}
+  .progress-label{font-size:11px;color:#B7C6E8;white-space:nowrap;}
+  .progress-step.current .progress-label{color:var(--ink);font-weight:700;}
+  .progress-step.done .progress-label{color:var(--ink-soft);}
+  .progress-line{flex:1;height:2px;background:#E4E4E8;margin:12px -10px 0;min-width:38px;}
+  .progress-line.done{background:var(--accent);}
+
+  .completed-rating-row{display:flex;align-items:center;justify-content:space-between;}
+  .completed-rating-label{font-size:13px;font-weight:700;color:#1F8A4C;display:flex;align-items:center;gap:5px;}
   .score-stars{display:flex;gap:2px;}
   .score-stars svg{display:block;}
   .reply-shown-block{background:#EAF1FF;}
@@ -179,6 +197,7 @@
   .cal-legend .cal-dot{width:8px;height:8px;border-radius:2px;background:#F6F6F7;box-shadow:inset 0 0 0 1px var(--ink-faint);}
 
   .rate-row{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
+  .action-row{display:flex;gap:8px;flex-wrap:wrap;}
   .rate-btn{
     display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;
     color:var(--ink);font:inherit;font-weight:700;font-size:12.5px;padding:8px 14px;
@@ -529,6 +548,34 @@ function doSearch(e){
   return false;
 }
 
+const PROGRESS_STEPS = ['待處理', '進行中', '請校稿', '已完成'];
+
+function progressBarHtml(status){
+  const clean = (status || '').replace(/\s/g, '');
+  if(clean === '退件') return '';
+  let idx = PROGRESS_STEPS.indexOf(clean);
+  if(idx === -1) idx = 0;
+  let html = '<div class="progress-bar" title="原始狀態文字：[' + (status || '') + ']　比對後：[' + clean + ']">';
+  PROGRESS_STEPS.forEach(function(label, i){
+    let stepClass = 'progress-step';
+    if(i < idx) stepClass += ' done';
+    else if(i === idx) stepClass += ' current';
+    else stepClass += ' upcoming';
+    const dotInner = i < idx
+      ? '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+      : (i === idx ? '<span class="inner-dot"></span>' : '');
+    html += '<div class="' + stepClass + '">' +
+      '<div class="progress-dot">' + dotInner + '</div>' +
+      '<div class="progress-label">' + label + '</div>' +
+    '</div>';
+    if(i < PROGRESS_STEPS.length - 1){
+      html += '<div class="progress-line' + (i < idx ? ' done' : '') + '"></div>';
+    }
+  });
+  html += '</div>';
+  return html;
+}
+
 function renderResults(rows, name){
   const results = document.getElementById('results');
   if(!rows){
@@ -638,23 +685,33 @@ function renderResults(rows, name){
       caseDetailHtml += '<div class="detail-block reply-shown-block"><div class="label">設計師回覆</div>' + m.designerReply + '</div>';
     }
 
-    const hasRating = m.quality && m.efficiency && m.communication && m.price;
+
+
+const hasRating = m.quality && m.efficiency && m.communication && m.price;
     const score = hasRating
       ? Math.round((Number(m.quality) + Number(m.efficiency) + Number(m.communication) + Number(m.price)) / 4 * 20)
       : null;
-    const scoreDisplayHtml = hasRating ? scoreStarsHtml(score) : '';
+    const completedRatingRowHtml = (m.status === '已完成' && hasRating)
+      ? '<div class="rate-row completed-rating-row">' +
+          '<span class="completed-rating-label">★ 已完成評分</span>' +
+          scoreStarsHtml(score) +
+        '</div>'
+      : '';
 
     const copyIconSvg = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
       '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>' +
       '<path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>' +
     '</svg>';
-    const copyBtnHtml = '<div class="rate-row"><button class="copy-btn" onclick=\'copyCaseAndCreate(' + JSON.stringify({
+    const copyBtnHtml = '<button class="copy-btn" onclick=\'copyCaseAndCreate(' + JSON.stringify({
       brand: m.brand, reqType: m.reqType, caseType: m.caseType, materials: m.materials,
       notes: m.notes, reqPerson: m.reqPerson, handler: m.handler, caseFields: m.caseFields
-    }) + ')\'>' + copyIconSvg + ' 複製並新增</button></div>';
+    }) + ')\'>' + copyIconSvg + ' 複製並新增</button>';
 
     const supplementBtnHtml = m.id
-      ? '<div class="rate-row"><button class="supplement-btn" onclick="openSupplementModalById(\'' + m.id + '\')">＋ 補充內容</button></div>'
+      ? '<button class="supplement-btn" onclick="openSupplementModalById(\'' + m.id + '\')">＋ 補充內容</button>'
+      : '';
+    const actionRowHtml = (supplementBtnHtml || copyBtnHtml)
+      ? '<div class="rate-row action-row">' + supplementBtnHtml + copyBtnHtml + '</div>'
       : '';
 
     return (
@@ -669,8 +726,10 @@ function renderResults(rows, name){
             '</div>' +
           '</div>' +
           '<div class="req-top-right">' +
-            '<div class="badge-group"><span class="status-badge" style="background:' + si.bg + ';color:' + si.fg + '">' + si.label + '</span>' + urgentBadge + '</div>' +
-            scoreDisplayHtml +
+            ((m.status || '').trim() === '退件'
+              ? '<div class="badge-group"><span class="status-badge" style="background:' + si.bg + ';color:' + si.fg + '">' + si.label + '</span>' + urgentBadge + '</div>'
+              : ('<div class="badge-group">' + urgentBadge + '</div>' + progressBarHtml(m.status))
+            ) +
           '</div>' +
         '</div>' +
         '<div class="req-meta">填單日期：<b>' + m.fillDate + '</b>　・　需求日期：<b>' + m.dueDate + '</b>' + handlerLine + '</div>' +
@@ -680,8 +739,8 @@ function renderResults(rows, name){
         supplementHtml +
         deliveryHtml +
         rateHtml +
-        supplementBtnHtml +
-        copyBtnHtml +
+        completedRatingRowHtml +
+        actionRowHtml +
       '</div>'
     );
   }).join('');
