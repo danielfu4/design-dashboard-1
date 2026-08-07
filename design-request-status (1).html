@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的需求查詢</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F1F1F3; --card:#FFFFFF;
+    --shadow:0 1px 2px rgba(20,20,30,.05), 0 6px 16px rgba(20,20,30,.04);
+    --ink:#17181C; --ink-soft:#8A8A93; --ink-faint:#C2C2C8; --line:#ECECEE;
+    --accent:#3E7BFA;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:'Noto Sans TC','Noto Sans',ui-sans-serif,sans-serif;
+    padding:32px 20px 60px;
+  }
+  .wrap{max-width:680px;margin:0 auto;}
+
+  .top-links{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+  .back-link{
+    display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);
+    text-decoration:none;font-weight:600;
+  }
+  .back-link:hover{color:var(--ink);}
+  .new-link{
+    display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;
+    font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:10px;text-decoration:none;
+  }
+  .new-link:hover{opacity:.9;}
+
+  header{margin-bottom:22px;}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--ink-soft);margin:0 0 4px;text-transform:uppercase;}
+  h1{font-size:26px;font-weight:800;margin:0 0 6px;letter-spacing:-.01em;}
+  .subtitle{font-size:13px;color:var(--ink-soft);}
+
+  .search-card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:22px 24px;margin-bottom:22px;}
+  .search-row{display:flex;gap:10px;}
+  .search-row input{
+    flex:1;border:1px solid var(--line);border-radius:12px;padding:11px 14px;
+    font-family:inherit;font-size:14px;color:var(--ink);background:#FAFAFB;
+  }
+  .search-row input:focus{outline:none;border-color:var(--accent);background:#fff;}
+  .search-row button{
+    border:none;background:var(--ink);color:#fff;font:inherit;font-weight:700;font-size:14px;
+    padding:11px 22px;border-radius:12px;cursor:pointer;white-space:nowrap;
+  }
+  .search-row button:hover{opacity:.88;}
+  .search-hint{font-size:11.5px;color:var(--ink-soft);margin-top:10px;}
+
+  .state-msg{
+    text-align:center;color:var(--ink-soft);font-size:13px;padding:40px 20px;
+  }
+
+  .req-card{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:20px 22px;margin-bottom:14px;}
+  .req-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
+  .req-name{font-size:16px;font-weight:800;}
+  .badge-group{display:flex;align-items:center;gap:6px;flex:none;}
+  .urgent-badge{
+    display:inline-flex;align-items:center;font-size:11px;font-weight:800;color:#C4372B;
+    background:#FFF0EE;padding:5px 10px;border-radius:999px;white-space:nowrap;
+  }
+  .req-card.urgent{box-shadow:0 0 0 1.5px #F3C5C0, 0 6px 16px rgba(20,20,30,.04);}
+  .req-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+  .req-tag{
+    font-size:11px;font-weight:700;color:var(--ink-soft);background:#F1F1F3;
+    padding:3px 9px;border-radius:7px;
+  }
+  .status-badge{
+    font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;white-space:nowrap;flex:none;
+  }
+  .req-meta{font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.8;}
+  .req-meta b{color:var(--ink);font-weight:700;}
+  .reject-box{
+    margin-top:12px;background:#FBEBEA;border:1px solid #F3C5C0;border-radius:12px;
+    padding:12px 14px;font-size:12.5px;color:#B3324A;
+  }
+  .reject-box b{display:block;margin-bottom:4px;font-size:11.5px;letter-spacing:.03em;}
+
+  .detail-block{
+    margin-top:12px;background:#F7F7F8;border-radius:12px;padding:12px 14px;
+    font-size:12.5px;color:var(--ink);white-space:pre-line;line-height:1.6;
+  }
+  .detail-block .label{font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-bottom:4px;}
+  .supplement-btn{
+    display:inline-flex;align-items:center;border:1px solid var(--line);background:#fff;color:var(--ink);
+    font-family:inherit;font-weight:700;font-size:12.5px;padding:8px 14px;border-radius:10px;cursor:pointer;
+  }
+  .supplement-btn:hover{background:#F7F7F8;}
+
+  .field-simple{margin-bottom:14px;}
+  .field-simple label{display:block;font-size:12px;font-weight:700;color:var(--ink-soft);margin-bottom:8px;}
+  .field-simple textarea{
+    width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+    font-family:inherit;font-size:13.5px;color:var(--ink);background:#FAFAFB;resize:vertical;
+  }
+  .field-simple textarea:focus{outline:none;border-color:var(--accent);background:#fff;}
+
+  .rate-row{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
+  .rate-btn{
+    display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;
+    color:var(--ink);font:inherit;font-weight:700;font-size:12.5px;padding:8px 14px;
+    border-radius:10px;cursor:pointer;
+  }
+  .rate-btn:hover{background:#F7F7F8;}
+  .rated-badge{
+    display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:#1F8A4C;
+  }
+  .delivery-btn{
+    display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;
+    font-weight:700;font-size:12.5px;padding:8px 14px;border-radius:10px;text-decoration:none;
+  }
+  .delivery-btn:hover{opacity:.9;}
+  .cloud-icon{flex:none;}
+  .cloud-arrow{transition:transform .3s ease-in-out;transform-box:fill-box;}
+  .delivery-btn:hover .cloud-arrow{animation:cloud-arrow-down .6s ease-in-out infinite alternate;}
+  @keyframes cloud-arrow-down{
+    from{transform:translateY(0);}
+    to{transform:translateY(3px);}
+  }
+
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(20,20,30,.45);z-index:200;
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal-card{
+    background:#fff;border-radius:20px;box-shadow:0 20px 50px rgba(20,20,30,.3);
+    padding:26px 26px 22px;max-width:380px;width:100%;
+  }
+  .modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;}
+  .modal-title{font-size:16px;font-weight:800;}
+  .modal-sub{font-size:12px;color:var(--ink-soft);margin-top:3px;}
+  .modal-close{border:none;background:none;font-size:18px;color:var(--ink-faint);cursor:pointer;line-height:1;}
+  .modal-close:hover{color:var(--ink);}
+  .star-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .star-row .crit-label{font-size:13.5px;font-weight:700;}
+  .star-picker{display:flex;gap:5px;}
+  .star-item{cursor:pointer;display:inline-flex;color:var(--ink-faint);transform-origin:center;transition:color .3s ease-in-out,transform .3s ease-in-out;}
+  .star-item svg{display:block;transition:fill .3s ease-in-out;}
+  .star-item.active,.star-item.preview{color:#F5A623;transform:scale(1.2);animation:star-bounce .5s ease-in-out alternate;}
+  @keyframes star-bounce{ to{ transform:scale(1.32); } }
+  .modal-submit{
+    width:100%;margin-top:6px;border:none;background:var(--ink);color:#fff;font:inherit;font-weight:700;
+    font-size:14px;padding:12px;border-radius:12px;cursor:pointer;
+  }
+  .modal-submit:hover{opacity:.88;}
+  .modal-msg{font-size:12px;margin-top:10px;text-align:center;}
+  .modal-msg.error{color:#B3324A;}
+  .modal-msg.success{color:#1F8A4C;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top-links">
+    <a class="back-link" href="design-request-form.html" onclick="if(window.history.length>1){history.back();return false;}">← 返回設計需求申請單</a>
+    <a class="new-link" href="design-request-form.html">＋ 填寫新需求</a>
+  </div>
+
+  <header>
+    <p class="eyebrow">ITD設計團隊</p>
+    <h1>我的需求查詢</h1>
+    <div class="subtitle">輸入填單時填寫的「需求人員」姓名，查詢送出過的需求進度</div>
+  </header>
+
+  <div class="search-card">
+    <form class="search-row" onsubmit="return doSearch(event)">
+      <input type="text" id="searchName" placeholder="請輸入你的姓名" autocomplete="off">
+      <button type="submit">查詢</button>
+    </form>
+    <div class="search-hint">姓名需與填單時輸入的完全相同（例如都是「王小明」）</div>
+  </div>
+
+  <div id="results">
+    <div class="state-msg">輸入姓名後按「查詢」開始查看你的需求進度</div>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="rateModalOverlay" onclick="if(event.target===this) closeRateModal()">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">案件評分</div>
+        <div class="modal-sub" id="rateModalReqName"></div>
+      </div>
+      <button class="modal-close" onclick="closeRateModal()">✕</button>
+    </div>
+
+    <div class="star-row">
+      <div class="crit-label">品質</div>
+      <div class="star-picker" data-crit="quality"></div>
+    </div>
+    <div class="star-row">
+      <div class="crit-label">效率</div>
+      <div class="star-picker" data-crit="efficiency"></div>
+    </div>
+    <div class="star-row">
+      <div class="crit-label">溝通</div>
+      <div class="star-picker" data-crit="communication"></div>
+    </div>
+    <div class="star-row">
+      <div class="crit-label">價格</div>
+      <div class="star-picker" data-crit="price"></div>
+    </div>
+
+    <button class="modal-submit" id="rateSubmitBtn" onclick="submitRating()">送出評分</button>
+    <div class="modal-msg" id="rateModalMsg"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="supplementModalOverlay" onclick="if(event.target===this) closeSupplementModal()">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">補充內容</div>
+        <div class="modal-sub" id="supplementModalReqName"></div>
+      </div>
+      <button class="modal-close" onclick="closeSupplementModal()">✕</button>
+    </div>
+    <div class="field-simple">
+      <label>要補充的內容（例如：新增素材連結、補充文案、其他說明）</label>
+      <textarea id="supplementContent" placeholder="請輸入要補充的內容" style="min-height:120px;"></textarea>
+    </div>
+    <button class="modal-submit" id="supplementSubmitBtn" onclick="submitSupplement()">送出補充</button>
+    <div class="modal-msg" id="supplementModalMsg"></div>
+  </div>
+</div>
+
+<script>
+// 部署好個人帳號的新試算表後，把它的 ID 貼在這裡（網址 /d/ 跟 /edit 中間那一長串）
+const SHEET_ID = '1Q0b8dS3zKVoypKNh0hNuburvp4NMxmAwbdjoSQ4ibNg';
+const DESIGNER_TABS = { Nikki:'Nikki需求單', Yuly:'Yuly需求單', Luna:'Luna需求單', Daniel:'Daniel需求單' };
+const ALL_TABS = Object.values(DESIGNER_TABS);
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_cLlF17JTPJBdhcqcLG0gn9g7Tfjub9qiCj8SM7ScATew3VoJ-7Kbfrfi_LJyk05SZA/exec';
+
+function cellText(c){
+  if(!c) return '';
+  if(c.f !== undefined && c.f !== null && c.f !== '') return c.f;
+  if(c.v === null || c.v === undefined) return '';
+  return String(c.v);
+}
+
+function statusInfo(status){
+  const s = (status || '待處理').trim();
+  switch(s){
+    case '已完成': return {label:s, bg:'#EAF7EF', fg:'#1F8A4C'};
+    case '進行中': return {label:s, bg:'#FFF3E0', fg:'#C2720C'};
+    case '請校稿': return {label:s, bg:'#F1EDFC', fg:'#6B46C1'};
+    case '退件':   return {label:s, bg:'#FBEBEA', fg:'#B3324A'};
+    default:       return {label:'待處理', bg:'#F1F1F3', fg:'#6B6B75'};
+  }
+}
+
+function loadTabRows(tabName){
+  return new Promise(function(resolve){
+    const cbName = 'gsheetCb_' + tabName.replace(/[^a-zA-Z0-9]/g,'') + '_' + Date.now() + '_' + Math.floor(Math.random()*1e6);
+    let done = false;
+    window[cbName] = function(response){
+      done = true;
+      resolve((response && response.table && response.table.rows) || []);
+      delete window[cbName];
+      if(script.parentNode) script.remove();
+    };
+    const script = document.createElement('script');
+    script.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+      '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(tabName) + '&headers=1&_ts=' + Date.now();
+    script.onerror = function(){ if(!done){ done = true; resolve([]); } };
+    document.body.appendChild(script);
+    setTimeout(function(){ if(!done){ done = true; resolve([]); } }, 12000);
+  });
+}
+
+function doSearch(e){
+  if(e) e.preventDefault();
+  const name = document.getElementById('searchName').value.trim();
+  const results = document.getElementById('results');
+  if(!name){
+    results.innerHTML = '<div class="state-msg">請先輸入姓名再查詢</div>';
+    return false;
+  }
+  if(SHEET_ID.indexOf('請貼上') === 0){
+    results.innerHTML = '<div class="state-msg">尚未設定試算表來源，請先在程式碼裡貼上 SHEET_ID。</div>';
+    return false;
+  }
+
+  results.innerHTML = '<div class="state-msg">查詢中...</div>';
+
+  Promise.all(ALL_TABS.map(loadTabRows)).then(function(resultsPerTab){
+    try{
+      const rows = resultsPerTab.reduce(function(acc, r){ return acc.concat(r); }, []);
+      renderResults(rows, name);
+    }catch(err){
+      results.innerHTML = '<div class="state-msg">資料讀取失敗：' + err.message + '</div>';
+    }
+  });
+
+  setTimeout(function(){
+    if(document.getElementById('results').innerHTML.indexOf('查詢中') !== -1){
+      results.innerHTML = '<div class="state-msg">連線逾時，請重新查詢一次。</div>';
+    }
+  }, 13000);
+
+  return false;
+}
+
+function renderResults(rows, name){
+  const results = document.getElementById('results');
+  if(!rows){
+    results.innerHTML = '<div class="state-msg">資料格式不正確。</div>';
+    return;
+  }
+  const target = name.toLowerCase();
+  const matches = [];
+
+  rows.forEach(function(r){
+    const c = r.c || [];
+    const person = cellText(c[4]).trim();
+    if(!person) return;
+    if(person.toLowerCase() !== target) return;
+    matches.push({
+      submitTime: cellText(c[0]),
+      brand: cellText(c[1]),
+      reqType: cellText(c[2]),
+      reqName: cellText(c[3]),
+      fillDate: cellText(c[5]),
+      dueDate: cellText(c[6]),
+      materials: cellText(c[7]),
+      notes: cellText(c[16]),
+      status: cellText(c[17]),
+      rejectReason: cellText(c[18]),
+      handler: cellText(c[19]),
+      groupTag: cellText(c[21]),
+      id: cellText(c[22]),
+      quality: cellText(c[23]),
+      efficiency: cellText(c[24]),
+      communication: cellText(c[25]),
+      price: cellText(c[26]),
+      deliveryLink: cellText(c[27]),
+      isUrgent: cellText(c[28]),
+      caseType: cellText(c[31]),
+      caseFields: cellText(c[32]),
+      hours: cellText(c[33]),
+      fee: cellText(c[34]),
+      supplement: cellText(c[35]),
+      supplementTime: cellText(c[36])
+    });
+  });
+
+  if(matches.length === 0){
+    results.innerHTML = '<div class="state-msg">查無「' + name + '」的需求紀錄，請確認姓名是否與填單時完全一致。</div>';
+    return;
+  }
+
+  matches.sort(function(a,b){
+    return (b.isUrgent === 'Y' ? 1 : 0) - (a.isUrgent === 'Y' ? 1 : 0);
+  });
+  window.__lastMatches = matches;
+
+  results.innerHTML = matches.map(function(m){
+    const si = statusInfo(m.status);
+    const rejectHtml = si.label === '退件'
+      ? '<div class="reject-box"><b>退件原因</b>' + (m.rejectReason || '（未填寫原因）') + '</div>'
+      : '';
+    const handlerLine = m.handler ? '　・　處理人員：<b>' + m.handler + '</b>' : '';
+
+    const alreadyRated = !!(m.quality || m.efficiency || m.communication || m.price);
+    let rateHtml = '';
+    if(si.label === '已完成' && m.id){
+      rateHtml = alreadyRated
+        ? '<div class="rate-row"><span class="rated-badge">★ 已完成評分</span></div>'
+        : '<div class="rate-row"><button class="rate-btn" onclick="openRateModalById(\'' + m.id + '\')">★ 評分</button></div>';
+    }
+
+    const cloudIconSvg = '<svg class="cloud-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>' +
+      '<polyline class="cloud-arrow" points="8 17 12 21 16 17"></polyline>' +
+      '<line class="cloud-arrow" x1="12" y1="12" x2="12" y2="21"></line>' +
+    '</svg>';
+    const deliveryHtml = m.deliveryLink
+      ? '<div class="rate-row"><a class="delivery-btn" href="' + m.deliveryLink + '" target="_blank">' + cloudIconSvg + ' 查看交付檔案</a></div>'
+      : '';
+
+    const isUrgent = m.isUrgent === 'Y';
+    const urgentBadge = isUrgent ? '<span class="urgent-badge">急件</span>' : '';
+
+    const hoursFeeHtml = (m.hours || m.fee)
+      ? '<div class="req-meta">' +
+          (m.hours ? '工時：<b>' + m.hours + '</b>' : '') +
+          (m.hours && m.fee ? '　・　' : '') +
+          (m.fee ? '案件費用：<b>' + m.fee + '</b>' : '') +
+        '</div>'
+      : '';
+
+    const supplementHtml = m.supplement
+      ? '<div class="detail-block"><div class="label">補充紀錄</div>' + m.supplement + '</div>'
+      : '';
+
+    let caseDetailHtml = '';
+    if(m.materials){
+      caseDetailHtml += '<div class="detail-block"><div class="label">提供素材</div>' + m.materials + '</div>';
+    }
+    if(m.caseFields){
+      caseDetailHtml += '<div class="detail-block"><div class="label">案件所需資料' + (m.caseType ? '（' + m.caseType + '）' : '') + '</div>' + m.caseFields + '</div>';
+    }
+    if(m.notes){
+      caseDetailHtml += '<div class="detail-block"><div class="label">備註</div>' + m.notes + '</div>';
+    }
+
+    const supplementBtnHtml = m.id
+      ? '<div class="rate-row"><button class="supplement-btn" onclick="openSupplementModalById(\'' + m.id + '\')">＋ 補充內容</button></div>'
+      : '';
+
+    return (
+      '<div class="req-card' + (isUrgent ? ' urgent' : '') + '">' +
+        '<div class="req-top">' +
+          '<div>' +
+            '<div class="req-name">' + m.reqName + '</div>' +
+            '<div class="req-tags">' +
+              '<span class="req-tag">' + m.brand + '</span>' +
+              '<span class="req-tag">' + m.reqType + '</span>' +
+              (m.caseType ? '<span class="req-tag">' + m.caseType + '</span>' : '') +
+            '</div>' +
+          '</div>' +
+          '<div class="badge-group"><span class="status-badge" style="background:' + si.bg + ';color:' + si.fg + '">' + si.label + '</span>' + urgentBadge + '</div>' +
+        '</div>' +
+        '<div class="req-meta">填單日期：<b>' + m.fillDate + '</b>　・　需求日期：<b>' + m.dueDate + '</b>' + handlerLine + '</div>' +
+        hoursFeeHtml +
+        rejectHtml +
+        caseDetailHtml +
+        supplementHtml +
+        deliveryHtml +
+        rateHtml +
+        supplementBtnHtml +
+      '</div>'
+    );
+  }).join('');
+}
+
+// ---- 評分彈窗 ----
+let currentRating = { quality:0, efficiency:0, communication:0, price:0 };
+let currentRatingId = null;
+
+function buildStarPicker(crit){
+  const wrap = document.querySelector('.star-picker[data-crit="' + crit + '"]');
+  const starSvg = '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 2.5l2.9 6.6 7.2.6-5.5 4.8 1.7 7-6.3-3.9-6.3 3.9 1.7-7-5.5-4.8 7.2-.6z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path></svg>';
+  let html = '';
+  for(let i=1;i<=5;i++){
+    const isFilled = i <= currentRating[crit];
+    html += '<span class="star-item' + (isFilled ? ' active' : '') + '" data-v="' + i + '" ' +
+      'onclick="setStar(\'' + crit + '\',' + i + ')" ' +
+      'onmouseenter="previewStars(\'' + crit + '\',' + i + ')" ' +
+      'onmouseleave="clearStarPreview(\'' + crit + '\')">' + starSvg + '</span>';
+  }
+  wrap.innerHTML = html;
+}
+
+function previewStars(crit, hoverV){
+  const wrap = document.querySelector('.star-picker[data-crit="' + crit + '"]');
+  wrap.querySelectorAll('.star-item').forEach(function(el){
+    const v = parseInt(el.getAttribute('data-v'), 10);
+    el.classList.toggle('preview', v <= hoverV);
+  });
+}
+
+function clearStarPreview(crit){
+  const wrap = document.querySelector('.star-picker[data-crit="' + crit + '"]');
+  wrap.querySelectorAll('.star-item').forEach(function(el){
+    el.classList.remove('preview');
+  });
+}
+
+function setStar(crit, v){
+  currentRating[crit] = v;
+  buildStarPicker(crit);
+}
+
+function openRateModalById(id){
+  const matches = window.__lastMatches || [];
+  const m = matches.find(function(x){ return x.id === id; });
+  if(!m) return;
+  currentRatingId = id;
+  currentRating = { quality:0, efficiency:0, communication:0, price:0 };
+  document.getElementById('rateModalReqName').textContent = m.reqName;
+  document.getElementById('rateModalMsg').textContent = '';
+  document.getElementById('rateModalMsg').className = 'modal-msg';
+  ['quality','efficiency','communication','price'].forEach(buildStarPicker);
+  document.getElementById('rateModalOverlay').classList.add('show');
+}
+
+function closeRateModal(){
+  document.getElementById('rateModalOverlay').classList.remove('show');
+}
+
+// ---- 補充內容 ----
+let currentSupplementId = null;
+
+function openSupplementModalById(id){
+  const matches = window.__lastMatches || [];
+  const m = matches.find(function(x){ return x.id === id; });
+  if(!m) return;
+  currentSupplementId = id;
+  document.getElementById('supplementModalReqName').textContent = m.reqName;
+  document.getElementById('supplementContent').value = '';
+  document.getElementById('supplementModalMsg').textContent = '';
+  document.getElementById('supplementModalMsg').className = 'modal-msg';
+  document.getElementById('supplementModalOverlay').classList.add('show');
+}
+
+function closeSupplementModal(){
+  document.getElementById('supplementModalOverlay').classList.remove('show');
+}
+
+function submitSupplement(){
+  const content = document.getElementById('supplementContent').value.trim();
+  const msg = document.getElementById('supplementModalMsg');
+  if(!content){
+    msg.textContent = '請先輸入要補充的內容';
+    msg.className = 'modal-msg error';
+    return;
+  }
+  const btn = document.getElementById('supplementSubmitBtn');
+  btn.disabled = true;
+  msg.textContent = '送出中...';
+  msg.className = 'modal-msg';
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action:'addSupplement', id: currentSupplementId, content: content })
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data){
+    btn.disabled = false;
+    if(data.status === 'success'){
+      msg.textContent = '✓ 已送出補充內容';
+      msg.className = 'modal-msg success';
+      setTimeout(function(){ closeSupplementModal(); }, 900);
+    }else{
+      msg.textContent = '送出失敗：' + (data.message || '未知錯誤');
+      msg.className = 'modal-msg error';
+    }
+  })
+  .catch(function(){
+    btn.disabled = false;
+    msg.textContent = '送出失敗，請確認網路連線。';
+    msg.className = 'modal-msg error';
+  });
+}
+
+function submitRating(){
+  if(!currentRating.quality || !currentRating.efficiency || !currentRating.communication || !currentRating.price){
+    const msg = document.getElementById('rateModalMsg');
+    msg.textContent = '請完成四項評分後再送出。';
+    msg.className = 'modal-msg error';
+    return;
+  }
+  if(APPS_SCRIPT_URL.indexOf('http') !== 0){
+    const msg = document.getElementById('rateModalMsg');
+    msg.textContent = '尚未設定送出網址。';
+    msg.className = 'modal-msg error';
+    return;
+  }
+
+  const btn = document.getElementById('rateSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = '送出中...';
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({
+      action: 'rate',
+      id: currentRatingId,
+      quality: currentRating.quality,
+      efficiency: currentRating.efficiency,
+      communication: currentRating.communication,
+      price: currentRating.price
+    })
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data){
+    const msg = document.getElementById('rateModalMsg');
+    if(data.status === 'success'){
+      msg.textContent = '✓ 評分已送出，謝謝！';
+      msg.className = 'modal-msg success';
+      setTimeout(function(){
+        closeRateModal();
+        doSearch();
+      }, 900);
+    }else{
+      msg.textContent = '送出失敗：' + (data.message || '未知錯誤');
+      msg.className = 'modal-msg error';
+    }
+  })
+  .catch(function(err){
+    const msg = document.getElementById('rateModalMsg');
+    msg.textContent = '送出失敗，請確認網路連線。（' + err.message + '）';
+    msg.className = 'modal-msg error';
+  })
+  .finally(function(){
+    btn.disabled = false;
+    btn.textContent = '送出評分';
+  });
+}
+</script>
+</body>
+</html>
