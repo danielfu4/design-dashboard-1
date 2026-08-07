@@ -347,8 +347,20 @@
   .issue-row:last-child{border-bottom:none;}
   .issue-row .tag{font-size:10.5px;font-weight:700;color:#fff;padding:3px 8px;border-radius:7px;justify-self:start;}
   .issue-row .rating{color:var(--ink-soft);}
-  .issue-row .reason{color:var(--ink);}
+  .issue-row .reason{color:var(--ink);min-width:0;}
   .empty-state{color:var(--ink-faint);font-size:12.5px;}
+
+  .reason-wrap{overflow:hidden;white-space:nowrap;min-width:0;}
+  .reason-wrap span{display:inline-block;white-space:nowrap;}
+  .reason-wrap.marquee span{animation:marqueeMove 3.2s ease-in-out infinite alternate;}
+
+  .urgent-row{
+    display:grid;grid-template-columns:96px 52px 1fr;gap:14px;align-items:baseline;
+    padding:11px 0;border-bottom:1px solid var(--line);font-size:12.5px;
+  }
+  .urgent-row:last-child{border-bottom:none;}
+  .urgent-row .urgent-person{font-weight:700;color:var(--ink);}
+  .urgent-row .urgent-count{color:var(--ink-soft);white-space:nowrap;}
 
   .expand-btn{
     margin-top:8px;border:none;background:var(--track);color:var(--ink-soft);
@@ -601,9 +613,15 @@
     </div>
   </div>
 
-  <div class="card full-card">
-    <div class="card-head"><div><div class="card-title">不滿意原因</div></div></div>
-    <div id="issueList"></div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">不滿意原因</div></div></div>
+      <div id="issueList"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><div class="card-title">急件案件統計</div></div></div>
+      <div id="urgentStatsList"></div>
+    </div>
   </div>
 
   <footer>
@@ -803,7 +821,7 @@ function initChartTooltip(){
 }
 
 function applyMarquee(){
-  document.querySelectorAll('.stack-label').forEach(function(el){
+  document.querySelectorAll('.stack-label, .reason-wrap').forEach(function(el){
     const span = el.querySelector('span');
     if(!span) return;
     const overflow = span.scrollWidth - el.clientWidth;
@@ -837,11 +855,85 @@ function loadTab(tabName){
   });
 }
 
+const REQUEST_SHEET_ID = '1Q0b8dS3zKVoypKNh0hNuburvp4NMxmAwbdjoSQ4ibNg';
+const REQUEST_TABS = ['Nikki需求單','Yuly需求單','Luna需求單','Daniel需求單'];
+
+function loadRequestTabRows(tabName){
+  return new Promise(function(resolve){
+    const cbName = 'gsheetCb3_' + tabName.replace(/[^a-zA-Z0-9]/g,'') + '_' + Date.now() + '_' + Math.floor(Math.random()*1e6);
+    let done = false;
+    window[cbName] = function(response){
+      if(done) return;
+      done = true;
+      let rows = [];
+      try{ rows = (response && response.table && response.table.rows) || []; }catch(e){}
+      delete window[cbName];
+      if(script.parentNode) script.remove();
+      resolve(rows);
+    };
+    const script = document.createElement('script');
+    script.src = 'https://docs.google.com/spreadsheets/d/' + REQUEST_SHEET_ID +
+      '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(tabName) + '&headers=1&_ts=' + Date.now();
+    script.onerror = function(){ if(done) return; done = true; resolve([]); };
+    document.body.appendChild(script);
+    setTimeout(function(){ if(done) return; done = true; resolve([]); }, 12000);
+  });
+}
+
+function loadUrgentStats(){
+  Promise.all(REQUEST_TABS.map(loadRequestTabRows)).then(function(results){
+    const allRows = results.reduce(function(acc, rows){ return acc.concat(rows); }, []);
+    const statsByPerson = {};
+    allRows.forEach(function(r){
+      const c = r.c || [];
+      const person = c[4] && c[4].v ? String(c[4].v).trim() : '';
+      const isUrgent = c[28] && c[28].v ? String(c[28].v).trim() : '';
+      if(isUrgent !== 'Y' || !person) return;
+      const cat = c[29] && c[29].v ? String(c[29].v).trim() : '';
+      const other = c[30] && c[30].v ? String(c[30].v).trim() : '';
+      const reason = (cat === '其他' && other) ? other : cat;
+      if(!statsByPerson[person]) statsByPerson[person] = { count:0, reasons:[] };
+      statsByPerson[person].count++;
+      if(reason && statsByPerson[person].reasons.indexOf(reason) === -1){
+        statsByPerson[person].reasons.push(reason);
+      }
+    });
+    renderUrgentStats(statsByPerson);
+  }).catch(function(){
+    renderUrgentStats({});
+  });
+}
+
+function renderUrgentStats(statsByPerson){
+  const wrap = document.getElementById('urgentStatsList');
+  if(!wrap) return;
+  const people = Object.keys(statsByPerson).sort(function(a,b){
+    return statsByPerson[b].count - statsByPerson[a].count;
+  });
+  if(people.length === 0){
+    wrap.innerHTML = '<div class="empty-state">目前沒有登記任何急件。</div>';
+    return;
+  }
+  wrap.innerHTML = people.map(function(name){
+    const info = statsByPerson[name];
+    const reasonText = info.reasons.length ? info.reasons.join('、') : '未填寫原因';
+    return (
+      '<div class="urgent-row">' +
+        '<span class="urgent-person">' + name + '</span>' +
+        '<span class="urgent-count">' + info.count + ' 件</span>' +
+        '<span class="reason reason-wrap"><span>' + reasonText + '</span></span>' +
+      '</div>'
+    );
+  }).join('');
+  applyMarquee();
+}
+
 function loadAll(manual){
   setLoading(true);
   if(manual) clearError();
   loadTimeoutHandles.forEach(clearTimeout);
   loadTimeoutHandles = [];
+  loadUrgentStats();
 
   const tabs = currentYearTabs();
   if(tabs.length === 0){
@@ -1138,10 +1230,11 @@ function render(cases, allCases){
           '<div class="issue-row">' +
             '<span class="tag" style="background:' + brandColor(i.brand) + '">' + i.brand + '</span>' +
             '<span class="rating">' + ratingLabel + '</span>' +
-            '<span class="reason">' + (i.project ? i.project + '：' : '') + i.reason + '</span>' +
+            '<span class="reason reason-wrap"><span>' + (i.project ? i.project + '：' : '') + i.reason + '</span></span>' +
           '</div>'
         );
       }).join('');
+      applyMarquee();
     }
   }catch(e){
     showError('畫面渲染發生問題：' + e.message);
