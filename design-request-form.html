@@ -478,6 +478,11 @@
         <textarea id="materials" placeholder="請貼上雲端連結，或說明素材存放位置"></textarea>
       </div>
 
+      <div class="field">
+        <label>通路</label>
+        <input type="text" id="channel" placeholder="例如：官網／蝦皮／momo（選填）">
+      </div>
+
       <div class="ec-detail" id="caseFieldsWrap" style="display:none;">
         <div class="ec-detail-title" id="caseFieldsTitle">案件所需資料</div>
         <div id="caseFieldsBody"></div>
@@ -1262,6 +1267,7 @@ function buildPayload(){
     fillDate: document.getElementById('fillDate').value,
     dueDate: document.getElementById('dueDate').value,
     materials: document.getElementById('materials').value,
+    channel: document.getElementById('channel').value,
     caseFields: collectCaseFieldValues(),
     notes: document.getElementById('notes').value,
     isUrgent: isUrgent ? 'Y' : '',
