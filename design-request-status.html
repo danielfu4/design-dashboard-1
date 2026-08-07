@@ -618,7 +618,8 @@ function renderResults(rows, name){
       supplement: cellText(c[35]),
       supplementTime: cellText(c[36]),
       ratingReason: cellText(c[37]),
-      designerReply: cellText(c[39])
+      designerReply: cellText(c[39]),
+      designHistory: cellText(c[40])
     });
   });
 
@@ -682,7 +683,9 @@ function renderResults(rows, name){
     if(m.designerReply){
       caseDetailHtml += '<div class="detail-block reply-shown-block"><div class="label">設計師回覆</div>' + m.designerReply + '</div>';
     }
-
+    if(m.designHistory){
+      caseDetailHtml += '<div class="detail-block"><div class="label">設計歷程</div>' + m.designHistory + '</div>';
+    }
 
 
 const hasRating = m.quality && m.efficiency && m.communication && m.price;
