@@ -197,7 +197,14 @@
   .cal-legend .cal-dot{width:8px;height:8px;border-radius:2px;background:#F6F6F7;box-shadow:inset 0 0 0 1px var(--ink-faint);}
 
   .rate-row{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
-  .action-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .action-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+  .action-row-left{display:flex;gap:8px;flex-wrap:wrap;}
+  .close-case-btn{
+    display:inline-flex;align-items:center;border:none;background:#1F8A4C;color:#fff;
+    font-family:inherit;font-weight:700;font-size:12.5px;padding:8px 16px;border-radius:10px;cursor:pointer;
+    margin-left:auto;
+  }
+  .close-case-btn:hover{opacity:.88;}
   .rate-btn{
     display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;
     color:var(--ink);font:inherit;font-weight:700;font-size:12.5px;padding:8px 14px;
@@ -330,8 +337,9 @@
   <div class="modal-card">
     <div class="modal-head">
       <div>
-        <div class="modal-title">案件評分</div>
+        <div class="modal-title">結案評分</div>
         <div class="modal-sub" id="rateModalReqName"></div>
+        <div class="modal-sub" style="margin-top:4px;">送出評分後，這筆案件的狀態會直接變成「已完成」</div>
       </div>
       <div class="modal-head-right">
         <div class="rate-score-badge" id="rateScoreBadge">0 分</div>
@@ -364,7 +372,7 @@
     </div>
 
     <button class="modal-submit rate-submit-btn" id="rateSubmitBtn" onclick="submitRating()">
-      <span id="rateSubmitBtnText">送出評分</span>
+      <span id="rateSubmitBtnText">確認結案</span>
       <div class="submit-success-check" id="rateSuccessCheck">
         <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
@@ -641,10 +649,6 @@ function renderResults(rows, name){
     const handlerLine = m.handler ? '　・　處理人員：<b>' + m.handler + '</b>' : '';
 
     const alreadyRated = !!(m.quality || m.efficiency || m.communication || m.price);
-    let rateHtml = '';
-    if(si.label === '已完成' && m.id && !alreadyRated){
-      rateHtml = '<div class="rate-row"><button class="rate-btn" onclick="openRateModalById(\'' + m.id + '\')">★ 評分</button></div>';
-    }
 
     const cloudIconSvg = '<svg class="cloud-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
       '<path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>' +
@@ -711,11 +715,15 @@ const hasRating = m.quality && m.efficiency && m.communication && m.price;
       notes: m.notes, reqPerson: m.reqPerson, handler: m.handler, caseFields: m.caseFields
     }) + ')\'>' + copyIconSvg + ' 複製並新增</button>';
 
+    const closeBtnHtml = (si.label === '請校稿' && m.id && !alreadyRated)
+      ? '<button class="close-case-btn" onclick="openRateModalById(\'' + m.id + '\')">結案</button>'
+      : '';
+
     const supplementBtnHtml = m.id
       ? '<button class="supplement-btn" onclick="openSupplementModalById(\'' + m.id + '\')">＋ 補充內容</button>'
       : '';
-    const actionRowHtml = (deliveryHtml || supplementBtnHtml || copyBtnHtml)
-      ? '<div class="rate-row action-row">' + deliveryHtml + supplementBtnHtml + copyBtnHtml + '</div>'
+    const actionRowHtml = (deliveryHtml || supplementBtnHtml || copyBtnHtml || closeBtnHtml)
+      ? '<div class="rate-row action-row"><div class="action-row-left">' + deliveryHtml + supplementBtnHtml + copyBtnHtml + '</div>' + closeBtnHtml + '</div>'
       : '';
 
     return (
@@ -741,7 +749,6 @@ const hasRating = m.quality && m.efficiency && m.communication && m.price;
         rejectHtml +
         caseDetailHtml +
         supplementHtml +
-        rateHtml +
         completedRatingRowHtml +
         actionRowHtml +
       '</div>'
@@ -1207,7 +1214,7 @@ function submitRating(){
     const msg = document.getElementById('rateModalMsg');
     if(data.status === 'success'){
       msg.textContent = '';
-      btnText.textContent = '送出評分';
+      btnText.textContent = '確認結案';
       btn.classList.add('success-state');
       setTimeout(function(){
         btn.classList.remove('success-state');
@@ -1218,7 +1225,7 @@ function submitRating(){
     }else{
       msg.textContent = '送出失敗：' + (data.message || '未知錯誤');
       msg.className = 'modal-msg error';
-      btnText.textContent = '送出評分';
+      btnText.textContent = '確認結案';
       btn.disabled = false;
     }
   })
@@ -1226,7 +1233,7 @@ function submitRating(){
     const msg = document.getElementById('rateModalMsg');
     msg.textContent = '送出失敗，請確認網路連線。（' + err.message + '）';
     msg.className = 'modal-msg error';
-    btnText.textContent = '送出評分';
+    btnText.textContent = '確認結案';
     btn.disabled = false;
   });
 }
