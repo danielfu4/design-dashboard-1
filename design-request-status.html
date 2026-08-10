@@ -652,7 +652,7 @@ function renderResults(rows, name){
       '<line class="cloud-arrow" x1="12" y1="12" x2="12" y2="21"></line>' +
     '</svg>';
     const deliveryHtml = m.deliveryLink
-      ? '<div class="rate-row"><a class="delivery-btn" href="' + m.deliveryLink + '" target="_blank">' + cloudIconSvg + ' 查看交付檔案</a></div>'
+      ? '<a class="delivery-btn" href="' + m.deliveryLink + '" target="_blank">' + cloudIconSvg + ' 查看交付檔案</a>'
       : '';
 
     const isUrgent = m.isUrgent === 'Y';
@@ -711,8 +711,8 @@ const hasRating = m.quality && m.efficiency && m.communication && m.price;
     const supplementBtnHtml = m.id
       ? '<button class="supplement-btn" onclick="openSupplementModalById(\'' + m.id + '\')">＋ 補充內容</button>'
       : '';
-    const actionRowHtml = (supplementBtnHtml || copyBtnHtml)
-      ? '<div class="rate-row action-row">' + supplementBtnHtml + copyBtnHtml + '</div>'
+    const actionRowHtml = (deliveryHtml || supplementBtnHtml || copyBtnHtml)
+      ? '<div class="rate-row action-row">' + deliveryHtml + supplementBtnHtml + copyBtnHtml + '</div>'
       : '';
 
     return (
@@ -738,7 +738,6 @@ const hasRating = m.quality && m.efficiency && m.communication && m.price;
         rejectHtml +
         caseDetailHtml +
         supplementHtml +
-        deliveryHtml +
         rateHtml +
         completedRatingRowHtml +
         actionRowHtml +
