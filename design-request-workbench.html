@@ -64,6 +64,12 @@
   .filter-bar{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;}
   .filter-field{display:flex;flex-direction:column;gap:6px;width:200px;}
   .filter-field label{font-size:11.5px;font-weight:700;color:var(--ink-soft);}
+  .filter-field.search-field{flex:1;min-width:220px;width:auto;}
+  .filter-field.search-field input{
+    border:1px solid var(--line);border-radius:10px;padding:9px 12px;
+    font-family:inherit;font-size:13px;color:var(--ink);background:#FAFAFB;box-sizing:border-box;
+  }
+  .filter-field.search-field input:focus{outline:none;border-color:var(--accent);background:#fff;}
   .eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--ink-soft);margin:0 0 4px;text-transform:uppercase;}
   h1{font-size:26px;font-weight:800;margin:0 0 6px;letter-spacing:-.01em;}
   .subtitle{font-size:13px;color:var(--ink-soft);}
@@ -286,6 +292,10 @@
         <div class="csel-panel" id="csel_statusFilter_panel"></div>
       </div>
       <input type="hidden" id="statusFilter" value="all">
+    </div>
+    <div class="filter-field search-field">
+      <label>搜尋</label>
+      <input type="text" id="searchInput" placeholder="搜尋需求名稱／需求人員／品牌" oninput="applyFilterAndRender()">
     </div>
   </div>
 
@@ -598,10 +608,18 @@ function applyFilterAndRender(){
   const allCases = window.__allCases || [];
   const sortMode = document.getElementById('sortFilter').value;
   const statusFilter = document.getElementById('statusFilter').value;
+  const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
 
   let cases = allCases.slice();
   if(statusFilter !== 'all'){
     cases = cases.filter(function(m){ return (m.status || '待處理') === statusFilter; });
+  }
+  if(searchTerm){
+    cases = cases.filter(function(m){
+      return (m.reqName || '').toLowerCase().indexOf(searchTerm) !== -1 ||
+        (m.reqPerson || '').toLowerCase().indexOf(searchTerm) !== -1 ||
+        (m.brand || '').toLowerCase().indexOf(searchTerm) !== -1;
+    });
   }
 
   if(sortMode === 'urgent'){
