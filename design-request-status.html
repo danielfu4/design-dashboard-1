@@ -651,8 +651,11 @@ function renderResults(rows, name){
       '<polyline class="cloud-arrow" points="8 17 12 21 16 17"></polyline>' +
       '<line class="cloud-arrow" x1="12" y1="12" x2="12" y2="21"></line>' +
     '</svg>';
+    const deliveryUrl = m.deliveryLink && !/^https?:\/\//i.test(m.deliveryLink)
+      ? 'https://' + m.deliveryLink
+      : m.deliveryLink;
     const deliveryHtml = m.deliveryLink
-      ? '<a class="delivery-btn" href="' + m.deliveryLink + '" target="_blank">' + cloudIconSvg + ' 查看交付檔案</a>'
+      ? '<a class="delivery-btn" href="' + deliveryUrl + '" target="_blank">' + cloudIconSvg + ' 查看交付檔案</a>'
       : '';
 
     const isUrgent = m.isUrgent === 'Y';
