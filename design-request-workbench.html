@@ -61,6 +61,9 @@
   .refresh-link:hover{background:#F7F7F8;}
 
   header{margin-bottom:20px;}
+  .filter-bar{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;}
+  .filter-field{display:flex;flex-direction:column;gap:6px;width:200px;}
+  .filter-field label{font-size:11.5px;font-weight:700;color:var(--ink-soft);}
   .eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--ink-soft);margin:0 0 4px;text-transform:uppercase;}
   h1{font-size:26px;font-weight:800;margin:0 0 6px;letter-spacing:-.01em;}
   .subtitle{font-size:13px;color:var(--ink-soft);}
@@ -261,6 +264,31 @@
     <div class="subtitle" id="viewingSubtitle">目前檢視：Daniel</div>
   </header>
 
+  <div class="filter-bar">
+    <div class="filter-field">
+      <label>排序</label>
+      <div class="csel" id="csel_sortFilter">
+        <button type="button" class="csel-trigger" onclick="toggleCsel('sortFilter')">
+          <span class="csel-trigger-text" id="csel_sortFilter_text"></span>
+          <span class="csel-arrow"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="csel-panel" id="csel_sortFilter_panel"></div>
+      </div>
+      <input type="hidden" id="sortFilter" value="urgent">
+    </div>
+    <div class="filter-field">
+      <label>狀態篩選</label>
+      <div class="csel" id="csel_statusFilter">
+        <button type="button" class="csel-trigger" onclick="toggleCsel('statusFilter')">
+          <span class="csel-trigger-text" id="csel_statusFilter_text"></span>
+          <span class="csel-arrow"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="csel-panel" id="csel_statusFilter_panel"></div>
+      </div>
+      <input type="hidden" id="statusFilter" value="all">
+    </div>
+  </div>
+
   <div id="caseList">
     <div class="state-msg">讀取中...</div>
   </div>
@@ -388,6 +416,23 @@ function initCsel(id, options, value, onChange){
   if(textEl) textEl.textContent = opt ? opt.label : (options[0] ? options[0].label : '');
   renderCselPanel(id);
 }
+
+initCsel('sortFilter', [
+  { value:'urgent', label:'急件優先' },
+  { value:'dueAsc', label:'需求日期（近到遠）' },
+  { value:'dueDesc', label:'需求日期（遠到近）' },
+  { value:'fillDesc', label:'填單日期（新到舊）' },
+  { value:'fillAsc', label:'填單日期（舊到新）' }
+], 'urgent', function(){ applyFilterAndRender(); });
+
+initCsel('statusFilter', [
+  { value:'all', label:'全部' },
+  { value:'待處理', label:'待處理' },
+  { value:'進行中', label:'進行中' },
+  { value:'請校稿', label:'請校稿' },
+  { value:'已完成', label:'已完成' },
+  { value:'退件', label:'退件' }
+], 'all', function(){ applyFilterAndRender(); });
 
 
 const SHEET_ID = '1Q0b8dS3zKVoypKNh0hNuburvp4NMxmAwbdjoSQ4ibNg';
@@ -533,11 +578,58 @@ function renderCases(response){
 
   if(cases.length === 0){
     list.innerHTML = '<div class="state-msg">目前沒有案件資料。</div>';
+    window.__allCases = [];
     return;
   }
 
-  cases.sort(function(a,b){ return (b.isUrgent === 'Y' ? 1 : 0) - (a.isUrgent === 'Y' ? 1 : 0); });
+  window.__allCases = cases;
+  applyFilterAndRender();
+}
+
+function parseDate(str){
+  if(!str) return null;
+  const m = String(str).match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if(!m) return null;
+  return new Date(parseInt(m[1],10), parseInt(m[2],10)-1, parseInt(m[3],10)).getTime();
+}
+
+function applyFilterAndRender(){
+  const list = document.getElementById('caseList');
+  const allCases = window.__allCases || [];
+  const sortMode = document.getElementById('sortFilter').value;
+  const statusFilter = document.getElementById('statusFilter').value;
+
+  let cases = allCases.slice();
+  if(statusFilter !== 'all'){
+    cases = cases.filter(function(m){ return (m.status || '待處理') === statusFilter; });
+  }
+
+  if(sortMode === 'urgent'){
+    cases.sort(function(a,b){ return (b.isUrgent === 'Y' ? 1 : 0) - (a.isUrgent === 'Y' ? 1 : 0); });
+  }else if(sortMode === 'dueAsc' || sortMode === 'dueDesc'){
+    cases.sort(function(a,b){
+      const da = parseDate(a.dueDate), db = parseDate(b.dueDate);
+      if(da === null && db === null) return 0;
+      if(da === null) return 1;
+      if(db === null) return -1;
+      return sortMode === 'dueAsc' ? da - db : db - da;
+    });
+  }else if(sortMode === 'fillDesc' || sortMode === 'fillAsc'){
+    cases.sort(function(a,b){
+      const da = parseDate(a.fillDate), db = parseDate(b.fillDate);
+      if(da === null && db === null) return 0;
+      if(da === null) return 1;
+      if(db === null) return -1;
+      return sortMode === 'fillAsc' ? da - db : db - da;
+    });
+  }
+
   window.__cases = cases;
+
+  if(cases.length === 0){
+    list.innerHTML = '<div class="state-msg">沒有符合篩選條件的案件。</div>';
+    return;
+  }
 
   list.innerHTML = cases.map(renderCaseCard).join('');
   initCaseFieldVisibility();
