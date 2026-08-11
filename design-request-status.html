@@ -419,6 +419,10 @@
       <label>需求人員 <span style="color:#B3324A;">*</span></label>
       <input type="text" id="copyReqPerson">
     </div>
+    <div class="field-simple">
+      <label>通路</label>
+      <input type="text" id="copyChannel" placeholder="例如：官網／蝦皮／momo（選填）">
+    </div>
     <div class="field-simple" id="copyDesignerWrap" style="display:none;">
       <label>指定設計師 <span style="color:#B3324A;">*</span></label>
       <select id="copyDesigner" onchange="loadCopyDateCounts()"></select>
@@ -713,7 +717,7 @@ const hasRating = m.quality && m.efficiency && m.communication && m.price;
     '</svg>';
     const copyBtnHtml = '<button class="copy-btn" onclick=\'copyCaseAndCreate(' + JSON.stringify({
       brand: m.brand, reqType: m.reqType, caseType: m.caseType, materials: m.materials,
-      notes: m.notes, reqPerson: m.reqPerson, handler: m.handler, caseFields: m.caseFields
+      notes: m.notes, reqPerson: m.reqPerson, handler: m.handler, caseFields: m.caseFields, channel: m.channel
     }) + ')\'>' + copyIconSvg + ' 複製並新增</button>';
 
     const closeBtnHtml = (si.label === '請校稿' && m.id && !alreadyRated)
@@ -850,6 +854,7 @@ function copyCaseAndCreate(data){
     data.brand + '・' + data.reqType + (data.caseType ? '・' + data.caseType : '');
   document.getElementById('copyReqName').value = '';
   document.getElementById('copyReqPerson').value = data.reqPerson || '';
+  document.getElementById('copyChannel').value = data.channel || '';
   document.getElementById('copyMaterials').value = data.materials || '';
   document.getElementById('copyCaseFields').value = data.caseFields || '';
   document.getElementById('copyNotes').value = data.notes || '';
@@ -1084,6 +1089,7 @@ function submitCopiedCase(){
     dueDate: dueDate,
     materials: document.getElementById('copyMaterials').value,
     caseFields: document.getElementById('copyCaseFields').value,
+    channel: document.getElementById('copyChannel').value,
     notes: document.getElementById('copyNotes').value,
     isUrgent: isUrgent ? 'Y' : '',
     urgentReasonCat: isUrgent ? '延續先前案件（複製新增）' : '',
