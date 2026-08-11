@@ -572,6 +572,7 @@ function renderCases(response){
       urgentOther: cellText(c[30]),
       caseType: cellText(c[31]),
       caseFields: cellText(c[32]),
+      channel: cellText(c[38]),
       hours: cellText(c[33]),
       fee: cellText(c[34]),
       supplement: cellText(c[35]),
@@ -719,6 +720,7 @@ function renderCaseCard(m){
             '<span class="case-tag">' + m.brand + '</span>' +
             '<span class="case-tag">' + m.reqType + '</span>' +
             (m.caseType ? '<span class="case-tag">' + m.caseType + '</span>' : '') +
+            (m.channel ? '<span class="case-tag">' + m.channel + '</span>' : '') +
           '</div>' +
         '</div>' +
         '<div class="case-top-right">' +

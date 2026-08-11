@@ -621,6 +621,7 @@ function renderResults(rows, name){
       isUrgent: cellText(c[28]),
       caseType: cellText(c[31]),
       caseFields: cellText(c[32]),
+      channel: cellText(c[38]),
       hours: cellText(c[33]),
       fee: cellText(c[34]),
       supplement: cellText(c[35]),
@@ -735,6 +736,7 @@ const hasRating = m.quality && m.efficiency && m.communication && m.price;
               '<span class="req-tag">' + m.brand + '</span>' +
               '<span class="req-tag">' + m.reqType + '</span>' +
               (m.caseType ? '<span class="req-tag">' + m.caseType + '</span>' : '') +
+              (m.channel ? '<span class="req-tag">' + m.channel + '</span>' : '') +
             '</div>' +
           '</div>' +
           '<div class="req-top-right">' +
