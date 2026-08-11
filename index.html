@@ -965,11 +965,12 @@ function loadAll(manual){
 
 function applyFilterAndRender(){
   const all = window.__allCases || [];
-  let filtered = currentDesigner === 'all' ? all : all.filter(function(c){ return c.designer === currentDesigner; });
+  const designerFiltered = currentDesigner === 'all' ? all : all.filter(function(c){ return c.designer === currentDesigner; });
+  let filtered = designerFiltered;
   if(currentMonth !== 'all'){
     filtered = filtered.filter(function(c){ return c.month === Number(currentMonth); });
   }
-  render(filtered, all);
+  render(filtered, designerFiltered);
 }
 
 document.getElementById('designerSwitch').addEventListener('click', function(e){
@@ -1042,6 +1043,15 @@ function render(cases, allCases){
       byDesigner[c.designer] = (byDesigner[c.designer]||0) + 1;
     });
 
+    // 月度趨勢固定用「未套用月份篩選」的資料算，這樣不管左上角選哪個月，趨勢線都還是完整的全年走勢
+    const monthAggFull = {};
+    allCases.forEach(function(c){
+      if(c.month === null || c.month === undefined) return;
+      if(!monthAggFull[c.month]) monthAggFull[c.month] = { fee:0, hours:0 };
+      monthAggFull[c.month].fee += c.fee;
+      monthAggFull[c.month].hours += c.hours;
+    });
+
     // stat cards
     document.getElementById('totalFee').textContent = fmtMoney(totals.fee);
     document.getElementById('totalFee').classList.remove('skeleton');
@@ -1104,7 +1114,7 @@ function render(cases, allCases){
 
     // multi-chart panel (類別占比 / 品牌排行 / 月度趨勢 / 類型分布)
     const categories = Object.keys(byCategory);
-    window.__chartData = { cases:cases, byBrand:byBrand, brandList:brandList, catTotals:catTotals, categories:categories, monthAgg:monthAgg, typeCounts:typeCounts, typeLabels:typeLabels };
+    window.__chartData = { cases:cases, byBrand:byBrand, brandList:brandList, catTotals:catTotals, categories:categories, monthAgg:monthAgg, monthAggFull:monthAggFull, typeCounts:typeCounts, typeLabels:typeLabels };
     renderChartPanel();
 
     // brand composition bar (case share)
@@ -1253,7 +1263,8 @@ function renderChartPanel(){
     renderBrandRank(d, body);
   }else if(currentChartView === 'monthTrend'){
     titleEl.textContent = '月度趨勢';
-    subEl.textContent = '設計費與工時的月份變化（各自依自身最大值換算高度，實際數值請看標籤）';
+    subEl.textContent = '設計費與工時的月份變化（各自依自身最大值換算高度，實際數值請看標籤）' +
+      (currentMonth !== 'all' ? '　－　此圖固定顯示全年走勢，不受左上角月份篩選影響' : '');
     renderMonthTrend(d, body);
   }else if(currentChartView === 'typeDist'){
     titleEl.textContent = '案件類型分布';
@@ -1368,15 +1379,15 @@ function renderBrandRank(d, body){
 }
 
 function renderMonthTrend(d, body){
-  const months = Object.keys(d.monthAgg).map(Number).sort(function(a,b){ return a-b; });
+  const months = Object.keys(d.monthAggFull).map(Number).sort(function(a,b){ return a-b; });
   if(months.length === 0){
     body.innerHTML = '<div class="empty-state" style="margin-top:10px;">目前沒有月份資料。</div>';
     return;
   }
   const W = 640, H = 220, padL = 20, padR = 20, padT = 16, padB = 30;
   const plotW = W - padL - padR, plotH = H - padT - padB;
-  const feeVals = months.map(function(m){ return d.monthAgg[m].fee; });
-  const hourVals = months.map(function(m){ return d.monthAgg[m].hours; });
+  const feeVals = months.map(function(m){ return d.monthAggFull[m].fee; });
+  const hourVals = months.map(function(m){ return d.monthAggFull[m].hours; });
   const maxFee = Math.max.apply(null, feeVals.concat([1]));
   const maxHours = Math.max.apply(null, hourVals.concat([1]));
 
