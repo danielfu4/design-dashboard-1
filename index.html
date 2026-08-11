@@ -647,8 +647,22 @@ const BRAND_COLORS = { TCL:'#F1516E', BALMUDA:'#33343A', IRIS:'#4FC3F0', LUPLUP:
 const BRAND_ORDER = ['TCL','BALMUDA','IRIS','LUPLUP','WINIX'];
 const FALLBACK_COLOR = '#B7B7BE';
 const PALETTE = ['#4FC3F0','#F1516E','#F5A94E','#14BFA6','#7C6CE0','#F0C94E','#33343A'];
+const EXTRA_BRAND_PALETTE = [
+  '#E8574F','#5B8DEF','#22B07D','#B5539E','#E8A33D','#3AAFA9','#C44569',
+  '#6C5CE7','#00A88E','#E17055','#0984E3','#D6336C','#0FA3A3','#6AB04C',
+  '#9C6DE0','#F0932B','#3D7EAA','#EB5B8C','#2FA37B','#A85CD6','#E0B23D','#2E86AB'
+];
+function hashStr(str){
+  let h = 0;
+  for(let i = 0; i < str.length; i++){ h = (h * 31 + str.charCodeAt(i)) >>> 0; }
+  return h;
+}
 
-function brandColor(name){ return BRAND_COLORS[name] || FALLBACK_COLOR; }
+function brandColor(name){
+  if(BRAND_COLORS[name]) return BRAND_COLORS[name];
+  if(!name) return FALLBACK_COLOR;
+  return EXTRA_BRAND_PALETTE[hashStr(name) % EXTRA_BRAND_PALETTE.length];
+}
 function catColor(i){ return PALETTE[i % PALETTE.length]; }
 
 function fmtMoney(n){ return 'NT$' + Math.round(n).toLocaleString('en-US'); }
