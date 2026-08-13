@@ -395,6 +395,28 @@
     cursor:pointer;
   }
 
+  .csel{position:relative;}
+  .csel-trigger{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    border:1px solid var(--line);border-radius:10px;padding:8px 12px;
+    font-family:inherit;font-weight:600;font-size:12.5px;color:var(--ink);background:#fff;cursor:pointer;text-align:left;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .csel-trigger:hover{background:#F5F5F6;}
+  .csel.open .csel-trigger{border-color:var(--c-blue);background:#fff;}
+  .csel-arrow{color:var(--ink-soft);transition:transform .15s ease;flex:none;display:flex;}
+  .csel.open .csel-arrow{transform:rotate(180deg);}
+  .csel-panel{
+    display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;
+    background:#fff;border-radius:14px;box-shadow:0 14px 32px rgba(20,20,30,.16);
+    padding:6px;max-height:220px;overflow-y:auto;min-width:120px;
+  }
+  .csel-panel.show{display:block;}
+  .csel-item{padding:9px 12px;border-radius:9px;font-size:12.5px;color:var(--ink);cursor:pointer;white-space:nowrap;}
+  .csel-item + .csel-item{margin-top:3px;}
+  .csel-item:hover{background:#F1F1F3;}
+  .csel-item.selected{background:#F1F1F3;font-weight:700;}
+
   footer{margin-top:32px;font-size:11px;color:var(--ink-faint);line-height:1.9;}
   footer a{color:var(--ink-soft);}
   .skeleton{color:var(--ink-faint);}
@@ -514,10 +536,22 @@
           <button class="seg-btn" data-d="Yuly">Yuly</button>
           <button class="seg-btn" data-d="Daniel">Daniel</button>
         </div>
-        <select class="month-select" id="yearSelect" onchange="onYearChange(this.value)"></select>
-        <select class="month-select" id="monthSelect" onchange="onMonthChange(this.value)">
-          <option value="all">全部月份</option>
-        </select>
+        <div class="csel" id="csel_yearFilter">
+          <button type="button" class="csel-trigger" onclick="toggleCsel('yearFilter')">
+            <span class="csel-trigger-text" id="csel_yearFilter_text"></span>
+            <span class="csel-arrow"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+          </button>
+          <div class="csel-panel" id="csel_yearFilter_panel"></div>
+        </div>
+        <input type="hidden" id="yearFilter">
+        <div class="csel" id="csel_monthFilter">
+          <button type="button" class="csel-trigger" onclick="toggleCsel('monthFilter')">
+            <span class="csel-trigger-text" id="csel_monthFilter_text"></span>
+            <span class="csel-arrow"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+          </button>
+          <div class="csel-panel" id="csel_monthFilter_panel"></div>
+        </div>
+        <input type="hidden" id="monthFilter" value="all">
       </div>
     </div>
   </header>
@@ -635,6 +669,67 @@
 <div class="chart-tooltip" id="chartTooltip"></div>
 
 <script>
+// ---- 自訂下拉選單元件（放最前面，確保其他程式碼執行時已經可用）----
+const cselState = {};
+
+function cselSetOptions(id, options, placeholder){
+  if(!cselState[id]) cselState[id] = {};
+  cselState[id].options = options; // [{value,label}]
+  if(placeholder) cselState[id].placeholder = placeholder;
+  renderCselPanel(id);
+}
+
+function renderCselPanel(id){
+  const st = cselState[id];
+  const panel = document.getElementById('csel_' + id + '_panel');
+  if(!panel || !st.options) return;
+  panel.innerHTML = st.options.map(function(opt){
+    const selected = opt.value === st.value;
+    const safeVal = opt.value.replace(/'/g, "\\'");
+    return '<div class="csel-item' + (selected ? ' selected' : '') + '" onclick="cselChoose(\'' + id + '\',\'' + safeVal + '\')">' + opt.label + '</div>';
+  }).join('');
+}
+
+function cselChoose(id, val){
+  const st = cselState[id];
+  const opt = st.options.filter(function(o){ return o.value === val; })[0];
+  st.value = val;
+  const hiddenEl = document.getElementById(id);
+  if(hiddenEl) hiddenEl.value = val;
+  const textEl = document.getElementById('csel_' + id + '_text');
+  if(textEl) textEl.textContent = opt ? opt.label : val;
+  closeAllCsel();
+  renderCselPanel(id);
+  if(st.onChange) st.onChange(val);
+}
+
+function toggleCsel(id){
+  const panel = document.getElementById('csel_' + id + '_panel');
+  const wasOpen = panel.classList.contains('show');
+  closeAllCsel();
+  if(!wasOpen){
+    panel.classList.add('show');
+    document.getElementById('csel_' + id).classList.add('open');
+  }
+}
+
+function closeAllCsel(){
+  document.querySelectorAll('.csel-panel.show').forEach(function(p){ p.classList.remove('show'); });
+  document.querySelectorAll('.csel.open').forEach(function(c){ c.classList.remove('open'); });
+}
+
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.csel')) closeAllCsel();
+});
+
+function initCsel(id, options, value, onChange){
+  const opt = options.filter(function(o){ return o.value === value; })[0];
+  cselState[id] = { options: options, value: value, placeholder: options[0] ? options[0].label : '', onChange: onChange };
+  const textEl = document.getElementById('csel_' + id + '_text');
+  if(textEl) textEl.textContent = opt ? opt.label : (options[0] ? options[0].label : '');
+  renderCselPanel(id);
+}
+
 const SHEET_ID = '1hcNsH0Hc-GrBQbbC7CNr20N_uEKpXd5-4D-ulD7CTbg';
 // 每個年度對應的分頁名稱。之後如果新增像 2027 年度的新分頁，
 // 只要在這裡加一行（例如 '2027': ['Nikki2027','Luna2027',...]），年份選單會自動抓到。
@@ -730,18 +825,18 @@ function onMonthChange(v){
   applyFilterAndRender();
 }
 function updateMonthOptions(allCases){
-  const select = document.getElementById('monthSelect');
   const months = Array.from(new Set(allCases.map(function(c){ return c.month; })
     .filter(function(m){ return m !== null && m !== undefined; })))
     .sort(function(a,b){ return a-b; });
   const prev = currentMonth;
-  select.innerHTML = '<option value="all">全部月份</option>' +
-    months.map(function(m){ return '<option value="' + m + '">' + m + ' 月</option>'; }).join('');
   // keep the previous selection if it still exists in the new option list, otherwise reset to all
   if(prev !== 'all' && months.indexOf(Number(prev)) === -1){
     currentMonth = 'all';
   }
-  select.value = currentMonth;
+  const options = [{ value:'all', label:'全部月份' }].concat(
+    months.map(function(m){ return { value:String(m), label:m + ' 月' }; })
+  );
+  initCsel('monthFilter', options, String(currentMonth), function(v){ onMonthChange(v); });
 }
 
 function setLoading(isLoading){
@@ -1531,9 +1626,8 @@ document.getElementById('chartSwitch').addEventListener('click', function(e){
 });
 
 function initYearSelect(){
-  const select = document.getElementById('yearSelect');
-  select.innerHTML = Object.keys(YEARS).map(function(y){ return '<option value="' + y + '">' + y + '</option>'; }).join('');
-  select.value = currentYear;
+  const options = Object.keys(YEARS).map(function(y){ return { value: y, label: y }; });
+  initCsel('yearFilter', options, currentYear, function(v){ onYearChange(v); });
 }
 
 function scheduleHourlyRefresh(){
