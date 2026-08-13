@@ -894,28 +894,53 @@ function loadRequestTabRows(tabName){
   });
 }
 
-function loadUrgentStats(){
-  Promise.all(REQUEST_TABS.map(loadRequestTabRows)).then(function(results){
-    const allRows = results.reduce(function(acc, rows){ return acc.concat(rows); }, []);
-    const statsByPerson = {};
-    allRows.forEach(function(r){
-      const c = r.c || [];
-      const person = c[4] && c[4].v ? String(c[4].v).trim() : '';
-      const isUrgent = c[28] && c[28].v ? String(c[28].v).trim() : '';
-      if(isUrgent !== 'Y' || !person) return;
-      const cat = c[29] && c[29].v ? String(c[29].v).trim() : '';
-      const other = c[30] && c[30].v ? String(c[30].v).trim() : '';
-      const reason = (cat === '其他' && other) ? other : cat;
-      if(!statsByPerson[person]) statsByPerson[person] = { count:0, reasons:[] };
-      statsByPerson[person].count++;
-      if(reason && statsByPerson[person].reasons.indexOf(reason) === -1){
-        statsByPerson[person].reasons.push(reason);
-      }
-    });
-    renderUrgentStats(statsByPerson);
-  }).catch(function(){
-    renderUrgentStats({});
+function parseRequestRows(rows, designerName){
+  const cases = [];
+  rows.forEach(function(r){
+    const c = r.c || [];
+    const brand = c[1] && c[1].v ? String(c[1].v).trim() : '';
+    if(!brand) return;
+    const category = c[2] && c[2].v ? String(c[2].v).trim() : '未分類';
+    const caseType = c[31] && c[31].v ? String(c[31].v).trim() : '';
+    const project = c[3] && c[3].v ? String(c[3].v).trim() : '';
+    const hours = (c[33] && typeof c[33].v === 'number') ? c[33].v : (c[33] && c[33].v ? Number(c[33].v) || 0 : 0);
+    const fee   = (c[34] && typeof c[34].v === 'number') ? c[34].v : (c[34] && c[34].v ? Number(c[34].v) || 0 : 0);
+    const status = c[17] && c[17].v ? String(c[17].v).trim() : '待處理';
+    const done = status === '已完成';
+    const stopped = status === '退件';
+    const notDone = !done && !stopped;
+    const quality       = c[23] ? parseRating(c[23].v) : null;
+    const efficiency    = c[24] ? parseRating(c[24].v) : null;
+    const communication = c[25] ? parseRating(c[25].v) : null;
+    const price          = c[26] ? parseRating(c[26].v) : null;
+    const dims = [quality, efficiency, communication, price].filter(function(x){ return x !== null; });
+    const rating = dims.length ? (dims.reduce(function(a,b){ return a+b; }, 0) / dims.length) : null;
+    const reason = c[37] && c[37].v ? String(c[37].v).trim() : '';
+    const submitRaw = c[0] && (c[0].f || c[0].v) ? String(c[0].f || c[0].v) : '';
+    const dm = submitRaw.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    const month = dm ? parseInt(dm[2], 10) : null;
+    cases.push({ designer: designerName, brand, category, caseType, month, project, hours, fee, done, notDone, stopped, quality, efficiency, communication, price, rating, reason });
   });
+  return cases;
+}
+
+function computeUrgentStats(allRows){
+  const statsByPerson = {};
+  allRows.forEach(function(r){
+    const c = r.c || [];
+    const person = c[4] && c[4].v ? String(c[4].v).trim() : '';
+    const isUrgent = c[28] && c[28].v ? String(c[28].v).trim() : '';
+    if(isUrgent !== 'Y' || !person) return;
+    const cat = c[29] && c[29].v ? String(c[29].v).trim() : '';
+    const other = c[30] && c[30].v ? String(c[30].v).trim() : '';
+    const reason = (cat === '其他' && other) ? other : cat;
+    if(!statsByPerson[person]) statsByPerson[person] = { count:0, reasons:[] };
+    statsByPerson[person].count++;
+    if(reason && statsByPerson[person].reasons.indexOf(reason) === -1){
+      statsByPerson[person].reasons.push(reason);
+    }
+  });
+  return statsByPerson;
 }
 
 function renderUrgentStats(statsByPerson){
@@ -947,7 +972,6 @@ function loadAll(manual){
   if(manual) clearError();
   loadTimeoutHandles.forEach(clearTimeout);
   loadTimeoutHandles = [];
-  loadUrgentStats();
 
   const tabs = currentYearTabs();
   if(tabs.length === 0){
@@ -956,13 +980,32 @@ function loadAll(manual){
     return;
   }
 
-  Promise.allSettled(tabs.map(loadTab)).then(function(results){
+  const originalSheetPromise = Promise.allSettled(tabs.map(loadTab));
+  const requestSheetPromise = Promise.all(REQUEST_TABS.map(function(tabName){
+    return loadRequestTabRows(tabName).then(function(rows){ return { tabName: tabName, rows: rows }; });
+  }));
+
+  Promise.allSettled([originalSheetPromise, requestSheetPromise]).then(function(outer){
     let allCases = [];
     const failed = [];
-    results.forEach(function(r, i){
-      if(r.status === 'fulfilled') allCases = allCases.concat(r.value);
-      else failed.push(tabs[i]);
-    });
+
+    if(outer[0].status === 'fulfilled'){
+      outer[0].value.forEach(function(r, i){
+        if(r.status === 'fulfilled') allCases = allCases.concat(r.value);
+        else failed.push(tabs[i]);
+      });
+    }
+
+    let allUrgentRows = [];
+    if(outer[1].status === 'fulfilled'){
+      outer[1].value.forEach(function(entry){
+        const designerName = entry.tabName.replace('需求單', '');
+        allCases = allCases.concat(parseRequestRows(entry.rows, designerName));
+        allUrgentRows = allUrgentRows.concat(entry.rows);
+      });
+    }
+    renderUrgentStats(computeUrgentStats(allUrgentRows));
+
     if(allCases.length === 0){
       showError('沒有讀到任何案件資料，請確認分頁名稱是否正確（目前嘗試：' + tabs.join('、') + '）。');
     } else if(failed.length){
