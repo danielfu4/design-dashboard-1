@@ -623,28 +623,10 @@
     <button class="expand-btn" id="hoursExpandBtn" onclick="toggleHoursExpand()" style="display:none;"></button>
   </div>
 
-  <div class="two-col">
-    <div class="card">
-      <div class="card-head"><div><div class="card-title">各品牌平均滿意度</div></div></div>
-      <div id="brandRatingBars"></div>
-      <button class="expand-btn" id="ratingExpandBtn" onclick="toggleRatingExpand()" style="display:none;"></button>
-    </div>
-    <div class="card">
-      <div class="card-head"><div><div class="card-title">評分分佈</div></div></div>
-      <div id="ratingDist"></div>
-    </div>
-  </div>
-
-  <div class="two-col">
-    <div class="card">
-      <div class="card-head"><div><div class="card-title">案件進度</div></div></div>
-      <div class="comp-bar" id="statusCompBar"></div>
-      <div class="legend-row" id="statusLegend" style="margin-top:12px;"></div>
-    </div>
-    <div class="card">
-      <div class="card-head"><div><div class="card-title">各設計師案件數</div></div></div>
-      <div id="designerBars"></div>
-    </div>
+  <div class="card full-card">
+    <div class="card-head"><div><div class="card-title">各品牌平均滿意度</div></div></div>
+    <div id="brandRatingBars"></div>
+    <button class="expand-btn" id="ratingExpandBtn" onclick="toggleRatingExpand()" style="display:none;"></button>
   </div>
 
   <div class="two-col">
@@ -1336,50 +1318,6 @@ function render(cases, allCases){
     }else{
       ratingBtn.style.display = 'none';
     }
-
-    // rating distribution
-    const maxDist = Math.max.apply(null, [1,2,3,4,5].map(function(k){ return ratingDist[k]; }).concat([1]));
-    document.getElementById('ratingDist').innerHTML = [5,4,3,2,1].map(function(k){
-      const v = ratingDist[k];
-      const w = (v/maxDist*100);
-      return (
-        '<div class="hbar-row">' +
-          '<div class="name">' + k + ' 星</div>' +
-          '<div class="hbar-track"><div class="hbar-fill" style="width:' + w + '%;background:var(--c-orange)"></div></div>' +
-          '<div class="hbar-val">' + v + ' 件</div>' +
-        '</div>'
-      );
-    }).join('');
-
-    // status composition bar
-    const segs2 = [
-      { label:'完稿', v: status.done, color:'var(--green)' },
-      { label:'未完稿', v: status.notDone, color:'var(--c-orange)' },
-      { label:'專案停止', v: status.stopped, color:'var(--red)' },
-      { label:'未標記', v: status.other, color:'var(--ink-faint)' }
-    ].filter(function(s){ return s.v > 0; });
-    document.getElementById('statusCompBar').innerHTML = segs2.map(function(s){
-      const w = totals.count ? (s.v/totals.count*100) : 0;
-      return '<div style="width:' + w + '%;background:' + s.color + '"></div>';
-    }).join('');
-    document.getElementById('statusLegend').innerHTML = segs2.map(function(s){
-      return '<span><span class="dot" style="background:' + s.color + '"></span>' + s.label + '<b>' + s.v + ' 件</b></span>';
-    }).join('');
-
-    // designer breakdown (always from full unfiltered set, for context)
-    const designerList = currentYearTabs().filter(function(d){ return byDesigner[d]; });
-    const maxDCount = Math.max.apply(null, designerList.map(function(d){ return byDesigner[d]; }).concat([1]));
-    document.getElementById('designerBars').innerHTML = (designerList.length ? designerList : ['—']).map(function(d){
-      const v = byDesigner[d] || 0;
-      const w = (v/maxDCount*100);
-      return (
-        '<div class="hbar-row">' +
-          '<div class="name">' + d + '</div>' +
-          '<div class="hbar-track"><div class="hbar-fill" style="width:' + w + '%;background:var(--c-purple)"></div></div>' +
-          '<div class="hbar-val">' + v + ' 件</div>' +
-        '</div>'
-      );
-    }).join('');
 
     // issues
     const issueList = document.getElementById('issueList');
