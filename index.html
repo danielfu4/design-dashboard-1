@@ -835,7 +835,15 @@ function clearError(){ document.getElementById('errorBanner').style.display = 'n
 function buildColIndex(headerRowCells){
   const idx = {};
   headerRowCells.forEach(function(cell, i){
-    const label = cell && cell.v !== null && cell.v !== undefined ? String(cell.v).trim() : '';
+    // 用「顯示文字」(.f) 優先，不要用「判斷後的數值」(.v)——
+    // 如果整欄大多是數字，Google 試算表的資料介面會把該欄判定成數字類型，
+    // 標題文字（例如「時數」「設計價」）用 .v 讀反而會被吃成空白，但 .f 通常還是保留原始顯示文字。
+    let raw = null;
+    if(cell){
+      if(cell.f !== undefined && cell.f !== null && cell.f !== '') raw = cell.f;
+      else if(cell.v !== undefined && cell.v !== null) raw = cell.v;
+    }
+    const label = raw !== null ? String(raw).trim() : '';
     if(label && !(label in idx)) idx[label] = i; // 第一次出現的位置為準
   });
   return idx;
@@ -859,14 +867,18 @@ function parseResponse(response, designer){
   const rows = response.table.rows;
 
   // 每個設計師分頁前面幾列可能是標題、合併儲存格說明、總計數字，
-  // 真正的欄位名稱那一列不一定固定在第幾列，所以掃描找出第一格是「序」的那一列，
-  // 用那一列的實際文字內容當作欄位對照表，不管欄位順序或有沒有多插欄位都能正確對到。
+  // 真正的欄位名稱那一列不一定固定在第幾列，所以掃描找出欄位標題列。
+  // 注意：不能用「序」這欄來定位——那一整欄幾乎都是數字，
+  // Google 試算表的資料介面會把整欄判定成數字類型，標題文字「序」反而會被當成不符類型、讀成空白。
+  // 改用「品牌」這個文字欄位來定位（文字欄位不會有這個問題），「序」欄則在讀資料列時直接用欄位位置（A欄）判斷是不是數字。
   let headerRowIndex = -1;
   let idx = null;
   for(let i = 0; i < rows.length; i++){
     const cells = rows[i].c || [];
-    const first = cells[0] && cells[0].v !== null && cells[0].v !== undefined ? String(cells[0].v).trim() : '';
-    if(first === '序'){
+    const secondCell = cells[1];
+    const secondRaw = secondCell ? (secondCell.f || secondCell.v) : null;
+    const second = secondRaw !== null && secondRaw !== undefined ? String(secondRaw).trim() : '';
+    if(second === '品牌'){
       headerRowIndex = i;
       idx = buildColIndex(cells);
       break;
@@ -876,26 +888,48 @@ function parseResponse(response, designer){
     const sample = rows.slice(0, 3).map(function(r, i){
       const cells = r.c || [];
       const firstFew = cells.slice(0, 3).map(function(cell){
-        return cell && cell.v !== null && cell.v !== undefined ? String(cell.v) : '(空)';
+        const raw = cell ? (cell.f || cell.v) : null;
+        return raw !== null && raw !== undefined ? String(raw) : '(空)';
       }).join('｜');
       return '第' + (i+1) + '列:[' + firstFew + ']';
     }).join('　');
-    throw new Error('找不到標題列（找不到「序」這一欄）。實際讀到的前幾列內容：' + sample);
+    throw new Error('找不到標題列（找不到「品牌」這一欄）。實際讀到的前幾列內容：' + sample);
+  }
+
+  // 品牌欄之後（發案負責人／設計類別／案件類型／月份／設計案／時數／單價／數量／單位／設計價）
+  // 這段欄位順序在各分頁之間是穩定的，直接用跟「品牌」的相對位置去抓，
+  // 不再各自查標題文字——避免這幾欄大多是數字、標題文字被系統誤判成空白而抓不到的問題。
+  // 只有品質／效率／溝通／價格這幾欄因為各分頁排列不一定一樣（例如有沒有多插「備註」欄），才用標題文字去找。
+  const brandCol = idx['品牌'];
+  const colCategory = brandCol + 2;
+  const colCaseType  = brandCol + 3;
+  const colMonth     = brandCol + 4;
+  const colProject   = brandCol + 5;
+  const colHours     = brandCol + 6;
+  const colFee       = brandCol + 10;
+
+  function textAtPos(c, i){
+    const cell = c[i];
+    return (cell && cell.v !== null && cell.v !== undefined) ? String(cell.v).trim() : '';
+  }
+  function numAtPos(c, i){
+    const cell = c[i];
+    return (cell && typeof cell.v === 'number') ? cell.v : null;
   }
 
   const cases = [];
   for(let i = headerRowIndex + 1; i < rows.length; i++){
     const c = rows[i].c || [];
-    const seq = numAt(c, idx, '序');
-    if(seq === null) continue;
-    const brand = textAt(c, idx, '品牌');
+    const seqCell = c[0]; // 序欄固定在 A 欄（第一格），直接用位置判斷，不查欄名
+    if(!seqCell || typeof seqCell.v !== 'number') continue;
+    const brand = textAtPos(c, brandCol);
     if(!brand) continue;
-    const category = textAt(c, idx, '設計類別') || '未分類';
-    const caseType = textAt(c, idx, '案件類型');
-    const month = numAt(c, idx, '月份');
-    const project = textAt(c, idx, '設計案');
-    const hours = numAt(c, idx, '時數') || 0;
-    const fee   = numAt(c, idx, '設計價') || 0;
+    const category = textAtPos(c, colCategory) || '未分類';
+    const caseType = textAtPos(c, colCaseType);
+    const month = numAtPos(c, colMonth);
+    const project = textAtPos(c, colProject);
+    const hours = numAtPos(c, colHours) || 0;
+    const fee   = numAtPos(c, colFee) || 0;
     const quality       = parseRating((cellAt(c, idx, '品質') || {}).v);
     const efficiency    = parseRating((cellAt(c, idx, '效率') || {}).v);
     const communication = parseRating((cellAt(c, idx, '溝通') || {}).v);
