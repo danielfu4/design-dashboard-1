@@ -41,6 +41,38 @@
   .subtitle{font-size:13px;color:var(--ink-soft);}
 
   .search-card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:22px 24px;margin-bottom:22px;}
+
+  .filter-bar{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;}
+  .filter-field{display:flex;flex-direction:column;gap:6px;width:200px;}
+  .filter-field label{font-size:11.5px;font-weight:700;color:var(--ink-soft);}
+  .filter-field.search-field{flex:1;min-width:220px;width:auto;}
+  .filter-field.search-field input{
+    border:1px solid var(--line);border-radius:10px;padding:9px 12px;
+    font-family:inherit;font-size:13px;color:var(--ink);background:#FAFAFB;box-sizing:border-box;
+  }
+  .filter-field.search-field input:focus{outline:none;border-color:var(--accent);background:#fff;}
+
+  .csel{position:relative;}
+  .csel-trigger{
+    width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;
+    border:1px solid var(--line);border-radius:10px;padding:9px 12px;
+    font-family:inherit;font-weight:600;font-size:13px;color:var(--ink);background:#FAFAFB;cursor:pointer;text-align:left;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .csel-trigger:hover{background:#F5F5F6;}
+  .csel.open .csel-trigger{border-color:var(--accent);background:#fff;}
+  .csel-arrow{color:var(--ink-soft);transition:transform .15s ease;flex:none;display:flex;}
+  .csel.open .csel-arrow{transform:rotate(180deg);}
+  .csel-panel{
+    display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;
+    background:#fff;border-radius:14px;box-shadow:0 14px 32px rgba(20,20,30,.16);
+    padding:6px;max-height:220px;overflow-y:auto;
+  }
+  .csel-panel.show{display:block;}
+  .csel-item{padding:9px 12px;border-radius:9px;font-size:12.5px;color:var(--ink);cursor:pointer;white-space:nowrap;}
+  .csel-item + .csel-item{margin-top:3px;}
+  .csel-item:hover{background:#F1F1F3;}
+  .csel-item.selected{background:#F1F1F3;font-weight:700;}
   .search-row{display:flex;gap:10px;}
   .search-row input{
     flex:1;border:1px solid var(--line);border-radius:12px;padding:11px 14px;
@@ -327,6 +359,35 @@
     <div class="search-hint">姓名需與填單時輸入的完全相同（例如都是「王小明」）</div>
   </div>
 
+  <div class="filter-bar">
+    <div class="filter-field">
+      <label>排序</label>
+      <div class="csel" id="csel_sortFilter">
+        <button type="button" class="csel-trigger" onclick="toggleCsel('sortFilter')">
+          <span class="csel-trigger-text" id="csel_sortFilter_text"></span>
+          <span class="csel-arrow"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="csel-panel" id="csel_sortFilter_panel"></div>
+      </div>
+      <input type="hidden" id="sortFilter" value="urgent">
+    </div>
+    <div class="filter-field">
+      <label>狀態篩選</label>
+      <div class="csel" id="csel_statusFilter">
+        <button type="button" class="csel-trigger" onclick="toggleCsel('statusFilter')">
+          <span class="csel-trigger-text" id="csel_statusFilter_text"></span>
+          <span class="csel-arrow"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="csel-panel" id="csel_statusFilter_panel"></div>
+      </div>
+      <input type="hidden" id="statusFilter" value="all">
+    </div>
+    <div class="filter-field search-field">
+      <label>搜尋</label>
+      <input type="text" id="searchInput" placeholder="搜尋需求名稱／品牌" oninput="applyStatusFilterAndRender()">
+    </div>
+  </div>
+
   <div id="results">
     <div class="state-msg">輸入姓名後按「查詢」開始查看你的需求進度</div>
   </div>
@@ -464,6 +525,84 @@
 </div>
 
 <script>
+// ---- 自訂下拉選單元件（放最前面，確保其他程式碼執行時已經可用）----
+const cselState = {};
+
+function cselSetOptions(id, options, placeholder){
+  if(!cselState[id]) cselState[id] = {};
+  cselState[id].options = options;
+  if(placeholder) cselState[id].placeholder = placeholder;
+  renderCselPanel(id);
+}
+
+function renderCselPanel(id){
+  const st = cselState[id];
+  const panel = document.getElementById('csel_' + id + '_panel');
+  if(!panel || !st.options) return;
+  panel.innerHTML = st.options.map(function(opt){
+    const selected = opt.value === st.value;
+    const safeVal = opt.value.replace(/'/g, "\\'");
+    return '<div class="csel-item' + (selected ? ' selected' : '') + '" onclick="cselChoose(\'' + id + '\',\'' + safeVal + '\')">' + opt.label + '</div>';
+  }).join('');
+}
+
+function cselChoose(id, val){
+  const st = cselState[id];
+  const opt = st.options.filter(function(o){ return o.value === val; })[0];
+  st.value = val;
+  const hiddenEl = document.getElementById(id);
+  if(hiddenEl) hiddenEl.value = val;
+  const textEl = document.getElementById('csel_' + id + '_text');
+  if(textEl) textEl.textContent = opt ? opt.label : val;
+  closeAllCsel();
+  renderCselPanel(id);
+  if(st.onChange) st.onChange(val);
+}
+
+function toggleCsel(id){
+  const panel = document.getElementById('csel_' + id + '_panel');
+  const wasOpen = panel.classList.contains('show');
+  closeAllCsel();
+  if(!wasOpen){
+    panel.classList.add('show');
+    document.getElementById('csel_' + id).classList.add('open');
+  }
+}
+
+function closeAllCsel(){
+  document.querySelectorAll('.csel-panel.show').forEach(function(p){ p.classList.remove('show'); });
+  document.querySelectorAll('.csel.open').forEach(function(c){ c.classList.remove('open'); });
+}
+
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.csel')) closeAllCsel();
+});
+
+function initCsel(id, options, value, onChange){
+  const opt = options.filter(function(o){ return o.value === value; })[0];
+  cselState[id] = { options: options, value: value, placeholder: options[0] ? options[0].label : '', onChange: onChange };
+  const textEl = document.getElementById('csel_' + id + '_text');
+  if(textEl) textEl.textContent = opt ? opt.label : (options[0] ? options[0].label : '');
+  renderCselPanel(id);
+}
+
+initCsel('sortFilter', [
+  { value:'urgent', label:'急件優先' },
+  { value:'dueAsc', label:'需求日期（近到遠）' },
+  { value:'dueDesc', label:'需求日期（遠到近）' },
+  { value:'fillDesc', label:'填單日期（新到舊）' },
+  { value:'fillAsc', label:'填單日期（舊到新）' }
+], 'urgent', function(){ applyStatusFilterAndRender(); });
+
+initCsel('statusFilter', [
+  { value:'all', label:'全部' },
+  { value:'待處理', label:'待處理' },
+  { value:'進行中', label:'進行中' },
+  { value:'請校稿', label:'請校稿' },
+  { value:'已完成', label:'已完成' },
+  { value:'退件', label:'退件' }
+], 'all', function(){ applyStatusFilterAndRender(); });
+
 // 部署好個人帳號的新試算表後，把它的 ID 貼在這裡（網址 /d/ 跟 /edit 中間那一長串）
 const SHEET_ID = '1Q0b8dS3zKVoypKNh0hNuburvp4NMxmAwbdjoSQ4ibNg';
 const DESIGNER_TABS = { Nikki:'Nikki需求單', Yuly:'Yuly需求單', Luna:'Luna需求單', Daniel:'Daniel需求單' };
@@ -495,6 +634,13 @@ function scoreStarsHtml(score){
   }
   html += '</div>';
   return html;
+}
+
+function parseListDate(str){
+  if(!str) return null;
+  const m = String(str).match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if(!m) return null;
+  return new Date(parseInt(m[1],10), parseInt(m[2],10)-1, parseInt(m[3],10)).getTime();
 }
 
 function statusInfo(status){
@@ -641,10 +787,56 @@ function renderResults(rows, name){
     return;
   }
 
-  matches.sort(function(a,b){
-    return (b.isUrgent === 'Y' ? 1 : 0) - (a.isUrgent === 'Y' ? 1 : 0);
-  });
+  window.__allMatches = matches;
+  applyStatusFilterAndRender();
+}
+
+function applyStatusFilterAndRender(){
+  const results = document.getElementById('results');
+  const allMatches = window.__allMatches || [];
+  if(allMatches.length === 0) return;
+
+  const sortMode = document.getElementById('sortFilter').value;
+  const statusFilter = document.getElementById('statusFilter').value;
+  const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+
+  let matches = allMatches.slice();
+  if(statusFilter !== 'all'){
+    matches = matches.filter(function(m){ return (m.status || '待處理').trim() === statusFilter; });
+  }
+  if(searchTerm){
+    matches = matches.filter(function(m){
+      return (m.reqName || '').toLowerCase().indexOf(searchTerm) !== -1 ||
+        (m.brand || '').toLowerCase().indexOf(searchTerm) !== -1;
+    });
+  }
+
+  if(sortMode === 'urgent'){
+    matches.sort(function(a,b){ return (b.isUrgent === 'Y' ? 1 : 0) - (a.isUrgent === 'Y' ? 1 : 0); });
+  }else if(sortMode === 'dueAsc' || sortMode === 'dueDesc'){
+    matches.sort(function(a,b){
+      const da = parseListDate(a.dueDate), db = parseListDate(b.dueDate);
+      if(da === null && db === null) return 0;
+      if(da === null) return 1;
+      if(db === null) return -1;
+      return sortMode === 'dueAsc' ? da - db : db - da;
+    });
+  }else if(sortMode === 'fillDesc' || sortMode === 'fillAsc'){
+    matches.sort(function(a,b){
+      const da = parseListDate(a.fillDate), db = parseListDate(b.fillDate);
+      if(da === null && db === null) return 0;
+      if(da === null) return 1;
+      if(db === null) return -1;
+      return sortMode === 'fillAsc' ? da - db : db - da;
+    });
+  }
+
   window.__lastMatches = matches;
+
+  if(matches.length === 0){
+    results.innerHTML = '<div class="state-msg">沒有符合篩選條件的案件。</div>';
+    return;
+  }
 
   results.innerHTML = matches.map(function(m){
     const si = statusInfo(m.status);
