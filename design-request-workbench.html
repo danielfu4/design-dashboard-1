@@ -60,6 +60,17 @@
   }
   .refresh-link:hover{background:#F7F7F8;}
 
+  .save-all-btn{
+    border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-weight:700;
+    font-size:12.5px;padding:8px 14px;border-radius:10px;cursor:pointer;
+    transition:background-color .35s ease, color .35s ease, border-color .35s ease;
+  }
+  .save-all-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .save-all-btn:disabled{opacity:.6;cursor:not-allowed;}
+  .save-all-msg{font-size:11.5px;align-self:center;}
+  .save-all-msg.success{color:#1F8A4C;}
+  .save-all-msg.error{color:#B3324A;}
+
   header{margin-bottom:20px;}
   .filter-bar{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;}
   .filter-field{display:flex;flex-direction:column;gap:6px;width:200px;}
@@ -261,6 +272,8 @@
         </svg>設計師班表
       </button>
       <button class="refresh-link" onclick="loadCases()">重新整理</button>
+      <button class="save-all-btn" id="saveAllBtn" onclick="saveAllCases()">一鍵儲存</button>
+      <span class="save-all-msg" id="saveAllMsg"></span>
     </div>
   </div>
 
@@ -819,7 +832,7 @@ function saveCase(id){
   msg.textContent = '儲存中...';
   msg.className = 'save-msg';
 
-  fetch(APPS_SCRIPT_URL, {
+  return fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload)
@@ -829,14 +842,45 @@ function saveCase(id){
     if(data.status === 'success'){
       msg.textContent = '✓ 已儲存';
       msg.className = 'save-msg success';
+      return true;
     }else{
       msg.textContent = '儲存失敗：' + (data.message || '未知錯誤');
       msg.className = 'save-msg error';
+      return false;
     }
   })
   .catch(function(err){
     msg.textContent = '儲存失敗，請確認網路連線。';
     msg.className = 'save-msg error';
+    return false;
+  });
+}
+
+function saveAllCases(){
+  const btn = document.getElementById('saveAllBtn');
+  const msg = document.getElementById('saveAllMsg');
+  const cases = window.__cases || [];
+  if(cases.length === 0){
+    msg.textContent = '目前沒有可儲存的案件';
+    msg.className = 'save-all-msg error';
+    return;
+  }
+
+  btn.disabled = true;
+  msg.textContent = '儲存中（共 ' + cases.length + ' 筆）...';
+  msg.className = 'save-all-msg';
+
+  Promise.all(cases.map(function(m){ return saveCase(m.id); })).then(function(results){
+    btn.disabled = false;
+    const successCount = results.filter(function(r){ return r === true; }).length;
+    const failCount = results.length - successCount;
+    if(failCount === 0){
+      msg.textContent = '✓ 全部 ' + successCount + ' 筆已儲存';
+      msg.className = 'save-all-msg success';
+    }else{
+      msg.textContent = '完成 ' + successCount + ' 筆，' + failCount + ' 筆失敗（詳見各卡片訊息）';
+      msg.className = 'save-all-msg error';
+    }
   });
 }
 
