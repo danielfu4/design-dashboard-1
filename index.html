@@ -872,7 +872,16 @@ function parseResponse(response, designer){
       break;
     }
   }
-  if(!idx) throw new Error('找不到標題列（找不到「序」這一欄）');
+  if(!idx){
+    const sample = rows.slice(0, 3).map(function(r, i){
+      const cells = r.c || [];
+      const firstFew = cells.slice(0, 3).map(function(cell){
+        return cell && cell.v !== null && cell.v !== undefined ? String(cell.v) : '(空)';
+      }).join('｜');
+      return '第' + (i+1) + '列:[' + firstFew + ']';
+    }).join('　');
+    throw new Error('找不到標題列（找不到「序」這一欄）。實際讀到的前幾列內容：' + sample);
+  }
 
   const cases = [];
   for(let i = headerRowIndex + 1; i < rows.length; i++){
@@ -974,7 +983,7 @@ function loadTab(tabName){
     };
     const script = document.createElement('script');
     script.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
-      '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(tabName) + '&_ts=' + Date.now();
+      '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(tabName) + '&headers=1&_ts=' + Date.now();
     script.onerror = function(){ clearTimeout(to); reject(new Error(tabName + '：無法連線')); };
     document.body.appendChild(script);
     const to = setTimeout(function(){ reject(new Error(tabName + '：連線逾時')); }, 12000);
