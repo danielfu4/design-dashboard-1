@@ -851,13 +851,13 @@ function parseResponse(response, designer){
     const done    = !!(c[12] && c[12].v === true);
     const notDone = !!(c[13] && c[13].v === true);
     const stopped = !!(c[14] && c[14].v === true);
-    const quality       = c[15] ? parseRating(c[15].v) : null;
-    const efficiency    = c[16] ? parseRating(c[16].v) : null;
-    const communication = c[17] ? parseRating(c[17].v) : null;
-    const price          = c[18] ? parseRating(c[18].v) : null;
+    const quality       = c[12] ? parseRating(c[12].v) : null;
+    const efficiency    = c[13] ? parseRating(c[13].v) : null;
+    const communication = c[14] ? parseRating(c[14].v) : null;
+    const price          = c[15] ? parseRating(c[15].v) : null;
     const dims = [quality, efficiency, communication, price].filter(function(x){ return x !== null; });
     const rating = dims.length ? (dims.reduce(function(a,b){ return a+b; }, 0) / dims.length) : null;
-    const reason  = c[19] && c[19].v ? String(c[19].v).trim() : '';
+    const reason  = c[16] && c[16].v ? String(c[16].v).trim() : '';
     cases.push({ designer, brand, category, caseType, month, project, hours, fee, done, notDone, stopped, quality, efficiency, communication, price, rating, reason });
   });
   return cases;
