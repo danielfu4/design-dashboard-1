@@ -121,6 +121,13 @@
     background:#FFF0EE;padding:5px 10px;border-radius:999px;white-space:nowrap;
   }
   .req-card.urgent{box-shadow:0 0 0 1.5px #F3C5C0, 0 6px 16px rgba(20,20,30,.04);}
+  .urgent-block{
+    background:#FFF8F7;border:1px solid #F7D4CE;border-radius:18px;padding:16px 16px 4px;margin-bottom:20px;
+  }
+  .urgent-block-head{
+    font-size:13px;font-weight:800;color:#C4372B;margin-bottom:12px;padding-left:4px;
+  }
+  .urgent-block .req-card{box-shadow:none;border:1px solid #F0DAD6;}
   .req-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
   .req-tag{
     font-size:11px;font-weight:700;color:var(--ink-soft);background:#F1F1F3;
@@ -130,6 +137,19 @@
     font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;white-space:nowrap;flex:none;
   }
   .req-meta{font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.8;}
+  .case-toggle-btn{
+    display:flex;align-items:center;justify-content:center;gap:5px;width:100%;
+    margin-top:12px;padding:8px;border:none;border-top:1px solid var(--line);background:none;
+    font-family:inherit;font-size:12px;font-weight:700;color:var(--ink-soft);cursor:pointer;
+  }
+  .case-toggle-btn:hover{color:var(--ink);}
+  .case-toggle-chevron{display:flex;transition:transform .2s ease;}
+  .case-toggle-chevron.open{transform:rotate(180deg);}
+  .case-body{
+    overflow:hidden;max-height:0;opacity:0;transform:translateY(-8px);
+    transition:max-height .4s ease, opacity .3s ease, transform .3s ease;
+  }
+  .case-body.open{max-height:4000px;opacity:1;transform:translateY(0);}
   .req-meta b{color:var(--ink);font-weight:700;}
   .reject-box{
     margin-top:12px;background:#FBEBEA;border:1px solid #F3C5C0;border-radius:12px;
@@ -369,7 +389,7 @@
         </button>
         <div class="csel-panel" id="csel_sortFilter_panel"></div>
       </div>
-      <input type="hidden" id="sortFilter" value="urgent">
+      <input type="hidden" id="sortFilter" value="dueAsc">
     </div>
     <div class="filter-field">
       <label>狀態篩選</label>
@@ -587,12 +607,11 @@ function initCsel(id, options, value, onChange){
 }
 
 initCsel('sortFilter', [
-  { value:'urgent', label:'急件優先' },
   { value:'dueAsc', label:'需求日期（近到遠）' },
   { value:'dueDesc', label:'需求日期（遠到近）' },
   { value:'fillDesc', label:'填單日期（新到舊）' },
   { value:'fillAsc', label:'填單日期（舊到新）' }
-], 'urgent', function(){ applyStatusFilterAndRender(); });
+], 'dueAsc', function(){ applyStatusFilterAndRender(); });
 
 initCsel('statusFilter', [
   { value:'all', label:'全部' },
@@ -641,6 +660,14 @@ function parseListDate(str){
   const m = String(str).match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
   if(!m) return null;
   return new Date(parseInt(m[1],10), parseInt(m[2],10)-1, parseInt(m[3],10)).getTime();
+}
+
+function toggleReqBody(id){
+  const body = document.getElementById('reqBody-' + id);
+  const chevron = document.getElementById('reqToggleChevron-' + id);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chevron.classList.toggle('open', !isOpen);
 }
 
 function statusInfo(status){
@@ -811,9 +838,7 @@ function applyStatusFilterAndRender(){
     });
   }
 
-  if(sortMode === 'urgent'){
-    matches.sort(function(a,b){ return (b.isUrgent === 'Y' ? 1 : 0) - (a.isUrgent === 'Y' ? 1 : 0); });
-  }else if(sortMode === 'dueAsc' || sortMode === 'dueDesc'){
+  if(sortMode === 'dueAsc' || sortMode === 'dueDesc'){
     matches.sort(function(a,b){
       const da = parseListDate(a.dueDate), db = parseListDate(b.dueDate);
       if(da === null && db === null) return 0;
@@ -838,7 +863,22 @@ function applyStatusFilterAndRender(){
     return;
   }
 
-  results.innerHTML = matches.map(function(m){
+  const urgentMatches = matches.filter(function(m){ return m.isUrgent === 'Y'; });
+  const normalMatches = matches.filter(function(m){ return m.isUrgent !== 'Y'; });
+
+  let html = '';
+  if(urgentMatches.length > 0){
+    html += '<div class="urgent-block">' +
+      '<div class="urgent-block-head">🔴 急件（' + urgentMatches.length + '）</div>' +
+      urgentMatches.map(renderReqCard).join('') +
+    '</div>';
+  }
+  html += normalMatches.map(renderReqCard).join('');
+
+  results.innerHTML = html;
+}
+
+function renderReqCard(m){
     const si = statusInfo(m.status);
     const rejectHtml = si.label === '退件'
       ? '<div class="reject-box"><b>退件原因</b>' + (m.rejectReason || '（未填寫原因）') + '</div>'
@@ -943,15 +983,19 @@ const hasRating = m.quality && m.efficiency && m.communication && m.price;
           '</div>' +
         '</div>' +
         '<div class="req-meta">填單日期：<b>' + m.fillDate + '</b>　・　需求日期：<b>' + m.dueDate + '</b>' + handlerLine + '</div>' +
-        hoursFeeHtml +
-        rejectHtml +
-        caseDetailHtml +
-        supplementHtml +
-        completedRatingRowHtml +
-        actionRowHtml +
+        '<button type="button" class="case-toggle-btn" onclick="toggleReqBody(\'' + m.id + '\')">' +
+          '<span class="case-toggle-chevron" id="reqToggleChevron-' + m.id + '"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>' +
+        '</button>' +
+        '<div class="case-body" id="reqBody-' + m.id + '">' +
+          hoursFeeHtml +
+          rejectHtml +
+          caseDetailHtml +
+          supplementHtml +
+          completedRatingRowHtml +
+          actionRowHtml +
+        '</div>' +
       '</div>'
     );
-  }).join('');
 }
 
 // ---- 評分彈窗 ----
