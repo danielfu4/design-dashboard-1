@@ -272,6 +272,27 @@
   .legend-row .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
   .legend-row b{color:var(--ink);font-weight:700;margin-left:4px;}
 
+  .pie-wrap{display:flex;align-items:flex-start;gap:32px;flex-wrap:wrap;margin-top:16px;}
+  .pie-svg-wrap{position:relative;flex:none;width:340px;height:340px;}
+  .pie-svg-wrap svg{display:block;width:100%;height:100%;}
+  .pie-legend{flex:1;min-width:220px;display:flex;flex-direction:column;gap:7px;max-height:340px;overflow-y:auto;
+    scrollbar-width:thin;scrollbar-color:var(--ink-faint) var(--track);}
+  .pie-legend::-webkit-scrollbar{width:4px;}
+  .pie-legend::-webkit-scrollbar-track{background:transparent;}
+  .pie-legend::-webkit-scrollbar-thumb{background:var(--ink-faint);border-radius:2px;}
+  .pie-legend-item{display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;padding:3px 6px;border-radius:8px;transition:background .15s ease;}
+  .pie-legend-item:hover{background:var(--track);}
+  .pie-legend-item.active{background:var(--track);}
+  .pie-legend-swatch{width:10px;height:10px;border-radius:3px;flex:none;}
+  .pie-legend-name{flex:1;color:var(--ink);font-weight:600;}
+  .pie-legend-val{font-size:12px;color:var(--ink-soft);white-space:nowrap;}
+  .pie-tooltip{
+    position:fixed;z-index:400;background:#17181C;color:#fff;font-size:13px;font-weight:700;
+    padding:8px 13px;border-radius:10px;pointer-events:none;opacity:0;transition:opacity .15s ease;
+    white-space:nowrap;box-shadow:0 6px 20px rgba(20,20,30,.25);line-height:1.6;
+  }
+  .pie-tooltip.show{opacity:1;}
+
   .donut-wrap{display:flex;align-items:center;gap:30px;flex-wrap:wrap;justify-content:center;margin-top:6px;}
   .donut-svg-wrap{position:relative;width:240px;height:240px;flex:none;}
   .gauge-svg-wrap{display:flex;flex-direction:column;align-items:center;flex:none;}
@@ -608,9 +629,14 @@
       </div>
     </div>
     <div class="big-stat skeleton" id="totalCases">—</div>
-    <div class="comp-bar" id="brandCompBar"></div>
-    <div class="legend-row" id="brandCompLegend" style="margin-top:12px;"></div>
+    <div class="pie-wrap">
+      <div class="pie-svg-wrap">
+        <svg id="brandPieSvg" viewBox="0 0 340 340" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div class="pie-legend" id="brandPieLegend"></div>
+    </div>
   </div>
+  <div class="pie-tooltip" id="brandPieTooltip"></div>
 
   <div class="card full-card">
     <div class="card-head">
@@ -748,6 +774,116 @@ function fmtHours(n){
   return (r % 1 === 0 ? r.toFixed(0) : r.toFixed(1)) + ' hr';
 }
 function fmtPct(n){ return (Math.round(n*10)/10) + '%'; }
+
+function renderBrandPie(brandList, byBrand, total){
+  const svg = document.getElementById('brandPieSvg');
+  const legend = document.getElementById('brandPieLegend');
+  const tooltip = document.getElementById('brandPieTooltip');
+  if(!svg || !legend) return;
+
+  const cx = 170, cy = 170, r = 155, rInner = 72;
+  const filtered = brandList.filter(function(b){ return byBrand[b] && byBrand[b].count > 0; });
+  if(!filtered.length || !total){ svg.innerHTML = ''; legend.innerHTML = ''; return; }
+
+  let startAngle = -Math.PI / 2;
+  const slices = filtered.map(function(b){
+    const pct = byBrand[b].count / total;
+    const angle = pct * 2 * Math.PI;
+    const slice = { brand: b, count: byBrand[b].count, pct: pct, start: startAngle, end: startAngle + angle };
+    startAngle += angle;
+    return slice;
+  });
+
+  function polarToXY(angle, radius){
+    return { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+  }
+
+  function slicePath(s, outerR, innerR){
+    const p1 = polarToXY(s.start, outerR);
+    const p2 = polarToXY(s.end, outerR);
+    const p3 = polarToXY(s.end, innerR);
+    const p4 = polarToXY(s.start, innerR);
+    const large = (s.end - s.start) > Math.PI ? 1 : 0;
+    return 'M ' + p1.x + ' ' + p1.y +
+      ' A ' + outerR + ' ' + outerR + ' 0 ' + large + ' 1 ' + p2.x + ' ' + p2.y +
+      ' L ' + p3.x + ' ' + p3.y +
+      ' A ' + innerR + ' ' + innerR + ' 0 ' + large + ' 0 ' + p4.x + ' ' + p4.y + ' Z';
+  }
+
+  let activeSlice = null;
+
+  function renderSlices(active){
+    const paths = slices.map(function(s, i){
+      const isActive = active === i;
+      const outerR = isActive ? r + 8 : r;
+      const path = slicePath(s, outerR, rInner);
+      const gap = slices.length > 1 ? ' stroke="#fff" stroke-width="1.5"' : '';
+      return '<path d="' + path + '" fill="' + brandColor(s.brand) + '"' + gap +
+        ' style="cursor:pointer;" data-idx="' + i + '"></path>';
+    }).join('');
+
+    const centerBrand = active !== null ? slices[active].brand : '各品牌';
+    const centerCount = active !== null ? slices[active].count.toLocaleString() : total.toLocaleString();
+    const centerSub   = active !== null ? fmtPct(slices[active].pct * 100) : '件';
+
+    svg.innerHTML = paths +
+      '<text x="' + cx + '" y="' + (cy - 10) + '" text-anchor="middle" font-size="13" font-weight="700" fill="#8A8A93" font-family="Noto Sans TC,sans-serif">' + centerBrand + '</text>' +
+      '<text x="' + cx + '" y="' + (cy + 16) + '" text-anchor="middle" font-size="30" font-weight="800" fill="#17181C" font-family="Noto Sans TC,sans-serif">' + centerCount + '</text>' +
+      '<text x="' + cx + '" y="' + (cy + 38) + '" text-anchor="middle" font-size="13" fill="#C2C2C8" font-family="Noto Sans TC,sans-serif">' + centerSub + '</text>';
+  }
+
+  renderSlices(null);
+
+  svg.addEventListener('mousemove', function(e){
+    const el = e.target.closest('path[data-idx]');
+    if(!el){
+      if(activeSlice !== null){ activeSlice = null; renderSlices(null); tooltip.classList.remove('show'); document.querySelectorAll('.pie-legend-item').forEach(function(l){ l.classList.remove('active'); }); }
+      return;
+    }
+    const idx = parseInt(el.getAttribute('data-idx'), 10);
+    if(idx !== activeSlice){
+      activeSlice = idx;
+      renderSlices(idx);
+      document.querySelectorAll('.pie-legend-item').forEach(function(li, i){ li.classList.toggle('active', i === idx); });
+    }
+    const s = slices[idx];
+    tooltip.innerHTML = '<b>' + s.brand + '</b><br>' + s.count.toLocaleString() + ' 件・' + fmtPct(s.pct * 100);
+    tooltip.style.left = (e.clientX + 16) + 'px';
+    tooltip.style.top  = (e.clientY + 16) + 'px';
+    tooltip.classList.add('show');
+  });
+
+  svg.addEventListener('mouseleave', function(){
+    activeSlice = null;
+    renderSlices(null);
+    tooltip.classList.remove('show');
+    document.querySelectorAll('.pie-legend-item').forEach(function(l){ l.classList.remove('active'); });
+  });
+
+  // legend
+  legend.innerHTML = slices.map(function(s, i){
+    return '<div class="pie-legend-item" data-idx="' + i + '">' +
+      '<div class="pie-legend-swatch" style="background:' + brandColor(s.brand) + '"></div>' +
+      '<span class="pie-legend-name">' + s.brand + '</span>' +
+      '<span class="pie-legend-val">' + s.count + ' 件・' + fmtPct(s.pct * 100) + '</span>' +
+    '</div>';
+  }).join('');
+
+  legend.querySelectorAll('.pie-legend-item').forEach(function(li){
+    li.addEventListener('mouseenter', function(){
+      const idx = parseInt(li.getAttribute('data-idx'), 10);
+      activeSlice = idx;
+      renderSlices(idx);
+      document.querySelectorAll('.pie-legend-item').forEach(function(l, i){ l.classList.toggle('active', i === idx); });
+    });
+    li.addEventListener('mouseleave', function(){
+      activeSlice = null;
+      renderSlices(null);
+      document.querySelectorAll('.pie-legend-item').forEach(function(l){ l.classList.remove('active'); });
+      tooltip.classList.remove('show');
+    });
+  });
+}
 function pointColor(pts){
   if(pts === null || pts === undefined) return '#D9D9DD';
   if(pts >= 60) return '#22C55E';
@@ -1334,19 +1470,8 @@ function render(cases, allCases){
     window.__chartData = { cases:cases, byBrand:byBrand, brandList:brandList, catTotals:catTotals, categories:categories, monthAgg:monthAgg, monthAggFull:monthAggFull, typeCounts:typeCounts, typeLabels:typeLabels };
     renderChartPanel();
 
-    // brand composition bar (case share)
-    const maxBrandCount = Math.max.apply(null, brandList.map(function(b){ return byBrand[b].count; }).concat([1]));
-    document.getElementById('brandCompBar').innerHTML = brandList.map(function(b){
-      const d = byBrand[b];
-      const w = totals.count ? (d.count/totals.count*100) : 0;
-      return '<div style="width:' + w + '%;background:' + brandColor(b) + '"></div>';
-    }).join('');
-    document.getElementById('brandCompLegend').innerHTML = brandList.map(function(b){
-      const d = byBrand[b];
-      const pct = totals.count ? (d.count/totals.count*100) : 0;
-      return '<span><span class="dot" style="background:' + brandColor(b) + '"></span>' + b +
-        '<b>' + d.count + ' 件・' + fmtPct(pct) + '</b></span>';
-    }).join('');
+    // brand pie chart
+    renderBrandPie(brandList, byBrand, totals.count);
 
     // brand hours (sorted by hours desc, independent of the fee-based brandList order)
     const hoursSorted = Object.keys(byBrand).sort(function(a,b2){ return byBrand[b2].hours - byBrand[a].hours; });
