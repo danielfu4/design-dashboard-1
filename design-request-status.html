@@ -166,6 +166,12 @@
     display:inline-flex;align-items:center;border:1px solid var(--line);background:#fff;color:var(--ink);
     font-family:inherit;font-weight:700;font-size:12.5px;padding:8px 14px;border-radius:10px;cursor:pointer;
   }
+  .change-date-btn{
+    display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:var(--ink);
+    font-family:inherit;font-weight:700;font-size:12.5px;padding:8px 14px;border-radius:10px;cursor:pointer;
+    transition:background-color .15s ease;
+  }
+  .change-date-btn:hover{background:#F7F7F8;}
   .copy-btn{
     display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;color:var(--ink);
     font-family:inherit;font-weight:700;font-size:12.5px;padding:8px 14px;border-radius:10px;cursor:pointer;
@@ -216,7 +222,7 @@
     cursor:pointer;font-size:15px;font-weight:700;
   }
   .cal-header button:hover{background:#E7E7EA;}
-  #copyCalMonthLabel{font-size:13.5px;font-weight:800;font-family:inherit;}
+  #copyCalMonthLabel, #editCalMonthLabel{font-size:13.5px;font-weight:800;font-family:inherit;}
   .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;color:var(--ink-soft);margin-bottom:4px;}
   .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
   .cal-day{
@@ -480,6 +486,46 @@
     </div>
     <button class="modal-submit" id="supplementSubmitBtn" onclick="submitSupplement()">送出補充</button>
     <div class="modal-msg" id="supplementModalMsg"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editDateModalOverlay" onclick="if(event.target===this) closeEditDateModal()">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">修改需求日期</div>
+        <div class="modal-sub" id="editDateModalReqName"></div>
+      </div>
+      <button class="modal-close" onclick="closeEditDateModal()">✕</button>
+    </div>
+    <div class="field-simple">
+      <label>目前需求日期</label>
+      <div id="editDateCurrent" style="font-size:13.5px;font-weight:700;color:var(--ink);padding:4px 0 10px;"></div>
+    </div>
+    <div class="field-simple">
+      <label>選擇新日期 <span style="color:#B3324A;">*</span></label>
+      <div class="date-field">
+        <input class="date-picker-input" id="editDueDateDisplay" readonly placeholder="點此選擇日期" onclick="toggleEditCalendar()">
+        <input type="hidden" id="editDueDate">
+        <div class="calendar-popup" id="editCalendarPopup">
+          <div class="cal-header">
+            <button onclick="changeEditCalMonth(-1)">‹</button>
+            <span id="editCalMonthLabel"></span>
+            <button onclick="changeEditCalMonth(1)">›</button>
+          </div>
+          <div class="cal-weekdays">
+            <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+          </div>
+          <div class="cal-grid" id="editCalGrid"></div>
+          <div class="cal-hover-tag" id="editCalHoverTag"></div>
+          <div class="cal-legend">
+            <div class="cal-dot"></div><span>設計師封鎖 / 已額滿</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="modal-submit" id="editDateSubmitBtn" onclick="submitEditDate()">確認修改</button>
+    <div class="modal-msg" id="editDateModalMsg"></div>
   </div>
 </div>
 
@@ -959,8 +1005,17 @@ const hasRating = m.quality && m.efficiency && m.communication && m.price;
     const supplementBtnHtml = m.id
       ? '<button class="supplement-btn" onclick="openSupplementModalById(\'' + m.id + '\')">＋ 補充內容</button>'
       : '';
-    const actionRowHtml = (deliveryHtml || supplementBtnHtml || copyBtnHtml || closeBtnHtml)
-      ? '<div class="rate-row action-row"><div class="action-row-left">' + deliveryHtml + supplementBtnHtml + copyBtnHtml + '</div>' + closeBtnHtml + '</div>'
+    const calIconSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;">' +
+      '<rect x="3" y="4" width="18" height="18" rx="2"></rect>' +
+      '<line x1="16" y1="2" x2="16" y2="6"></line>' +
+      '<line x1="8" y1="2" x2="8" y2="6"></line>' +
+      '<line x1="3" y1="10" x2="21" y2="10"></line>' +
+    '</svg>';
+    const changeDateBtnHtml = (m.id && (m.status || '待處理').trim() === '待處理')
+      ? '<button class="change-date-btn" onclick=\'openEditDateModal(' + JSON.stringify({id: m.id, reqName: m.reqName, dueDate: m.dueDate, handler: m.handler}) + ')\'>' + calIconSvg + ' 修改需求日期</button>'
+      : '';
+    const actionRowHtml = (deliveryHtml || supplementBtnHtml || changeDateBtnHtml || copyBtnHtml || closeBtnHtml)
+      ? '<div class="rate-row action-row"><div class="action-row-left">' + deliveryHtml + supplementBtnHtml + changeDateBtnHtml + copyBtnHtml + '</div>' + closeBtnHtml + '</div>'
       : '';
 
     return (
@@ -1410,6 +1465,202 @@ function submitSupplement(){
   .catch(function(){
     btn.disabled = false;
     msg.textContent = '送出失敗，請確認網路連線。';
+    msg.className = 'modal-msg error';
+  });
+}
+
+// ---- 修改需求日期 ----
+let currentEditDateId = null;
+let currentEditHandler = null;
+let editCalendarDate = new Date();
+
+function openEditDateModal(data){
+  currentEditDateId = data.id;
+  currentEditHandler = data.handler;
+  document.getElementById('editDateModalReqName').textContent = data.reqName || '';
+  document.getElementById('editDateCurrent').textContent = data.dueDate || '（未填寫）';
+  document.getElementById('editDueDate').value = '';
+  document.getElementById('editDueDateDisplay').value = '';
+  document.getElementById('editDateModalMsg').textContent = '';
+  document.getElementById('editDateModalMsg').className = 'modal-msg';
+  editCalendarDate = new Date();
+  document.getElementById('editDateModalOverlay').classList.add('show');
+  renderEditCalendar();
+  loadEditDateCounts();
+}
+
+function closeEditDateModal(){
+  document.getElementById('editDateModalOverlay').classList.remove('show');
+  document.getElementById('editCalendarPopup').classList.remove('show');
+  currentEditDateId = null;
+  currentEditHandler = null;
+}
+
+let editDateCounts = {};
+let editLockedDates = {};
+
+function loadEditDateCounts(){
+  loadAllTabRows().then(function(rows){
+    try{
+      const counts = {};
+      rows.forEach(function(r){
+        const c = r.c || [];
+        const rawDue = c[6] && (c[6].f || c[6].v) ? String(c[6].f || c[6].v) : '';
+        const due = normalizeDateStr(rawDue);
+        const handler = c[19] && c[19].v ? String(c[19].v).trim() : '';
+        const status = c[17] && c[17].v ? String(c[17].v).trim() : '';
+        if(!due || status === '退件') return;
+        if(!counts[handler]) counts[handler] = {};
+        counts[handler][due] = (counts[handler][due] || 0) + 1;
+      });
+      editDateCounts = counts;
+    }catch(err){ editDateCounts = {}; }
+    renderEditCalendar();
+  });
+
+  loadTabRows(LOCK_TAB_NAME).then(function(rows){
+    try{
+      const lockMap = {};
+      rows.forEach(function(r){
+        const c = r.c || [];
+        const designer = c[0] && c[0].v ? String(c[0].v).trim() : '';
+        const date = normalizeDateStr(c[1] && (c[1].f || c[1].v) ? String(c[1].f || c[1].v) : '');
+        const reason = c[2] && c[2].v ? String(c[2].v).trim() : '';
+        if(!designer || !date) return;
+        if(!lockMap[designer]) lockMap[designer] = {};
+        lockMap[designer][date] = reason;
+      });
+      editLockedDates = lockMap;
+    }catch(err){ editLockedDates = {}; }
+    renderEditCalendar();
+  });
+}
+
+function editIsDateBlocked(dateStr){
+  const lockMap = editLockedDates[currentEditHandler] || {};
+  if(lockMap.hasOwnProperty(dateStr)) return true;
+  const counts = (editDateCounts[currentEditHandler] || {});
+  return (counts[dateStr] || 0) >= DAILY_LIMIT;
+}
+
+function editLockedReasonFor(dateStr){
+  const lockMap = editLockedDates[currentEditHandler] || {};
+  return lockMap.hasOwnProperty(dateStr) ? (lockMap[dateStr] || '') : null;
+}
+
+function toggleEditCalendar(){
+  const popup = document.getElementById('editCalendarPopup');
+  popup.classList.toggle('show');
+  if(popup.classList.contains('show')) renderEditCalendar();
+}
+
+function changeEditCalMonth(delta){
+  editCalendarDate.setMonth(editCalendarDate.getMonth() + delta);
+  renderEditCalendar();
+}
+
+function renderEditCalendar(){
+  const y = editCalendarDate.getFullYear();
+  const m = editCalendarDate.getMonth();
+  document.getElementById('editCalMonthLabel').textContent = y + ' 年 ' + (m+1) + ' 月';
+
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const now = new Date();
+  const todayStr = toDateStr(now.getFullYear(), now.getMonth(), now.getDate());
+  const selected = document.getElementById('editDueDate').value;
+
+  let html = '';
+  for(let i=0; i<firstDay; i++){ html += '<div class="cal-day empty"></div>'; }
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = toDateStr(y, m, d);
+    const lockReason = editLockedReasonFor(dateStr);
+    const isLocked = lockReason !== null;
+    const blocked = editIsDateBlocked(dateStr);
+    const count = (editDateCounts[currentEditHandler] && editDateCounts[currentEditHandler][dateStr]) || 0;
+    let cls = 'cal-day';
+    if(blocked) cls += ' blocked';
+    if(isLocked) cls += ' manually-locked';
+    if(dateStr === todayStr) cls += ' today';
+    if(dateStr === selected) cls += ' selected';
+    const titleAttr = isLocked ? ' title="設計師已封鎖此日期' + (lockReason ? '：' + lockReason : '') + '"' : '';
+    html += '<div class="' + cls + '"' + titleAttr + ' onclick="' + (blocked ? '' : ("selectEditDate('" + dateStr + "')")) + '">' +
+      '<span class="cal-day-num">' + d + '</span>' +
+      '<span class="cal-day-count">' + count + '</span>' +
+    '</div>';
+  }
+  document.getElementById('editCalGrid').innerHTML = html;
+}
+
+document.getElementById('editCalGrid').addEventListener('mousemove', function(e){
+  const tag = document.getElementById('editCalHoverTag');
+  const cell = e.target.closest('.cal-day');
+  if(!cell || cell.classList.contains('empty')){ tag.classList.remove('show'); return; }
+  const countEl = cell.querySelector('.cal-day-count');
+  tag.textContent = '案件數量：' + (countEl ? countEl.textContent : '0');
+  tag.style.left = (e.clientX + 16) + 'px';
+  tag.style.top = (e.clientY + 16) + 'px';
+  tag.classList.add('show');
+});
+document.getElementById('editCalGrid').addEventListener('mouseleave', function(){
+  document.getElementById('editCalHoverTag').classList.remove('show');
+});
+
+document.addEventListener('click', function(e){
+  const wrap = document.querySelector('#editDateModalOverlay .date-field');
+  if(wrap && !wrap.contains(e.target)){
+    document.getElementById('editCalendarPopup').classList.remove('show');
+  }
+});
+
+function selectEditDate(dateStr){
+  document.getElementById('editDueDate').value = dateStr;
+  document.getElementById('editDueDateDisplay').value = dateStr;
+  document.getElementById('editCalendarPopup').classList.remove('show');
+  document.getElementById('editCalHoverTag').classList.remove('show');
+}
+
+function submitEditDate(){
+  const newDate = document.getElementById('editDueDate').value;
+  const msg = document.getElementById('editDateModalMsg');
+  if(!newDate){
+    msg.textContent = '請先選擇新的需求日期';
+    msg.className = 'modal-msg error';
+    return;
+  }
+  if(editIsDateBlocked(newDate)){
+    msg.textContent = '這天已額滿或被設計師封鎖，請選其他日期';
+    msg.className = 'modal-msg error';
+    return;
+  }
+  const btn = document.getElementById('editDateSubmitBtn');
+  btn.disabled = true;
+  msg.textContent = '送出中...';
+  msg.className = 'modal-msg';
+
+  fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'updateDueDate', id: currentEditDateId, dueDate: newDate })
+  })
+  .then(function(res){
+    if(!res.ok) throw new Error('伺服器回應異常（HTTP ' + res.status + '）');
+    return res.json();
+  })
+  .then(function(data){
+    btn.disabled = false;
+    if(data.status === 'success'){
+      msg.textContent = '✓ 需求日期已更新';
+      msg.className = 'modal-msg success';
+      setTimeout(function(){ closeEditDateModal(); doSearch(); }, 900);
+    }else{
+      msg.textContent = '送出失敗：' + (data.message || '未知錯誤');
+      msg.className = 'modal-msg error';
+    }
+  })
+  .catch(function(err){
+    btn.disabled = false;
+    msg.textContent = '送出失敗，請確認網路連線。（' + (err && err.message ? err.message : '未知錯誤') + '）';
     msg.className = 'modal-msg error';
   });
 }
