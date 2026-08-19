@@ -781,7 +781,7 @@ function renderBrandPie(brandList, byBrand, total){
   const tooltip = document.getElementById('brandPieTooltip');
   if(!svg || !legend) return;
 
-  const cx = 170, cy = 170, r = 155, rInner = 72;
+  const cx = 170, cy = 170, R = 150, rInner = 68;
   const filtered = brandList.filter(function(b){ return byBrand[b] && byBrand[b].count > 0; });
   if(!filtered.length || !total){ svg.innerHTML = ''; legend.innerHTML = ''; return; }
 
@@ -789,99 +789,101 @@ function renderBrandPie(brandList, byBrand, total){
   const slices = filtered.map(function(b){
     const pct = byBrand[b].count / total;
     const angle = pct * 2 * Math.PI;
-    const slice = { brand: b, count: byBrand[b].count, pct: pct, start: startAngle, end: startAngle + angle };
+    const s = { brand:b, count:byBrand[b].count, pct:pct, start:startAngle, end:startAngle + angle };
     startAngle += angle;
-    return slice;
+    return s;
   });
 
-  function polarToXY(angle, radius){
-    return { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+  function polar(angle, radius){
+    return [cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)];
+  }
+  function arcPath(s, outerR){
+    const [x1,y1] = polar(s.start, outerR);
+    const [x2,y2] = polar(s.end, outerR);
+    const [x3,y3] = polar(s.end, rInner);
+    const [x4,y4] = polar(s.start, rInner);
+    const lg = (s.end - s.start) > Math.PI ? 1 : 0;
+    return 'M'+x1+' '+y1+' A'+outerR+' '+outerR+' 0 '+lg+' 1 '+x2+' '+y2+
+           ' L'+x3+' '+y3+' A'+rInner+' '+rInner+' 0 '+lg+' 0 '+x4+' '+y4+' Z';
   }
 
-  function slicePath(s, outerR, innerR){
-    const p1 = polarToXY(s.start, outerR);
-    const p2 = polarToXY(s.end, outerR);
-    const p3 = polarToXY(s.end, innerR);
-    const p4 = polarToXY(s.start, innerR);
-    const large = (s.end - s.start) > Math.PI ? 1 : 0;
-    return 'M ' + p1.x + ' ' + p1.y +
-      ' A ' + outerR + ' ' + outerR + ' 0 ' + large + ' 1 ' + p2.x + ' ' + p2.y +
-      ' L ' + p3.x + ' ' + p3.y +
-      ' A ' + innerR + ' ' + innerR + ' 0 ' + large + ' 0 ' + p4.x + ' ' + p4.y + ' Z';
+  function setCenterText(active){
+    const label = document.getElementById('pieLabel');
+    const val   = document.getElementById('pieVal');
+    const sub   = document.getElementById('pieSub');
+    if(!label) return;
+    if(active !== null){
+      label.textContent = slices[active].brand;
+      val.textContent   = slices[active].count.toLocaleString();
+      sub.textContent   = fmtPct(slices[active].pct * 100);
+    } else {
+      label.textContent = '各品牌';
+      val.textContent   = total.toLocaleString();
+      sub.textContent   = '件';
+    }
   }
 
-  let activeSlice = null;
-
-  function renderSlices(active){
-    const paths = slices.map(function(s, i){
-      const isActive = active === i;
-      const outerR = isActive ? r + 8 : r;
-      const path = slicePath(s, outerR, rInner);
-      const gap = slices.length > 1 ? ' stroke="#fff" stroke-width="1.5"' : '';
-      return '<path d="' + path + '" fill="' + brandColor(s.brand) + '"' + gap +
-        ' style="cursor:pointer;" data-idx="' + i + '"></path>';
-    }).join('');
-
-    const centerBrand = active !== null ? slices[active].brand : '各品牌';
-    const centerCount = active !== null ? slices[active].count.toLocaleString() : total.toLocaleString();
-    const centerSub   = active !== null ? fmtPct(slices[active].pct * 100) : '件';
-
-    svg.innerHTML = paths +
-      '<text x="' + cx + '" y="' + (cy - 10) + '" text-anchor="middle" font-size="13" font-weight="700" fill="#8A8A93" font-family="Noto Sans TC,sans-serif">' + centerBrand + '</text>' +
-      '<text x="' + cx + '" y="' + (cy + 16) + '" text-anchor="middle" font-size="30" font-weight="800" fill="#17181C" font-family="Noto Sans TC,sans-serif">' + centerCount + '</text>' +
-      '<text x="' + cx + '" y="' + (cy + 38) + '" text-anchor="middle" font-size="13" fill="#C2C2C8" font-family="Noto Sans TC,sans-serif">' + centerSub + '</text>';
+  function setSliceActive(active){
+    svg.querySelectorAll('path[data-idx]').forEach(function(p, i){
+      const outerR = (active === i) ? R + 9 : R;
+      p.setAttribute('d', arcPath(slices[i], outerR));
+    });
+    setCenterText(active);
+    legend.querySelectorAll('.pie-legend-item').forEach(function(li, i){
+      li.classList.toggle('active', active === i);
+    });
   }
 
-  renderSlices(null);
+  // draw
+  const gap = slices.length > 1 ? ' stroke="#fff" stroke-width="1.5"' : '';
+  svg.innerHTML =
+    slices.map(function(s, i){
+      return '<path d="'+arcPath(s,R)+'" fill="'+brandColor(s.brand)+'"'+gap+
+             ' style="cursor:pointer;" data-idx="'+i+'"></path>';
+    }).join('') +
+    '<text id="pieLabel" x="'+cx+'" y="'+(cy-12)+'" text-anchor="middle" font-size="13" font-weight="700" fill="#8A8A93" font-family="Noto Sans TC,sans-serif">各品牌</text>' +
+    '<text id="pieVal"   x="'+cx+'" y="'+(cy+18)+'" text-anchor="middle" font-size="32" font-weight="800" fill="#17181C" font-family="Noto Sans TC,sans-serif">'+total.toLocaleString()+'</text>' +
+    '<text id="pieSub"  x="'+cx+'" y="'+(cy+40)+'" text-anchor="middle" font-size="13" fill="#C2C2C8" font-family="Noto Sans TC,sans-serif">件</text>';
 
-  svg.addEventListener('mousemove', function(e){
+  // events — delegation on stable svg element
+  let activeIdx = null;
+  svg.onmousemove = function(e){
     const el = e.target.closest('path[data-idx]');
     if(!el){
-      if(activeSlice !== null){ activeSlice = null; renderSlices(null); tooltip.classList.remove('show'); document.querySelectorAll('.pie-legend-item').forEach(function(l){ l.classList.remove('active'); }); }
+      if(activeIdx !== null){ activeIdx = null; setSliceActive(null); tooltip.classList.remove('show'); }
       return;
     }
     const idx = parseInt(el.getAttribute('data-idx'), 10);
-    if(idx !== activeSlice){
-      activeSlice = idx;
-      renderSlices(idx);
-      document.querySelectorAll('.pie-legend-item').forEach(function(li, i){ li.classList.toggle('active', i === idx); });
-    }
+    if(idx !== activeIdx){ activeIdx = idx; setSliceActive(idx); }
     const s = slices[idx];
-    tooltip.innerHTML = '<b>' + s.brand + '</b><br>' + s.count.toLocaleString() + ' 件・' + fmtPct(s.pct * 100);
+    tooltip.innerHTML = '<b>'+s.brand+'</b><br>'+s.count.toLocaleString()+' 件・'+fmtPct(s.pct*100);
     tooltip.style.left = (e.clientX + 16) + 'px';
     tooltip.style.top  = (e.clientY + 16) + 'px';
     tooltip.classList.add('show');
-  });
-
-  svg.addEventListener('mouseleave', function(){
-    activeSlice = null;
-    renderSlices(null);
+  };
+  svg.onmouseleave = function(){
+    activeIdx = null;
+    setSliceActive(null);
     tooltip.classList.remove('show');
-    document.querySelectorAll('.pie-legend-item').forEach(function(l){ l.classList.remove('active'); });
-  });
+  };
 
   // legend
   legend.innerHTML = slices.map(function(s, i){
-    return '<div class="pie-legend-item" data-idx="' + i + '">' +
-      '<div class="pie-legend-swatch" style="background:' + brandColor(s.brand) + '"></div>' +
-      '<span class="pie-legend-name">' + s.brand + '</span>' +
-      '<span class="pie-legend-val">' + s.count + ' 件・' + fmtPct(s.pct * 100) + '</span>' +
+    return '<div class="pie-legend-item" data-idx="'+i+'">' +
+      '<div class="pie-legend-swatch" style="background:'+brandColor(s.brand)+'"></div>' +
+      '<span class="pie-legend-name">'+s.brand+'</span>' +
+      '<span class="pie-legend-val">'+s.count+' 件・'+fmtPct(s.pct*100)+'</span>' +
     '</div>';
   }).join('');
 
   legend.querySelectorAll('.pie-legend-item').forEach(function(li){
-    li.addEventListener('mouseenter', function(){
+    li.onmouseenter = function(){
       const idx = parseInt(li.getAttribute('data-idx'), 10);
-      activeSlice = idx;
-      renderSlices(idx);
-      document.querySelectorAll('.pie-legend-item').forEach(function(l, i){ l.classList.toggle('active', i === idx); });
-    });
-    li.addEventListener('mouseleave', function(){
-      activeSlice = null;
-      renderSlices(null);
-      document.querySelectorAll('.pie-legend-item').forEach(function(l){ l.classList.remove('active'); });
-      tooltip.classList.remove('show');
-    });
+      activeIdx = idx; setSliceActive(idx);
+    };
+    li.onmouseleave = function(){
+      activeIdx = null; setSliceActive(null); tooltip.classList.remove('show');
+    };
   });
 }
 function pointColor(pts){
@@ -1470,8 +1472,11 @@ function render(cases, allCases){
     window.__chartData = { cases:cases, byBrand:byBrand, brandList:brandList, catTotals:catTotals, categories:categories, monthAgg:monthAgg, monthAggFull:monthAggFull, typeCounts:typeCounts, typeLabels:typeLabels };
     renderChartPanel();
 
-    // brand pie chart
-    renderBrandPie(brandList, byBrand, totals.count);
+    // brand pie chart — 依件數由多到少排序
+    const pieSortedBrands = Object.keys(byBrand)
+      .filter(function(b){ return byBrand[b].count > 0; })
+      .sort(function(a, b2){ return byBrand[b2].count - byBrand[a].count; });
+    renderBrandPie(pieSortedBrands, byBrand, totals.count);
 
     // brand hours (sorted by hours desc, independent of the fee-based brandList order)
     const hoursSorted = Object.keys(byBrand).sort(function(a,b2){ return byBrand[b2].hours - byBrand[a].hours; });
