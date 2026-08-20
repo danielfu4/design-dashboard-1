@@ -1250,15 +1250,35 @@ function parseWorkRow(r){
   };
 }
 
+function fetchAllRows(table, query){
+  // Supabase 預設 max_rows=1000，用 Range header 分頁讀取全部
+  const pageSize = 1000;
+  const baseUrl = sbUrl(table, query + '&limit=' + pageSize);
+
+  function fetchPage(offset){
+    return fetch(baseUrl + '&offset=' + offset, {
+      headers: Object.assign({}, SUPABASE_HEADERS, { 'Range-Unit':'items', 'Range': offset + '-' + (offset + pageSize - 1) })
+    }).then(function(res){ return res.ok ? res.json() : []; });
+  }
+
+  function loop(offset, acc){
+    return fetchPage(offset).then(function(rows){
+      const merged = acc.concat(rows);
+      if(rows.length < pageSize) return merged;  // 最後一頁
+      return loop(offset + pageSize, merged);
+    });
+  }
+
+  return loop(0, []);
+}
+
 function loadAll(manual){
   setLoading(true);
   if(manual) clearError();
 
   Promise.all([
-    fetch(sbUrl('cases','select=*&limit=9999&order=created_at.desc'),{headers:SUPABASE_HEADERS})
-      .then(function(res){ return res.ok ? res.json() : []; }),
-    fetch(sbUrl('work_records','select=*&limit=9999'),{headers:SUPABASE_HEADERS})
-      .then(function(res){ return res.ok ? res.json() : []; })
+    fetchAllRows('cases', 'select=*&order=created_at.desc'),
+    fetchAllRows('work_records', 'select=*&order=designer.asc,seq.asc')
   ])
   .then(function(results){
     const casesRows = results[0];
@@ -1274,7 +1294,7 @@ function loadAll(manual){
       if(c) allCases.push(c);
     });
 
-    renderUrgentStats(computeUrgentStats(casesRows)); // 急件只算新案件
+    renderUrgentStats(computeUrgentStats(casesRows));
     if(allCases.length === 0){
       showError('Supabase 沒有讀到任何案件資料。');
     }
