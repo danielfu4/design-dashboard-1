@@ -1164,51 +1164,95 @@ function computeUrgentStats(rows){
   return statsByPerson;
 }
 
+function parseCaseRow(r){
+  if(!r.brand) return null;
+  const createdAt = r.created_at ? formatDateStr(r.created_at) : '';
+  const monthMatch = createdAt.match(/\d{4}-(\d{2})-\d{2}/);
+  const month = monthMatch ? parseInt(monthMatch[1], 10) : null;
+  const quality       = parseRating(r.rating_quality);
+  const efficiency    = parseRating(r.rating_efficiency);
+  const communication = parseRating(r.rating_communication);
+  const price         = parseRating(r.rating_price);
+  const dims = [quality, efficiency, communication, price].filter(function(x){ return x !== null; });
+  const rating = dims.length ? dims.reduce(function(a,b){ return a+b; },0)/dims.length : null;
+  const status = r.status || '待處理';
+  return {
+    designer:      r.handler || '',
+    brand:         r.brand,
+    category:      r.req_type || '未分類',
+    caseType:      r.case_type || '',
+    month:         month,
+    project:       r.req_name || '',
+    hours:         Number(r.hours) || 0,
+    fee:           Number(r.fee) || 0,
+    done:          status === '已完成',
+    notDone:       status !== '已完成' && status !== '退件',
+    stopped:       status === '退件',
+    quality:       quality,
+    efficiency:    efficiency,
+    communication: communication,
+    price:         price,
+    rating:        rating,
+    reason:        r.rating_reason || '',
+    _source:       'cases'
+  };
+}
+
+function parseWorkRow(r){
+  if(!r.brand) return null;
+  const quality       = parseRating(r.rating_quality);
+  const efficiency    = parseRating(r.rating_efficiency);
+  const communication = parseRating(r.rating_communication);
+  const price         = parseRating(r.rating_price);
+  const dims = [quality, efficiency, communication, price].filter(function(x){ return x !== null; });
+  const rating = dims.length ? dims.reduce(function(a,b){ return a+b; },0)/dims.length : null;
+  return {
+    designer:      r.designer || '',
+    brand:         r.brand,
+    category:      r.category || '未分類',
+    caseType:      r.case_type || '',
+    month:         r.month || null,
+    project:       r.project || '',
+    hours:         Number(r.hours) || 0,
+    fee:           Number(r.fee) || 0,
+    done:          true,   // 歷史資料視為已完成
+    notDone:       false,
+    stopped:       false,
+    quality:       quality,
+    efficiency:    efficiency,
+    communication: communication,
+    price:         price,
+    rating:        rating,
+    reason:        r.rating_reason || '',
+    _source:       'work_records'
+  };
+}
+
 function loadAll(manual){
   setLoading(true);
   if(manual) clearError();
 
-  fetch(sbUrl('cases','select=*&limit=9999&order=created_at.desc'),{headers:SUPABASE_HEADERS})
-  .then(function(res){
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    return res.json();
-  })
-  .then(function(rows){
+  Promise.all([
+    fetch(sbUrl('cases','select=*&limit=9999&order=created_at.desc'),{headers:SUPABASE_HEADERS})
+      .then(function(res){ return res.ok ? res.json() : []; }),
+    fetch(sbUrl('work_records','select=*&limit=9999'),{headers:SUPABASE_HEADERS})
+      .then(function(res){ return res.ok ? res.json() : []; })
+  ])
+  .then(function(results){
+    const casesRows = results[0];
+    const workRows  = results[1];
+
     const allCases = [];
-    rows.forEach(function(r){
-      if(!r.brand) return;
-      const createdAt = r.created_at ? formatDateStr(r.created_at) : '';
-      const monthMatch = createdAt.match(/\d{4}-(\d{2})-\d{2}/);
-      const month = monthMatch ? parseInt(monthMatch[1], 10) : null;
-      const quality       = parseRating(r.rating_quality);
-      const efficiency    = parseRating(r.rating_efficiency);
-      const communication = parseRating(r.rating_communication);
-      const price         = parseRating(r.rating_price);
-      const dims = [quality, efficiency, communication, price].filter(function(x){ return x !== null; });
-      const rating = dims.length ? dims.reduce(function(a,b){ return a+b; },0)/dims.length : null;
-      const status = r.status || '待處理';
-      allCases.push({
-        designer:      r.handler || '',
-        brand:         r.brand,
-        category:      r.req_type || '未分類',
-        caseType:      r.case_type || '',
-        month:         month,
-        project:       r.req_name || '',
-        hours:         Number(r.hours) || 0,
-        fee:           Number(r.fee) || 0,
-        done:          status === '已完成',
-        notDone:       status !== '已完成' && status !== '退件',
-        stopped:       status === '退件',
-        quality:       quality,
-        efficiency:    efficiency,
-        communication: communication,
-        price:         price,
-        rating:        rating,
-        reason:        r.rating_reason || ''
-      });
+    casesRows.forEach(function(r){
+      const c = parseCaseRow(r);
+      if(c) allCases.push(c);
+    });
+    workRows.forEach(function(r){
+      const c = parseWorkRow(r);
+      if(c) allCases.push(c);
     });
 
-    renderUrgentStats(computeUrgentStats(rows));
+    renderUrgentStats(computeUrgentStats(casesRows)); // 急件只算新案件
     if(allCases.length === 0){
       showError('Supabase 沒有讀到任何案件資料。');
     }
