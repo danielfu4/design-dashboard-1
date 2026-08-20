@@ -814,8 +814,6 @@ function normalizeDateStr(str){
   return m[1] + '-' + pad2(parseInt(m[2],10)) + '-' + pad2(parseInt(m[3],10));
 }
 
-const LOCK_TAB_NAME = 'locked_dates';
-
 function loadDateCounts(){
   loadAllTabRows().then(function(rows){
     try{
