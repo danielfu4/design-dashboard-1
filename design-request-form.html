@@ -733,7 +733,7 @@ function updateUrgentCounter(){
       rows.forEach(function(r){
         const person = (r.req_person || '').trim();
         const urgent = r.is_urgent || '';
-        const fill = normalizeDateStr(r.fill_date || '');
+        const fill = cleanDueDate(r.fill_date || '');
         if(person === name && urgent === 'Y' && fill && fill.indexOf(ymPrefix) === 0) count++;
       });
       el.textContent = '本月已標急件 ' + count + ' 次';
@@ -813,13 +813,24 @@ function normalizeDateStr(str){
   return m[1] + '-' + pad2(parseInt(m[2],10)) + '-' + pad2(parseInt(m[3],10));
 }
 
+// 清洗 Supabase 回傳的日期值：有些舊資料匯入時被存成完整 JS 時間戳字串
+// （例如 "Tue Aug 17 2026 00:00:00 GMT+0800..."），先轉成乾淨的 yyyy-MM-dd 再比對
+function cleanDueDate(val){
+  if(!val) return null;
+  const direct = normalizeDateStr(val);
+  if(direct) return direct;
+  const d = new Date(val);
+  if(isNaN(d.getTime())) return null;
+  return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate());
+}
+
 function loadDateCounts(){
   loadAllTabRows().then(function(rows){
     try{
       const counts = {};
       const urgentByDesigner = {};
       rows.forEach(function(r){
-        const due = normalizeDateStr(r.due_date || '');
+        const due = cleanDueDate(r.due_date || '');
         const handler = (r.handler || '').trim();
         const urgent = r.is_urgent || '';
         const status = r.status || '';
@@ -1309,7 +1320,7 @@ function openUrgentModal(payload){
         if(person !== name) return;
         const status = r.status || '待處理';
         if(status === '已完成' || status === '退件') return;
-        const due = normalizeDateStr(r.due_date||'');
+        const due = cleanDueDate(r.due_date||'');
         const reqName = r.req_name || '';
         others.push({ reqName:reqName, due:due, status:status });
       });

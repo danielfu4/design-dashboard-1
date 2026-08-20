@@ -1150,9 +1150,7 @@ function copyCaseAndCreate(data){
   loadCopyDateCounts();
 }
 
-const LOCK_TAB_NAME = '鎖定日期';
-const DAILY_LIMIT = 5;
-let dateCounts = { Nikki:{}, Yuly:{}, Luna:{}, Daniel:{} };
+let dateCounts = {};
 let copyCalendarDate = new Date();
 
 function pad2(n){ return n < 10 ? '0' + n : '' + n; }
@@ -1172,47 +1170,47 @@ function copyCurrentHandler(){
     : (designers[0] || copyOriginalData.handler || '');
 }
 
-function loadAllTabRows(){
-  return Promise.all(ALL_TABS.map(loadTabRows)).then(function(results){
-    return results.reduce(function(acc, rows){ return acc.concat(rows); }, []);
-  });
+// 清洗 Supabase 回傳的日期值：有些舊資料匯入時被存成完整 JS 時間戳字串
+// （例如 "Tue Aug 17 2026 00:00:00 GMT+0800..."），先轉成乾淨的 yyyy-MM-dd 再比對
+function cleanDueDate(val){
+  if(!val) return null;
+  const direct = normalizeDateStr(val);
+  if(direct) return direct;
+  const d = new Date(val);
+  if(isNaN(d.getTime())) return null;
+  return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate());
 }
 
 function loadCopyDateCounts(){
   loadAllTabRows().then(function(rows){
     try{
-      const counts = { Nikki:{}, Yuly:{}, Luna:{}, Daniel:{} };
+      const counts = {};
       rows.forEach(function(r){
-        const c = r.c || [];
-        const rawDue = c[6] && (c[6].f || c[6].v) ? String(c[6].f || c[6].v) : '';
-        const due = normalizeDateStr(rawDue);
-        const handler = c[19] && c[19].v ? String(c[19].v).trim() : '';
-        const status = c[17] && c[17].v ? String(c[17].v).trim() : '';
-        if(!due) return;
-        if(status === '退件') return;
-        if(counts[handler]) counts[handler][due] = (counts[handler][due] || 0) + 1;
+        const due = cleanDueDate(r.due_date || '');
+        const handler = (r.handler || '').trim();
+        const status = r.status || '';
+        if(!due || !handler || status === '退件') return;
+        if(!counts[handler]) counts[handler] = {};
+        counts[handler][due] = (counts[handler][due] || 0) + 1;
       });
       dateCounts = counts;
     }catch(err){ /* 讀取失敗就不擋日期 */ }
     renderCopyCalendar();
   });
 
-  loadTabRows(LOCK_TAB_NAME).then(function(rows){
-    try{
-      const lockMap = {};
-      rows.forEach(function(r){
-        const c = r.c || [];
-        const designer = c[0] && c[0].v ? String(c[0].v).trim() : '';
-        const date = normalizeDateStr(c[1] && (c[1].f || c[1].v) ? String(c[1].f || c[1].v) : '');
-        const reason = c[2] && c[2].v ? String(c[2].v).trim() : '';
-        if(!designer || !date) return;
-        if(!lockMap[designer]) lockMap[designer] = {};
-        lockMap[designer][date] = reason;
-      });
-      window.__copyLockedByDesigner = lockMap;
-    }catch(err){ window.__copyLockedByDesigner = {}; }
+  fetch(sbUrl('locked_dates','select=handler,date,reason'),{headers:SUPABASE_HEADERS})
+  .then(function(res){ return res.ok ? res.json() : []; })
+  .then(function(rows){
+    const lockMap = {};
+    rows.forEach(function(r){
+      if(!r.handler||!r.date) return;
+      if(!lockMap[r.handler]) lockMap[r.handler]={};
+      lockMap[r.handler][r.date] = r.reason||'';
+    });
+    window.__copyLockedByDesigner = lockMap;
     renderCopyCalendar();
-  });
+  })
+  .catch(function(){ window.__copyLockedByDesigner={}; renderCopyCalendar(); });
 }
 
 function copyIsDateBlocked(dateStr){
