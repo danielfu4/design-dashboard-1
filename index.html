@@ -738,9 +738,12 @@ function initCsel(id, options, value, onChange){
   renderCselPanel(id);
 }
 
-const SHEET_ID = '1hcNsH0Hc-GrBQbbC7CNr20N_uEKpXd5-4D-ulD7CTbg';
-// 每個年度對應的分頁名稱。之後如果新增像 2027 年度的新分頁，
-// 只要在這裡加一行（例如 '2027': ['Nikki2027','Luna2027',...]），年份選單會自動抓到。
+const SUPABASE_URL = 'https://qvhfbgnglheepwdqybbr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2aGZiZ25nbGhlZXB3ZHF5YmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMDU3NzYsImV4cCI6MjEwMjc4MTc3Nn0.i-ya01hkl4Cvt6t_5nMUZXQBs9mTof373mheyzO9Svw';
+const SUPABASE_HEADERS = { 'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY };
+function sbUrl(table,query){ return SUPABASE_URL+'/rest/v1/'+table+(query?'?'+query:''); }
+
+// 每個年度對應的設計師列表（年份選單用）
 const YEARS = {
   '2026': ['Nikki','Luna','Yuly','Daniel']
 };
@@ -891,19 +894,6 @@ function pointColor(pts){
   if(pts >= 60) return '#22C55E';
   if(pts >= 40) return '#F5C518';
   return '#EF4444';
-}
-
-function parseRating(v){
-  if(v === null || v === undefined || v === '') return null;
-  if(typeof v === 'number'){
-    return v > 5 ? v/20 : v; // 0~100 分制：20分=1星…100分=5星
-  }
-  const s = String(v);
-  const filled = (s.match(/★/g) || []).length;
-  if(filled > 0) return filled;
-  const num = parseFloat(s);
-  if(isNaN(num)) return null;
-  return num > 5 ? num/20 : num;
 }
 
 let currentDesigner = 'all';
@@ -1143,90 +1133,27 @@ function applyMarquee(){
   });
 }
 
-function loadTab(tabName){
-  return new Promise(function(resolve, reject){
-    const cbName = 'gsheetCb_' + tabName.replace(/[^a-zA-Z0-9]/g,'') + '_' + Date.now() + '_' + Math.floor(Math.random()*1e6);
-    window[cbName] = function(response){
-      clearTimeout(to);
-      try{ resolve(parseResponse(response, tabName)); }
-      catch(e){ reject(new Error(tabName + '：' + e.message)); }
-      delete window[cbName];
-      script.remove();
-    };
-    const script = document.createElement('script');
-    script.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
-      '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(tabName) + '&headers=1&_ts=' + Date.now();
-    script.onerror = function(){ clearTimeout(to); reject(new Error(tabName + '：無法連線')); };
-    document.body.appendChild(script);
-    const to = setTimeout(function(){ reject(new Error(tabName + '：連線逾時')); }, 12000);
-    loadTimeoutHandles.push(to);
-  });
+function parseRating(v){
+  if(v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return isNaN(n) ? null : Math.max(1, Math.min(5, n));
 }
 
-const REQUEST_SHEET_ID = '1Q0b8dS3zKVoypKNh0hNuburvp4NMxmAwbdjoSQ4ibNg';
-const REQUEST_TABS = ['Nikki需求單','Yuly需求單','Luna需求單','Daniel需求單'];
-
-function loadRequestTabRows(tabName){
-  return new Promise(function(resolve){
-    const cbName = 'gsheetCb3_' + tabName.replace(/[^a-zA-Z0-9]/g,'') + '_' + Date.now() + '_' + Math.floor(Math.random()*1e6);
-    let done = false;
-    window[cbName] = function(response){
-      if(done) return;
-      done = true;
-      let rows = [];
-      try{ rows = (response && response.table && response.table.rows) || []; }catch(e){}
-      delete window[cbName];
-      if(script.parentNode) script.remove();
-      resolve(rows);
-    };
-    const script = document.createElement('script');
-    script.src = 'https://docs.google.com/spreadsheets/d/' + REQUEST_SHEET_ID +
-      '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(tabName) + '&headers=1&_ts=' + Date.now();
-    script.onerror = function(){ if(done) return; done = true; resolve([]); };
-    document.body.appendChild(script);
-    setTimeout(function(){ if(done) return; done = true; resolve([]); }, 12000);
-  });
+function formatDateStr(val){
+  if(!val) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(String(val).trim())) return String(val).trim();
+  const d = new Date(val);
+  if(isNaN(d.getTime())) return String(val);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 
-function parseRequestRows(rows, designerName){
-  const cases = [];
-  rows.forEach(function(r){
-    const c = r.c || [];
-    const brand = c[1] && c[1].v ? String(c[1].v).trim() : '';
-    if(!brand) return;
-    const category = c[2] && c[2].v ? String(c[2].v).trim() : '未分類';
-    const caseType = c[31] && c[31].v ? String(c[31].v).trim() : '';
-    const project = c[3] && c[3].v ? String(c[3].v).trim() : '';
-    const hours = (c[33] && typeof c[33].v === 'number') ? c[33].v : (c[33] && c[33].v ? Number(c[33].v) || 0 : 0);
-    const fee   = (c[34] && typeof c[34].v === 'number') ? c[34].v : (c[34] && c[34].v ? Number(c[34].v) || 0 : 0);
-    const status = c[17] && c[17].v ? String(c[17].v).trim() : '待處理';
-    const done = status === '已完成';
-    const stopped = status === '退件';
-    const notDone = !done && !stopped;
-    const quality       = c[23] ? parseRating(c[23].v) : null;
-    const efficiency    = c[24] ? parseRating(c[24].v) : null;
-    const communication = c[25] ? parseRating(c[25].v) : null;
-    const price          = c[26] ? parseRating(c[26].v) : null;
-    const dims = [quality, efficiency, communication, price].filter(function(x){ return x !== null; });
-    const rating = dims.length ? (dims.reduce(function(a,b){ return a+b; }, 0) / dims.length) : null;
-    const reason = c[37] && c[37].v ? String(c[37].v).trim() : '';
-    const submitRaw = c[0] && (c[0].f || c[0].v) ? String(c[0].f || c[0].v) : '';
-    const dm = submitRaw.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-    const month = dm ? parseInt(dm[2], 10) : null;
-    cases.push({ designer: designerName, brand, category, caseType, month, project, hours, fee, done, notDone, stopped, quality, efficiency, communication, price, rating, reason });
-  });
-  return cases;
-}
-
-function computeUrgentStats(allRows){
+function computeUrgentStats(rows){
   const statsByPerson = {};
-  allRows.forEach(function(r){
-    const c = r.c || [];
-    const person = c[4] && c[4].v ? String(c[4].v).trim() : '';
-    const isUrgent = c[28] && c[28].v ? String(c[28].v).trim() : '';
-    if(isUrgent !== 'Y' || !person) return;
-    const cat = c[29] && c[29].v ? String(c[29].v).trim() : '';
-    const other = c[30] && c[30].v ? String(c[30].v).trim() : '';
+  rows.forEach(function(r){
+    if((r.is_urgent||'') !== 'Y' || !r.req_person) return;
+    const person = r.req_person.trim();
+    const cat = r.urgent_reason_cat || '';
+    const other = r.urgent_reason_other || '';
     const reason = (cat === '其他' && other) ? other : cat;
     if(!statsByPerson[person]) statsByPerson[person] = { count:0, reasons:[] };
     statsByPerson[person].count++;
@@ -1237,86 +1164,67 @@ function computeUrgentStats(allRows){
   return statsByPerson;
 }
 
-function renderUrgentStats(statsByPerson){
-  const wrap = document.getElementById('urgentStatsList');
-  if(!wrap) return;
-  const people = Object.keys(statsByPerson).sort(function(a,b){
-    return statsByPerson[b].count - statsByPerson[a].count;
-  });
-  if(people.length === 0){
-    wrap.innerHTML = '<div class="empty-state">目前沒有登記任何急件。</div>';
-    return;
-  }
-  wrap.innerHTML = people.map(function(name){
-    const info = statsByPerson[name];
-    const reasonText = info.reasons.length ? info.reasons.join('、') : '未填寫原因';
-    return (
-      '<div class="urgent-row">' +
-        '<span class="urgent-person">' + name + '</span>' +
-        '<span class="urgent-count">' + info.count + ' 件</span>' +
-        '<span class="reason reason-wrap"><span>' + reasonText + '</span></span>' +
-      '</div>'
-    );
-  }).join('');
-  applyMarquee();
-}
-
 function loadAll(manual){
   setLoading(true);
   if(manual) clearError();
-  loadTimeoutHandles.forEach(clearTimeout);
-  loadTimeoutHandles = [];
 
-  const tabs = currentYearTabs();
-  if(tabs.length === 0){
-    showError(currentYear + ' 年度目前還沒有設定對應的分頁名稱。');
-    setLoading(false);
-    return;
-  }
-
-  const originalSheetPromise = Promise.allSettled(tabs.map(loadTab));
-  const requestSheetPromise = Promise.all(REQUEST_TABS.map(function(tabName){
-    return loadRequestTabRows(tabName).then(function(rows){ return { tabName: tabName, rows: rows }; });
-  }));
-
-  Promise.allSettled([originalSheetPromise, requestSheetPromise]).then(function(outer){
-    let allCases = [];
-    const failed = [];
-    const failReasons = [];
-
-    if(outer[0].status === 'fulfilled'){
-      outer[0].value.forEach(function(r, i){
-        if(r.status === 'fulfilled') allCases = allCases.concat(r.value);
-        else{
-          failed.push(tabs[i]);
-          failReasons.push(tabs[i] + '：' + (r.reason && r.reason.message ? r.reason.message : String(r.reason)));
-        }
+  fetch(sbUrl('cases','select=*&limit=9999&order=created_at.desc'),{headers:SUPABASE_HEADERS})
+  .then(function(res){
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    return res.json();
+  })
+  .then(function(rows){
+    const allCases = [];
+    rows.forEach(function(r){
+      if(!r.brand) return;
+      const createdAt = r.created_at ? formatDateStr(r.created_at) : '';
+      const monthMatch = createdAt.match(/\d{4}-(\d{2})-\d{2}/);
+      const month = monthMatch ? parseInt(monthMatch[1], 10) : null;
+      const quality       = parseRating(r.rating_quality);
+      const efficiency    = parseRating(r.rating_efficiency);
+      const communication = parseRating(r.rating_communication);
+      const price         = parseRating(r.rating_price);
+      const dims = [quality, efficiency, communication, price].filter(function(x){ return x !== null; });
+      const rating = dims.length ? dims.reduce(function(a,b){ return a+b; },0)/dims.length : null;
+      const status = r.status || '待處理';
+      allCases.push({
+        designer:      r.handler || '',
+        brand:         r.brand,
+        category:      r.req_type || '未分類',
+        caseType:      r.case_type || '',
+        month:         month,
+        project:       r.req_name || '',
+        hours:         Number(r.hours) || 0,
+        fee:           Number(r.fee) || 0,
+        done:          status === '已完成',
+        notDone:       status !== '已完成' && status !== '退件',
+        stopped:       status === '退件',
+        quality:       quality,
+        efficiency:    efficiency,
+        communication: communication,
+        price:         price,
+        rating:        rating,
+        reason:        r.rating_reason || ''
       });
-    }
+    });
 
-    let allUrgentRows = [];
-    if(outer[1].status === 'fulfilled'){
-      outer[1].value.forEach(function(entry){
-        const designerName = entry.tabName.replace('需求單', '');
-        allCases = allCases.concat(parseRequestRows(entry.rows, designerName));
-        allUrgentRows = allUrgentRows.concat(entry.rows);
-      });
-    }
-    renderUrgentStats(computeUrgentStats(allUrgentRows));
-
+    renderUrgentStats(computeUrgentStats(rows));
     if(allCases.length === 0){
-      showError('沒有讀到任何案件資料，請確認分頁名稱是否正確（目前嘗試：' + tabs.join('、') + '）。');
-    } else if(failed.length){
-      showError('以下分頁讀取失敗，暫時略過：' + failed.join('、') + '　－　' + failReasons.join('　'));
+      showError('Supabase 沒有讀到任何案件資料。');
     }
     window.__allCases = allCases;
     updateMonthOptions(allCases);
     applyFilterAndRender();
     document.getElementById('lastSync').textContent =
-      '上次更新 ' + new Date().toLocaleTimeString('zh-TW', {hour12:false});
+      '上次更新 ' + new Date().toLocaleTimeString('zh-TW',{hour12:false});
+    setLoading(false);
+  })
+  .catch(function(err){
+    showError('資料讀取失敗：' + err.message);
     setLoading(false);
   });
 }
+
 
 function applyFilterAndRender(){
   const all = window.__allCases || [];

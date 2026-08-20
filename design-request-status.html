@@ -668,11 +668,32 @@ initCsel('statusFilter', [
   { value:'退件', label:'退件' }
 ], 'all', function(){ applyStatusFilterAndRender(); });
 
-// 部署好個人帳號的新試算表後，把它的 ID 貼在這裡（網址 /d/ 跟 /edit 中間那一長串）
-const SHEET_ID = '1Q0b8dS3zKVoypKNh0hNuburvp4NMxmAwbdjoSQ4ibNg';
-const DESIGNER_TABS = { Nikki:'Nikki需求單', Yuly:'Yuly需求單', Luna:'Luna需求單', Daniel:'Daniel需求單' };
-const ALL_TABS = Object.values(DESIGNER_TABS);
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_cLlF17JTPJBdhcqcLG0gn9g7Tfjub9qiCj8SM7ScATew3VoJ-7Kbfrfi_LJyk05SZA/exec';
+const SUPABASE_URL = 'https://qvhfbgnglheepwdqybbr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2aGZiZ25nbGhlZXB3ZHF5YmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMDU3NzYsImV4cCI6MjEwMjc4MTc3Nn0.i-ya01hkl4Cvt6t_5nMUZXQBs9mTof373mheyzO9Svw';
+const SUPABASE_HEADERS = { 'Content-Type':'application/json', 'apikey':SUPABASE_KEY, 'Authorization':'Bearer '+SUPABASE_KEY };
+const DAILY_LIMIT = 5;
+const LOCK_TAB_NAME = 'locked_dates';
+
+function sbUrl(table, query){ return SUPABASE_URL+'/rest/v1/'+table+(query?'?'+query:''); }
+function sbPatch(table, query, body){
+  return fetch(sbUrl(table,query),{method:'PATCH',headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=minimal'}),body:JSON.stringify(body)});
+}
+
+function formatDateStr(val){
+  if(!val) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(String(val).trim())) return String(val).trim();
+  const d = new Date(val);
+  if(isNaN(d.getTime())) return String(val);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function loadTabRows(){ return Promise.resolve([]); }  // shim — not used directly anymore
+
+function loadAllTabRows(){
+  return fetch(sbUrl('cases','select=*&limit=5000&order=created_at.desc'),{headers:SUPABASE_HEADERS})
+    .then(function(res){ return res.ok ? res.json() : []; })
+    .catch(function(){ return []; });
+}
 
 function cellText(c){
   if(!c) return '';
@@ -727,25 +748,6 @@ function statusInfo(status){
   }
 }
 
-function loadTabRows(tabName){
-  return new Promise(function(resolve){
-    const cbName = 'gsheetCb_' + tabName.replace(/[^a-zA-Z0-9]/g,'') + '_' + Date.now() + '_' + Math.floor(Math.random()*1e6);
-    let done = false;
-    window[cbName] = function(response){
-      done = true;
-      resolve((response && response.table && response.table.rows) || []);
-      delete window[cbName];
-      if(script.parentNode) script.remove();
-    };
-    const script = document.createElement('script');
-    script.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
-      '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(tabName) + '&headers=1&_ts=' + Date.now();
-    script.onerror = function(){ if(!done){ done = true; resolve([]); } };
-    document.body.appendChild(script);
-    setTimeout(function(){ if(!done){ done = true; resolve([]); } }, 12000);
-  });
-}
-
 function doSearch(e){
   if(e) e.preventDefault();
   const name = document.getElementById('searchName').value.trim();
@@ -754,28 +756,16 @@ function doSearch(e){
     results.innerHTML = '<div class="state-msg">請先輸入姓名再查詢</div>';
     return false;
   }
-  if(SHEET_ID.indexOf('請貼上') === 0){
-    results.innerHTML = '<div class="state-msg">尚未設定試算表來源，請先在程式碼裡貼上 SHEET_ID。</div>';
-    return false;
-  }
-
   results.innerHTML = '<div class="state-msg">查詢中...</div>';
 
-  Promise.all(ALL_TABS.map(loadTabRows)).then(function(resultsPerTab){
-    try{
-      const rows = resultsPerTab.reduce(function(acc, r){ return acc.concat(r); }, []);
-      renderResults(rows, name);
-    }catch(err){
-      results.innerHTML = '<div class="state-msg">資料讀取失敗：' + err.message + '</div>';
-    }
+  fetch(sbUrl('cases','req_person=eq.'+encodeURIComponent(name)+'&limit=500&order=created_at.desc'),{headers:SUPABASE_HEADERS})
+  .then(function(res){ return res.ok ? res.json() : []; })
+  .then(function(rows){
+    renderResults(rows, name);
+  })
+  .catch(function(err){
+    results.innerHTML = '<div class="state-msg">資料讀取失敗：'+(err.message||'未知錯誤')+'</div>';
   });
-
-  setTimeout(function(){
-    if(document.getElementById('results').innerHTML.indexOf('查詢中') !== -1){
-      results.innerHTML = '<div class="state-msg">連線逾時，請重新查詢一次。</div>';
-    }
-  }, 13000);
-
   return false;
 }
 
@@ -809,56 +799,44 @@ function progressBarHtml(status){
 
 function renderResults(rows, name){
   const results = document.getElementById('results');
-  if(!rows){
-    results.innerHTML = '<div class="state-msg">資料格式不正確。</div>';
-    return;
-  }
-  const target = name.toLowerCase();
-  const matches = [];
-
-  rows.forEach(function(r){
-    const c = r.c || [];
-    const person = cellText(c[4]).trim();
-    if(!person) return;
-    if(person.toLowerCase() !== target) return;
-    matches.push({
-      submitTime: cellText(c[0]),
-      brand: cellText(c[1]),
-      reqType: cellText(c[2]),
-      reqName: cellText(c[3]),
-      reqPerson: person,
-      fillDate: cellText(c[5]),
-      dueDate: cellText(c[6]),
-      materials: cellText(c[7]),
-      notes: cellText(c[16]),
-      status: cellText(c[17]),
-      rejectReason: cellText(c[18]),
-      handler: cellText(c[19]),
-      groupTag: cellText(c[21]),
-      id: cellText(c[22]),
-      quality: cellText(c[23]),
-      efficiency: cellText(c[24]),
-      communication: cellText(c[25]),
-      price: cellText(c[26]),
-      deliveryLink: cellText(c[27]),
-      isUrgent: cellText(c[28]),
-      caseType: cellText(c[31]),
-      caseFields: cellText(c[32]),
-      channel: cellText(c[38]),
-      hours: cellText(c[33]),
-      fee: cellText(c[34]),
-      supplement: cellText(c[35]),
-      supplementTime: cellText(c[36]),
-      ratingReason: cellText(c[37]),
-      designerReply: cellText(c[39]),
-      designHistory: cellText(c[40])
-    });
-  });
-
-  if(matches.length === 0){
+  if(!rows || !rows.length){
     results.innerHTML = '<div class="state-msg">查無「' + name + '」的需求紀錄，請確認姓名是否與填單時完全一致。</div>';
     return;
   }
+  const matches = rows.map(function(r){
+    return {
+      submitTime:   formatDateStr(r.created_at),
+      brand:        r.brand || '',
+      reqType:      r.req_type || '',
+      reqName:      r.req_name || '',
+      reqPerson:    r.req_person || '',
+      fillDate:     formatDateStr(r.fill_date),
+      dueDate:      formatDateStr(r.due_date),
+      materials:    r.materials || '',
+      notes:        r.notes || '',
+      status:       r.status || '待處理',
+      rejectReason: r.reject_reason || '',
+      handler:      r.handler || '',
+      groupTag:     r.group_name || '',
+      id:           r.id || '',
+      quality:      r.rating_quality !== null && r.rating_quality !== undefined ? String(r.rating_quality) : '',
+      efficiency:   r.rating_efficiency !== null && r.rating_efficiency !== undefined ? String(r.rating_efficiency) : '',
+      communication:r.rating_communication !== null && r.rating_communication !== undefined ? String(r.rating_communication) : '',
+      price:        r.rating_price !== null && r.rating_price !== undefined ? String(r.rating_price) : '',
+      deliveryLink: r.delivery_link || '',
+      isUrgent:     r.is_urgent || '',
+      caseType:     r.case_type || '',
+      caseFields:   r.case_fields || '',
+      channel:      r.channel || '',
+      hours:        r.hours !== null && r.hours !== undefined ? String(r.hours) : '',
+      fee:          r.fee !== null && r.fee !== undefined ? String(r.fee) : '',
+      supplement:   r.supplement || '',
+      supplementTime: formatDateStr(r.supplement_at),
+      ratingReason: r.rating_reason || '',
+      designerReply:r.designer_reply || '',
+      designHistory:r.design_history || ''
+    };
+  });
 
   window.__allMatches = matches;
   applyStatusFilterAndRender();
@@ -1392,26 +1370,41 @@ function submitCopiedCase(){
   msg.textContent = '送出中...';
   msg.className = 'modal-msg';
 
-  fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload)
+  const sbBody = {
+    brand:              payload.brand,
+    req_type:           payload.reqType,
+    req_name:           payload.reqName,
+    req_person:         payload.reqPerson,
+    fill_date:          payload.fillDate,
+    due_date:           payload.dueDate,
+    materials:          payload.materials,
+    case_fields:        payload.caseFields,
+    channel:            payload.channel,
+    notes:              payload.notes,
+    handler:            payload.handler,
+    group_name:         payload.group,
+    case_type:          payload.caseType,
+    is_urgent:          payload.isUrgent||'N',
+    urgent_reason_cat:  payload.urgentReasonCat||'',
+    urgent_reason_other:payload.urgentReasonOther||'',
+    status:             '待處理'
+  };
+
+  fetch(sbUrl('cases',''),{
+    method:'POST',
+    headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=minimal'}),
+    body:JSON.stringify(sbBody)
   })
-  .then(function(res){ return res.json(); })
-  .then(function(data){
+  .then(function(res){
     btn.disabled = false;
-    if(data.status === 'success'){
-      msg.textContent = '✓ 已送出新需求';
-      msg.className = 'modal-msg success';
-      setTimeout(function(){ closeCopyModal(); }, 1000);
-    }else{
-      msg.textContent = '送出失敗：' + (data.message || '未知錯誤');
-      msg.className = 'modal-msg error';
-    }
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    msg.textContent = '✓ 已送出新需求';
+    msg.className = 'modal-msg success';
+    setTimeout(function(){ closeCopyModal(); }, 1000);
   })
-  .catch(function(){
+  .catch(function(err){
     btn.disabled = false;
-    msg.textContent = '送出失敗，請確認網路連線。';
+    msg.textContent = '送出失敗：'+(err&&err.message?err.message:'未知錯誤');
     msg.className = 'modal-msg error';
   });
 }
@@ -1445,26 +1438,27 @@ function submitSupplement(){
   msg.textContent = '送出中...';
   msg.className = 'modal-msg';
 
-  fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action:'addSupplement', id: currentSupplementId, content: content })
-  })
+  fetch(sbUrl('cases','id=eq.'+currentSupplementId+'&select=supplement,handler,req_name'),{headers:SUPABASE_HEADERS})
   .then(function(res){ return res.json(); })
-  .then(function(data){
-    btn.disabled = false;
-    if(data.status === 'success'){
-      msg.textContent = '✓ 已送出補充內容';
-      msg.className = 'modal-msg success';
-      setTimeout(function(){ closeSupplementModal(); }, 900);
-    }else{
-      msg.textContent = '送出失敗：' + (data.message || '未知錯誤');
-      msg.className = 'modal-msg error';
-    }
+  .then(function(rows){
+    const now = new Date();
+    const pad = function(n){ return n<10?'0'+n:''+n; };
+    const stamp = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+' '+pad(now.getHours())+':'+pad(now.getMinutes());
+    const existing = (rows[0]&&rows[0].supplement)||'';
+    const newEntry = '['+stamp+'] '+content;
+    const merged = existing?(existing+'\n\n'+newEntry):newEntry;
+    return sbPatch('cases','id=eq.'+currentSupplementId,{ supplement:merged, supplement_at:now.toISOString() });
   })
-  .catch(function(){
+  .then(function(res){
     btn.disabled = false;
-    msg.textContent = '送出失敗，請確認網路連線。';
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    msg.textContent = '✓ 已送出補充內容';
+    msg.className = 'modal-msg success';
+    setTimeout(function(){ closeSupplementModal(); }, 900);
+  })
+  .catch(function(err){
+    btn.disabled = false;
+    msg.textContent = '送出失敗：'+(err&&err.message?err.message:'未知錯誤');
     msg.className = 'modal-msg error';
   });
 }
@@ -1504,11 +1498,9 @@ function loadEditDateCounts(){
     try{
       const counts = {};
       rows.forEach(function(r){
-        const c = r.c || [];
-        const rawDue = c[6] && (c[6].f || c[6].v) ? String(c[6].f || c[6].v) : '';
-        const due = normalizeDateStr(rawDue);
-        const handler = c[19] && c[19].v ? String(c[19].v).trim() : '';
-        const status = c[17] && c[17].v ? String(c[17].v).trim() : '';
+        const due = formatDateStr(r.due_date);
+        const handler = r.handler || '';
+        const status = r.status || '';
         if(!due || status === '退件') return;
         if(!counts[handler]) counts[handler] = {};
         counts[handler][due] = (counts[handler][due] || 0) + 1;
@@ -1518,22 +1510,19 @@ function loadEditDateCounts(){
     renderEditCalendar();
   });
 
-  loadTabRows(LOCK_TAB_NAME).then(function(rows){
-    try{
-      const lockMap = {};
-      rows.forEach(function(r){
-        const c = r.c || [];
-        const designer = c[0] && c[0].v ? String(c[0].v).trim() : '';
-        const date = normalizeDateStr(c[1] && (c[1].f || c[1].v) ? String(c[1].f || c[1].v) : '');
-        const reason = c[2] && c[2].v ? String(c[2].v).trim() : '';
-        if(!designer || !date) return;
-        if(!lockMap[designer]) lockMap[designer] = {};
-        lockMap[designer][date] = reason;
-      });
-      editLockedDates = lockMap;
-    }catch(err){ editLockedDates = {}; }
+  fetch(sbUrl('locked_dates','select=handler,date,reason'),{headers:SUPABASE_HEADERS})
+  .then(function(res){ return res.ok ? res.json() : []; })
+  .then(function(rows){
+    const lockMap = {};
+    rows.forEach(function(r){
+      if(!r.handler||!r.date) return;
+      if(!lockMap[r.handler]) lockMap[r.handler] = {};
+      lockMap[r.handler][r.date] = r.reason || '';
+    });
+    editLockedDates = lockMap;
     renderEditCalendar();
-  });
+  })
+  .catch(function(){ editLockedDates = {}; renderEditCalendar(); });
 }
 
 function editIsDateBlocked(dateStr){
@@ -1638,29 +1627,17 @@ function submitEditDate(){
   msg.textContent = '送出中...';
   msg.className = 'modal-msg';
 
-  fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'updateDueDate', id: currentEditDateId, dueDate: newDate })
-  })
+  sbPatch('cases','id=eq.'+currentEditDateId,{ due_date: newDate })
   .then(function(res){
-    if(!res.ok) throw new Error('伺服器回應異常（HTTP ' + res.status + '）');
-    return res.json();
-  })
-  .then(function(data){
     btn.disabled = false;
-    if(data.status === 'success'){
-      msg.textContent = '✓ 需求日期已更新';
-      msg.className = 'modal-msg success';
-      setTimeout(function(){ closeEditDateModal(); doSearch(); }, 900);
-    }else{
-      msg.textContent = '送出失敗：' + (data.message || '未知錯誤');
-      msg.className = 'modal-msg error';
-    }
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    msg.textContent = '✓ 需求日期已更新';
+    msg.className = 'modal-msg success';
+    setTimeout(function(){ closeEditDateModal(); doSearch(); }, 900);
   })
   .catch(function(err){
     btn.disabled = false;
-    msg.textContent = '送出失敗，請確認網路連線。（' + (err && err.message ? err.message : '未知錯誤') + '）';
+    msg.textContent = '送出失敗：'+(err&&err.message?err.message:'未知錯誤');
     msg.className = 'modal-msg error';
   });
 }
@@ -1679,54 +1656,35 @@ function submitRating(){
     msg.className = 'modal-msg error';
     return;
   }
-  if(APPS_SCRIPT_URL.indexOf('http') !== 0){
-    const msg = document.getElementById('rateModalMsg');
-    msg.textContent = '尚未設定送出網址。';
-    msg.className = 'modal-msg error';
-    return;
-  }
-
   const btn = document.getElementById('rateSubmitBtn');
   const btnText = document.getElementById('rateSubmitBtnText');
   btn.disabled = true;
   btnText.textContent = '送出中...';
 
-  fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-      action: 'rate',
-      id: currentRatingId,
-      quality: currentRating.quality,
-      efficiency: currentRating.efficiency,
-      communication: currentRating.communication,
-      price: currentRating.price,
-      reason: reasonText
-    })
+  sbPatch('cases','id=eq.'+currentRatingId,{
+    rating_quality:       currentRating.quality,
+    rating_efficiency:    currentRating.efficiency,
+    rating_communication: currentRating.communication,
+    rating_price:         currentRating.price,
+    rating_reason:        reasonText,
+    status:               '已完成'
   })
-  .then(function(res){ return res.json(); })
-  .then(function(data){
+  .then(function(res){
     const msg = document.getElementById('rateModalMsg');
-    if(data.status === 'success'){
-      msg.textContent = '';
-      btnText.textContent = '確認結案';
-      btn.classList.add('success-state');
-      setTimeout(function(){
-        btn.classList.remove('success-state');
-        btn.disabled = false;
-        closeRateModal();
-        doSearch();
-      }, 1400);
-    }else{
-      msg.textContent = '送出失敗：' + (data.message || '未知錯誤');
-      msg.className = 'modal-msg error';
-      btnText.textContent = '確認結案';
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    msg.textContent = '';
+    btnText.textContent = '確認結案';
+    btn.classList.add('success-state');
+    setTimeout(function(){
+      btn.classList.remove('success-state');
       btn.disabled = false;
-    }
+      closeRateModal();
+      doSearch();
+    }, 1400);
   })
   .catch(function(err){
     const msg = document.getElementById('rateModalMsg');
-    msg.textContent = '送出失敗，請確認網路連線。（' + err.message + '）';
+    msg.textContent = '送出失敗：'+(err&&err.message?err.message:'未知錯誤');
     msg.className = 'modal-msg error';
     btnText.textContent = '確認結案';
     btn.disabled = false;

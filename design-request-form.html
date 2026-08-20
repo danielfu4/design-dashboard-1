@@ -664,7 +664,10 @@ function initCsel(id, options, placeholder, onChange){
 // 填單日期預設今天，實際設定在檔案底部 initFillDate() 呼叫
 
 // 部署完 Apps Script 後，把 /exec 結尾的網址貼在這裡
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_cLlF17JTPJBdhcqcLG0gn9g7Tfjub9qiCj8SM7ScATew3VoJ-7Kbfrfi_LJyk05SZA/exec';
+const SUPABASE_URL = 'https://qvhfbgnglheepwdqybbr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2aGZiZ25nbGhlZXB3ZHF5YmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMDU3NzYsImV4cCI6MjEwMjc4MTc3Nn0.i-ya01hkl4Cvt6t_5nMUZXQBs9mTof373mheyzO9Svw';
+const SUPABASE_HEADERS = { 'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY };
+function sbUrl(table,query){ return SUPABASE_URL+'/rest/v1/'+table+(query?'?'+query:''); }
 
 const BRAND_GROUPS = {
   S1: ['TESCOM','康定','PMZ','舒福德','方太','sOlac','KOHLER','DoctorAir','Santeco','Siroca','brinno','VELOSAN','INIU','YAMAZEN','HAWRIN','Townew','群光選品','ITD部門相關','支援其他部門','其他'],
@@ -778,11 +781,19 @@ initCsel('urgentReasonCat', [
 populateBrands(currentGroup);
 toggleDesignerPicker(currentGroup);
 
-// ---- 需求日期日曆：依目前選擇的 S1/S2/S3，該天累積滿 5 件就鎖住 ----
-const STATUS_SHEET_ID = '1Q0b8dS3zKVoypKNh0hNuburvp4NMxmAwbdjoSQ4ibNg';
 const DESIGNER_TABS = { Nikki:'Nikki需求單', Yuly:'Yuly需求單', Luna:'Luna需求單', Daniel:'Daniel需求單' };
 const ALL_TABS = Object.values(DESIGNER_TABS);
 const DAILY_LIMIT = 5;
+
+function loadTabRows(){ return Promise.resolve([]); }
+
+function loadAllTabRows(){
+  return fetch(sbUrl('cases','select=due_date,handler,status,is_urgent,req_person&limit=5000'),{headers:SUPABASE_HEADERS})
+    .then(function(res){ return res.ok ? res.json() : []; })
+    .catch(function(){ return []; });
+}
+
+const LOCK_TAB_NAME = 'locked_dates';
 let dateCounts = { Nikki:{}, Yuly:{}, Luna:{}, Daniel:{} };
 let calendarDate = new Date();
 
@@ -803,34 +814,7 @@ function normalizeDateStr(str){
   return m[1] + '-' + pad2(parseInt(m[2],10)) + '-' + pad2(parseInt(m[3],10));
 }
 
-// 讀單一分頁（回傳 Promise，讀不到就回傳空陣列，不擋流程）
-function loadTabRows(tabName){
-  return new Promise(function(resolve){
-    const cbName = 'gsheetCb_' + tabName.replace(/[^a-zA-Z0-9]/g,'') + '_' + Date.now() + '_' + Math.floor(Math.random()*1e6);
-    let done = false;
-    window[cbName] = function(response){
-      done = true;
-      resolve((response && response.table && response.table.rows) || []);
-      delete window[cbName];
-      if(script.parentNode) script.remove();
-    };
-    const script = document.createElement('script');
-    script.src = 'https://docs.google.com/spreadsheets/d/' + STATUS_SHEET_ID +
-      '/gviz/tq?tqx=out:json;responseHandler:' + cbName + '&sheet=' + encodeURIComponent(tabName) + '&headers=1&_ts=' + Date.now();
-    script.onerror = function(){ if(!done){ done = true; resolve([]); } };
-    document.body.appendChild(script);
-    setTimeout(function(){ if(!done){ done = true; resolve([]); } }, 12000);
-  });
-}
-
-// 讀取所有設計師分頁並合併成一個陣列
-function loadAllTabRows(){
-  return Promise.all(ALL_TABS.map(loadTabRows)).then(function(results){
-    return results.reduce(function(acc, rows){ return acc.concat(rows); }, []);
-  });
-}
-
-const LOCK_TAB_NAME = '鎖定日期';
+const LOCK_TAB_NAME = 'locked_dates';
 
 function loadDateCounts(){
   loadAllTabRows().then(function(rows){
@@ -838,14 +822,11 @@ function loadDateCounts(){
       const counts = { Nikki:{}, Yuly:{}, Luna:{}, Daniel:{} };
       const urgentByDesigner = {};
       rows.forEach(function(r){
-        const c = r.c || [];
-        const rawDue = c[6] && (c[6].f || c[6].v) ? String(c[6].f || c[6].v) : '';
-        const due = normalizeDateStr(rawDue);
-        const handler = c[19] && c[19].v ? String(c[19].v).trim() : '';
-        const urgent = c[28] && c[28].v ? String(c[28].v).trim() : '';
-        const status = c[17] && c[17].v ? String(c[17].v).trim() : '';
-        if(!due) return;
-        if(status === '退件') return; // 退件的案子不占每日名額
+        const due = normalizeDateStr(r.due_date || '');
+        const handler = r.handler || '';
+        const urgent = r.is_urgent || '';
+        const status = r.status || '';
+        if(!due || status === '退件') return;
         if(counts[handler]) counts[handler][due] = (counts[handler][due] || 0) + 1;
         if(urgent === 'Y' && handler){
           if(!urgentByDesigner[handler]) urgentByDesigner[handler] = {};
@@ -854,26 +835,23 @@ function loadDateCounts(){
       });
       dateCounts = counts;
       window.__urgentByDesigner = urgentByDesigner;
-    }catch(err){ /* 讀取失敗就不擋日期 */ }
+    }catch(err){}
     renderCalendar();
   });
 
-  loadTabRows(LOCK_TAB_NAME).then(function(rows){
-    try{
-      const lockMap = {};
-      rows.forEach(function(r){
-        const c = r.c || [];
-        const designer = c[0] && c[0].v ? String(c[0].v).trim() : '';
-        const date = normalizeDateStr(c[1] && (c[1].f || c[1].v) ? String(c[1].f || c[1].v) : '');
-        const reason = c[2] && c[2].v ? String(c[2].v).trim() : '';
-        if(!designer || !date) return;
-        if(!lockMap[designer]) lockMap[designer] = {};
-        lockMap[designer][date] = reason;
-      });
-      window.__lockedByDesigner = lockMap;
-    }catch(err){ window.__lockedByDesigner = {}; }
+  fetch(sbUrl('locked_dates','select=handler,date,reason'),{headers:SUPABASE_HEADERS})
+  .then(function(res){ return res.ok ? res.json() : []; })
+  .then(function(rows){
+    const lockMap = {};
+    rows.forEach(function(r){
+      if(!r.handler||!r.date) return;
+      if(!lockMap[r.handler]) lockMap[r.handler]={};
+      lockMap[r.handler][r.date] = r.reason||'';
+    });
+    window.__lockedByDesigner = lockMap;
     renderCalendar();
-  });
+  })
+  .catch(function(){ window.__lockedByDesigner={}; renderCalendar(); });
 }
 
 function isDateBlocked(dateStr){
@@ -1292,11 +1270,6 @@ function validateCselFields(){
 function handleSubmit(e){
   e.preventDefault();
 
-  if(APPS_SCRIPT_URL.indexOf('http') !== 0){
-    showBanner('error', '尚未設定送出網址——請先完成 Apps Script 部署，把拿到的網址貼到程式碼裡的 APPS_SCRIPT_URL。');
-    return false;
-  }
-
   const form = document.getElementById('requestForm');
   if(!form.checkValidity()){
     form.reportValidity();
@@ -1334,19 +1307,16 @@ function openUrgentModal(payload){
       const name = payload.reqPerson.trim();
       const others = [];
       rows.forEach(function(r){
-        const c = r.c || [];
-        const person = c[4] && c[4].v ? String(c[4].v).trim() : '';
+        const person = (r.req_person||'').trim();
         if(person !== name) return;
-        const status = (c[17] && c[17].v ? String(c[17].v).trim() : '') || '待處理';
+        const status = r.status || '待處理';
         if(status === '已完成' || status === '退件') return;
-        const due = normalizeDateStr(c[6] && (c[6].f || c[6].v) ? String(c[6].f || c[6].v) : '');
-        const reqName = c[3] && c[3].v ? String(c[3].v).trim() : '';
-        others.push({ reqName: reqName, due: due, status: status });
+        const due = normalizeDateStr(r.due_date||'');
+        const reqName = r.req_name || '';
+        others.push({ reqName:reqName, due:due, status:status });
       });
       renderUrgentModalBody(others);
-    }catch(err){
-      renderUrgentModalBody([]);
-    }
+    }catch(err){ renderUrgentModalBody([]); }
   });
 }
 
@@ -1383,42 +1353,52 @@ function doActualSubmit(payload){
   btnText.textContent = '送出中...';
   document.getElementById('confirmBanner').classList.remove('show');
 
-  fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(payload)
-  })
-  .then(function(res){ return res.json(); })
-  .then(function(data){
-    if(data.status === 'success'){
-      showBanner('success', '✓ 需求已送出，已存進「設計需求單」分頁。　<a href="design-request-status.html" style="color:#1F8A4C;font-weight:800;">查看我的需求狀態 →</a>');
-      document.getElementById('requestForm').reset();
-      initFillDate();
-      toggleRequestType('');
-      toggleOtherBrand('');
-      populateBrands(currentGroup);
-      cselReset('reqType');
-      cselReset('urgentReasonCat');
-      toggleDesignerPicker(currentGroup);
-      toggleUrgent(false);
-      document.getElementById('urgentCounter').textContent = '';
-      calendarDate = new Date();
-      loadDateCounts();
+  const sbBody = {
+    brand:               payload.brand,
+    req_type:            payload.reqType,
+    req_name:            payload.reqName,
+    req_person:          payload.reqPerson,
+    fill_date:           payload.fillDate,
+    due_date:            payload.dueDate,
+    materials:           payload.materials,
+    notes:               payload.notes,
+    channel:             payload.channel,
+    handler:             payload.handler,
+    group_name:          payload.group,
+    case_type:           payload.caseType,
+    case_fields:         payload.caseFields,
+    is_urgent:           payload.isUrgent||'N',
+    urgent_reason_cat:   payload.urgentReasonCat||'',
+    urgent_reason_other: payload.urgentReasonOther||'',
+    status:              '待處理'
+  };
 
-      btnText.textContent = '送出需求';
-      btn.classList.add('success-state');
-      setTimeout(function(){
-        btn.classList.remove('success-state');
-        btn.disabled = false;
-      }, 2500);
-    }else{
-      showBanner('error', '送出失敗：' + (data.message || '未知錯誤，請稍後再試。'));
-      btnText.textContent = '送出需求';
-      btn.disabled = false;
-    }
+  fetch(sbUrl('cases',''),{
+    method:'POST',
+    headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=minimal'}),
+    body:JSON.stringify(sbBody)
+  })
+  .then(function(res){
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    showBanner('success','✓ 需求已送出，已存進資料庫。　<a href="design-request-status.html" style="color:#1F8A4C;font-weight:800;">查看我的需求狀態 →</a>');
+    document.getElementById('requestForm').reset();
+    initFillDate();
+    toggleRequestType('');
+    toggleOtherBrand('');
+    populateBrands(currentGroup);
+    cselReset('reqType');
+    cselReset('urgentReasonCat');
+    toggleDesignerPicker(currentGroup);
+    toggleUrgent(false);
+    document.getElementById('urgentCounter').textContent = '';
+    calendarDate = new Date();
+    loadDateCounts();
+    btnText.textContent = '送出需求';
+    btn.classList.add('success-state');
+    setTimeout(function(){ btn.classList.remove('success-state'); btn.disabled = false; }, 2500);
   })
   .catch(function(err){
-    showBanner('error', '送出失敗，請確認網路連線或稍後再試。（' + err.message + '）');
+    showBanner('error','送出失敗，請確認網路連線或稍後再試。（'+err.message+'）');
     btnText.textContent = '送出需求';
     btn.disabled = false;
   });
@@ -1445,44 +1425,26 @@ function submitFeedback(){
     msg.className = 'modal-msg error';
     return;
   }
-  if(APPS_SCRIPT_URL.indexOf('http') !== 0){
-    msg.textContent = '尚未設定送出網址。';
-    msg.className = 'modal-msg error';
-    return;
-  }
-
   const btn = document.getElementById('feedbackSubmitBtn');
   btn.disabled = true;
   btn.textContent = '送出中...';
 
-  fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-      action: 'feedback',
-      name: document.getElementById('feedbackName').value.trim(),
-      content: content
-    })
+  fetch(sbUrl('feedback',''),{
+    method:'POST',
+    headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=minimal'}),
+    body:JSON.stringify({ name:document.getElementById('feedbackName').value.trim(), content:content })
   })
-  .then(function(res){ return res.json(); })
-  .then(function(data){
-    if(data.status === 'success'){
-      msg.textContent = '✓ 意見已送出，謝謝你！';
-      msg.className = 'modal-msg success';
-      setTimeout(closeFeedbackModal, 1000);
-    }else{
-      msg.textContent = '送出失敗：' + (data.message || '未知錯誤');
-      msg.className = 'modal-msg error';
-    }
+  .then(function(res){
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    msg.textContent = '✓ 意見已送出，謝謝你！';
+    msg.className = 'modal-msg success';
+    setTimeout(closeFeedbackModal, 1000);
   })
   .catch(function(err){
-    msg.textContent = '送出失敗，請確認網路連線。（' + err.message + '）';
+    msg.textContent = '送出失敗，請確認網路連線。（'+(err.message||'未知錯誤')+'）';
     msg.className = 'modal-msg error';
   })
-  .finally(function(){
-    btn.disabled = false;
-    btn.textContent = '送出意見';
-  });
+  .finally(function(){ btn.disabled=false; btn.textContent='送出意見'; });
 }
 </script>
 </body>
