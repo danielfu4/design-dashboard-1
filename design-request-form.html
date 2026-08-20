@@ -731,10 +731,9 @@ function updateUrgentCounter(){
       const ymPrefix = now.getFullYear() + '-' + pad2(now.getMonth()+1);
       let count = 0;
       rows.forEach(function(r){
-        const c = r.c || [];
-        const person = c[4] && c[4].v ? String(c[4].v).trim() : '';
-        const urgent = c[28] && c[28].v ? String(c[28].v).trim() : '';
-        const fill = normalizeDateStr(c[5] && (c[5].f || c[5].v) ? String(c[5].f || c[5].v) : '');
+        const person = (r.req_person || '').trim();
+        const urgent = r.is_urgent || '';
+        const fill = normalizeDateStr(r.fill_date || '');
         if(person === name && urgent === 'Y' && fill && fill.indexOf(ymPrefix) === 0) count++;
       });
       el.textContent = '本月已標急件 ' + count + ' 次';
@@ -788,7 +787,7 @@ const DAILY_LIMIT = 5;
 function loadTabRows(){ return Promise.resolve([]); }
 
 function loadAllTabRows(){
-  return fetch(sbUrl('cases','select=due_date,handler,status,is_urgent,req_person&limit=5000'),{headers:SUPABASE_HEADERS})
+  return fetch(sbUrl('cases','select=due_date,fill_date,handler,status,is_urgent,req_person&limit=1000'),{headers:SUPABASE_HEADERS})
     .then(function(res){ return res.ok ? res.json() : []; })
     .catch(function(){ return []; });
 }
@@ -817,16 +816,17 @@ function normalizeDateStr(str){
 function loadDateCounts(){
   loadAllTabRows().then(function(rows){
     try{
-      const counts = { Nikki:{}, Yuly:{}, Luna:{}, Daniel:{} };
+      const counts = {};
       const urgentByDesigner = {};
       rows.forEach(function(r){
         const due = normalizeDateStr(r.due_date || '');
-        const handler = r.handler || '';
+        const handler = (r.handler || '').trim();
         const urgent = r.is_urgent || '';
         const status = r.status || '';
-        if(!due || status === '退件') return;
-        if(counts[handler]) counts[handler][due] = (counts[handler][due] || 0) + 1;
-        if(urgent === 'Y' && handler){
+        if(!due || !handler || status === '退件') return;
+        if(!counts[handler]) counts[handler] = {};
+        counts[handler][due] = (counts[handler][due] || 0) + 1;
+        if(urgent === 'Y'){
           if(!urgentByDesigner[handler]) urgentByDesigner[handler] = {};
           urgentByDesigner[handler][due] = (urgentByDesigner[handler][due] || 0) + 1;
         }
