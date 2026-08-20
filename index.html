@@ -1147,6 +1147,28 @@ function formatDateStr(val){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 
+function renderUrgentStats(statsByPerson){
+  const wrap = document.getElementById('urgentStatsList');
+  if(!wrap) return;
+  const people = Object.keys(statsByPerson).sort(function(a,b){
+    return statsByPerson[b].count - statsByPerson[a].count;
+  });
+  if(people.length === 0){
+    wrap.innerHTML = '<div class="empty-state">目前沒有登記任何急件。</div>';
+    return;
+  }
+  wrap.innerHTML = people.map(function(name){
+    const info = statsByPerson[name];
+    const reasonText = info.reasons.length ? info.reasons.join('、') : '未填寫原因';
+    return '<div class="urgent-row">' +
+      '<span class="urgent-person">' + name + '</span>' +
+      '<span class="urgent-count">' + info.count + ' 件</span>' +
+      '<span class="reason reason-wrap"><span>' + reasonText + '</span></span>' +
+    '</div>';
+  }).join('');
+  applyMarquee();
+}
+
 function computeUrgentStats(rows){
   const statsByPerson = {};
   rows.forEach(function(r){
