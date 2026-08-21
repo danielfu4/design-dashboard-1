@@ -950,7 +950,7 @@ function applyFilterAndRender(){
 const STATUS_ORDER = ['待處理','進行中','請校稿','停案','已完成','退件'];
 
 function renderStatusGroup(status, groupCases, expanded){
-  const groupKey = status.replace(/[^a-zA-Z0-9]/g,'') || 'x';
+  const groupKey = STATUS_ORDER.indexOf(status) >= 0 ? STATUS_ORDER.indexOf(status) : 'x';
   const groupId = 'statusGroup-' + groupKey;
   const si = statusInfo(status);
   const isSingle = groupCases.length === 1;
