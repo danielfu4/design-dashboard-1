@@ -546,6 +546,7 @@ initCsel('statusFilter', [
   { value:'待處理', label:'待處理' },
   { value:'進行中', label:'進行中' },
   { value:'請校稿', label:'請校稿' },
+  { value:'停案', label:'停案' },
   { value:'已完成', label:'已完成' },
   { value:'退件', label:'退件' }
 ], 'all', function(){ applyFilterAndRender(); });
@@ -563,7 +564,7 @@ function sbPatch(table, query, body){
   return fetch(sbUrl(table, query), { method:'PATCH', headers: Object.assign({}, SUPABASE_HEADERS, {'Prefer':'return=minimal'}), body: JSON.stringify(body) });
 }
 const DESIGNER_PASSWORDS = { 'Nikki':'8416', 'Yuly':'8901', 'Luna':'8780', 'Daniel':'8925' };
-const STATUS_OPTIONS = ['待處理','進行中','請校稿','已完成','退件'];
+const STATUS_OPTIONS = ['待處理','進行中','請校稿','停案','已完成','退件'];
 
 let TAB_NAME = '';
 let CURRENT_DESIGNER = '';
@@ -620,6 +621,7 @@ function statusInfo(status){
     case '已完成': return {label:s, bg:'#EAF7EF', fg:'#1F8A4C'};
     case '進行中': return {label:s, bg:'#FFF3E0', fg:'#C2720C'};
     case '請校稿': return {label:s, bg:'#F1EDFC', fg:'#6B46C1'};
+    case '停案':   return {label:s, bg:'#F1F1F3', fg:'#5A5A63'};
     case '退件':   return {label:s, bg:'#FBEBEA', fg:'#B3324A'};
     default:       return {label:'待處理', bg:'#F1F1F3', fg:'#6B6B75'};
   }
