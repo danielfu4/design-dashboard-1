@@ -90,7 +90,7 @@
   .save-all-msg.error{color:#B3324A;}
 
   header{margin-bottom:20px;}
-  .filter-bar{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;}
+  .filter-bar{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;}
   .filter-field{display:flex;flex-direction:column;gap:6px;width:200px;}
   .filter-field label{font-size:11.5px;font-weight:700;color:var(--ink-soft);}
   .filter-field.search-field{flex:1;min-width:220px;width:auto;}
@@ -113,6 +113,46 @@
     70%{box-shadow:0 0 0 3px var(--accent), 0 6px 16px rgba(20,20,30,.04);}
     100%{box-shadow:var(--shadow);}
   }
+
+  .status-group{margin-bottom:0;}
+  .status-group-list{
+    max-height:0;opacity:0;overflow:hidden;pointer-events:none;
+    transform:translateY(-8px);
+    transition:max-height .38s ease, opacity .3s ease, transform .3s ease;
+  }
+  .status-group.expanded .status-group-list{
+    max-height:8000px;opacity:1;transform:translateY(0);pointer-events:auto;
+  }
+  .status-group-collapse{
+    display:flex;align-items:center;gap:8px;border:none;background:none;color:var(--ink-soft);
+    font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:0 4px 10px;
+    max-height:0;opacity:0;overflow:hidden;pointer-events:none;
+    transition:max-height .3s ease, opacity .25s ease;
+  }
+  .status-group.expanded .status-group-collapse{
+    max-height:40px;opacity:1;pointer-events:auto;
+  }
+  .status-group-collapse:hover{color:var(--ink);}
+  .status-group-collapse-dot{width:8px;height:8px;border-radius:50%;flex:none;}
+
+  .stack-card{
+    position:relative;height:64px;margin-bottom:14px;cursor:pointer;
+    max-height:80px;opacity:1;transform:translateY(0);overflow:visible;pointer-events:auto;
+    transition:opacity .25s ease, transform .25s ease, max-height .3s ease, margin-bottom .3s ease;
+  }
+  .status-group.expanded .stack-card{
+    max-height:0;opacity:0;transform:translateY(-8px);margin-bottom:0;overflow:hidden;pointer-events:none;
+  }
+  .stack-front{
+    position:relative;z-index:2;height:64px;border-radius:16px;box-shadow:var(--shadow);
+    padding:0 20px;display:flex;align-items:center;justify-content:space-between;
+    transition:transform .15s ease;
+  }
+  .stack-card:hover .stack-front{transform:translateY(-2px);}
+  .stack-front-left{display:flex;align-items:baseline;gap:10px;}
+  .stack-status-label{font-size:15px;font-weight:800;}
+  .stack-count{font-size:12.5px;font-weight:700;opacity:.8;}
+  .stack-chevron{display:flex;}
   .case-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
   .case-name{font-size:16px;font-weight:800;}
   .case-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
@@ -616,17 +656,24 @@ let verifiedPassword = null;
 
 function checkPassword(){
   const val = document.getElementById('gatePassword').value;
+  const errEl = document.getElementById('gateError');
   if(!val){
-    document.getElementById('gateError').classList.add('show');
+    errEl.textContent = '密碼不正確，請再試一次。';
+    errEl.classList.add('show');
     return;
   }
-  document.getElementById('gateError').classList.remove('show');
+  errEl.classList.remove('show');
   fetch(DESIGNER_ACTION_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'verifyLogin', password: val })
   })
-  .then(function(res){ return res.json(); })
+  .then(function(res){
+    if(!res.ok && res.status !== 401){
+      throw new Error('伺服器回應異常（HTTP ' + res.status + '）');
+    }
+    return res.json();
+  })
   .then(function(data){
     if(data.status === 'success' && data.handler){
       verifiedPassword = val;
@@ -637,11 +684,13 @@ function checkPassword(){
       document.getElementById('viewingSubtitle').textContent = '目前檢視：' + data.handler;
       loadCases();
     }else{
-      document.getElementById('gateError').classList.add('show');
+      errEl.textContent = '密碼不正確，請再試一次。';
+      errEl.classList.add('show');
     }
   })
-  .catch(function(){
-    document.getElementById('gateError').classList.add('show');
+  .catch(function(err){
+    errEl.textContent = '連線失敗，請確認網路連線或稍後再試。（' + (err && err.message ? err.message : '未知錯誤') + '）';
+    errEl.classList.add('show');
   });
 }
 
@@ -869,9 +918,76 @@ function applyFilterAndRender(){
     return;
   }
 
-  list.innerHTML = cases.map(renderCaseCard).join('');
+  if(statusFilter !== 'all'){
+    // 已篩選成單一狀態，直接平鋪顯示，不用疊卡
+    list.innerHTML = cases.map(renderCaseCard).join('');
+    initCaseFieldVisibility();
+    scrollToDeepLinkedCase();
+    return;
+  }
+
+  // 「全部」：依狀態分組，同狀態疊成一疊卡片
+  const params = new URLSearchParams(window.location.search);
+  const deepLinkCaseId = (params.get('case') || '').trim();
+
+  const groups = {};
+  STATUS_ORDER.forEach(function(s){ groups[s] = []; });
+  cases.forEach(function(c){
+    const s = STATUS_ORDER.indexOf(c.status) !== -1 ? c.status : '待處理';
+    groups[s].push(c);
+  });
+
+  list.innerHTML = STATUS_ORDER.filter(function(s){ return groups[s].length > 0; }).map(function(s){
+    const groupCases = groups[s];
+    const hasDeepLinkTarget = !!deepLinkCaseId && groupCases.some(function(c){ return c.id === deepLinkCaseId; });
+    return renderStatusGroup(s, groupCases, hasDeepLinkTarget);
+  }).join('');
+
   initCaseFieldVisibility();
   scrollToDeepLinkedCase();
+}
+
+const STATUS_ORDER = ['待處理','進行中','請校稿','停案','已完成','退件'];
+
+function renderStatusGroup(status, groupCases, expanded){
+  const groupKey = status.replace(/[^a-zA-Z0-9]/g,'') || 'x';
+  const groupId = 'statusGroup-' + groupKey;
+  const si = statusInfo(status);
+  const isSingle = groupCases.length === 1;
+  const listHtml = '<div class="status-group-list">' + groupCases.map(renderCaseCard).join('') + '</div>';
+
+  if(isSingle){
+    // 只有一筆的話直接展開顯示，不用疊卡樣式
+    return '<div class="status-group expanded" id="' + groupId + '">' + listHtml + '</div>';
+  }
+
+  const stackHtml =
+    '<div class="stack-card" onclick="toggleStatusGroup(\'' + groupId + '\')">' +
+      '<div class="stack-front" style="background:var(--card);">' +
+        '<div class="stack-front-left">' +
+          '<span class="stack-status-label" style="color:' + si.fg + ';">' + si.label + '</span>' +
+          '<span class="stack-count" style="color:' + si.fg + ';">' + groupCases.length + ' 件</span>' +
+        '</div>' +
+        '<span class="stack-chevron" style="color:var(--ink-faint);"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>' +
+      '</div>' +
+    '</div>';
+
+  const collapseHeaderHtml =
+    '<button type="button" class="status-group-collapse" onclick="toggleStatusGroup(\'' + groupId + '\')">' +
+      '<span class="status-group-collapse-dot" style="background:' + si.fg + ';"></span>' +
+      '<span>' + si.label + '（' + groupCases.length + ' 件）－ 點擊收合</span>' +
+    '</button>';
+
+  return '<div class="status-group' + (expanded ? ' expanded' : '') + '" id="' + groupId + '">' +
+    stackHtml +
+    collapseHeaderHtml +
+    listHtml +
+  '</div>';
+}
+
+function toggleStatusGroup(groupId){
+  const el = document.getElementById(groupId);
+  if(el) el.classList.toggle('expanded');
 }
 
 // ---- LINE 深連結：網址帶 ?case=<id> 時，自動捲動並標亮該案件卡片（只做一次）----
