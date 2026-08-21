@@ -277,7 +277,7 @@
     padding:12px 22px;border-radius:12px;text-decoration:none;font-family:inherit;cursor:pointer;
     transition:background-color .25s ease, color .25s ease, border-color .25s ease;
   }
-  .status-link:hover{background:#1F8A4C;color:#fff;border-color:#1F8A4C;}
+  .status-link:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
   .feedback-btn{
     display:inline-flex;align-items:center;border:none;background:var(--accent);color:#fff;
     font-family:inherit;font-weight:700;font-size:14px;padding:12px 22px;border-radius:12px;cursor:pointer;
@@ -290,6 +290,45 @@
     opacity:0;transition:transform .3s ease-in-out, opacity .3s ease-in-out;pointer-events:none;
   }
   .feedback-btn:hover .feedback-btn-icon{transform:translate(-50%,-50%) scale(1);opacity:1;}
+
+  .line-btn{
+    display:inline-flex;align-items:center;gap:8px;border:1px solid #06C755;background:#fff;color:#06C755;
+    font-family:inherit;font-weight:700;font-size:14px;padding:12px 20px;border-radius:12px;cursor:pointer;
+    transition:background-color .25s ease, color .25s ease;
+  }
+  .line-btn:hover{background:#06C755;color:#fff;}
+  .line-btn svg{flex:none;}
+
+  .line-modal-card{max-width:340px;text-align:center;}
+  .line-modal-qr{
+    width:160px;height:160px;margin:20px auto 6px;
+  }
+  .line-modal-qr img{width:100%;height:100%;object-fit:contain;}
+  .line-modal-sub2{font-size:12.5px;color:var(--ink-soft);margin:10px 0 18px;}
+  .line-modal-addfriend{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    background:#06C755;color:#fff;font-weight:800;font-size:14.5px;
+    padding:13px 20px;border-radius:12px;text-decoration:none;font-family:inherit;
+    transition:background-color .2s ease;
+  }
+  .line-modal-addfriend:hover{background:#05A648;}
+
+  .line-faq{margin:18px 0 4px;text-align:left;}
+  .line-faq-item{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden;}
+  .line-faq-item:last-child{margin-bottom:0;}
+  .line-faq-q{
+    width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:none;border:none;cursor:pointer;padding:12px 14px;font-family:inherit;
+    font-size:12.5px;font-weight:700;color:var(--ink);text-align:left;
+  }
+  .line-faq-q .chevron{flex:none;color:var(--ink-faint);transition:transform .2s ease;}
+  .line-faq-item.open .line-faq-q .chevron{transform:rotate(180deg);}
+  .line-faq-a{
+    max-height:0;overflow:hidden;transition:max-height .25s ease;
+    font-size:12px;color:var(--ink-soft);line-height:1.6;
+  }
+  .line-faq-item.open .line-faq-a{max-height:200px;}
+  .line-faq-a-inner{padding:0 14px 13px;}
 
   .preview-note{
     font-size:11.5px;color:var(--ink-soft);
@@ -522,6 +561,10 @@
             </svg>
           </span>
         </button>
+        <button type="button" class="line-btn" onclick="openLineModal()">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M12 2C6.477 2 2 5.79 2 10.44c0 4.17 3.55 7.66 8.35 8.32.325.07.767.215.879.494.101.253.066.65.032.906l-.142.855c-.043.253-.2.988.865.539 1.066-.45 5.752-3.389 7.847-5.802C21.267 13.9 22 12.26 22 10.44 22 5.79 17.523 2 12 2z"></path></svg>
+          加入官方LINE
+        </button>
       </div>
       <div class="preview-note" style="margin-top:8px;">送出後會存進試算表「設計需求單」分頁</div>
 
@@ -579,6 +622,58 @@
       <span>送出</span>
     </button>
     <div class="modal-msg" id="feedbackModalMsg"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="lineModalOverlay" onclick="if(event.target===this) closeLineModal()">
+  <div class="modal-card line-modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">加入 ITD設計團隊 官方LINE</div>
+        <div class="modal-sub">掃描 QRCODE 或點下方按鈕加好友</div>
+      </div>
+      <button class="modal-close" onclick="closeLineModal()">✕</button>
+    </div>
+    <div class="line-modal-qr">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https%3A%2F%2Fline.me%2FR%2Fti%2Fp%2F%40671gzkis" alt="ITD設計團隊官方LINE QRCODE">
+    </div>
+
+    <div class="line-faq" id="lineFaqList">
+      <div class="line-faq-item">
+        <button type="button" class="line-faq-q" onclick="toggleLineFaq(this)">
+          <span>加好友後要做什麼？</span>
+          <span class="chevron"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="line-faq-a"><div class="line-faq-a-inner">輸入你的姓名即可完成登記（需求人員請輸入跟填單時完全一致的姓名），之後案件有更新會直接用 LINE 通知你，不用另外登入或下載其他 App。</div></div>
+      </div>
+      <div class="line-faq-item">
+        <button type="button" class="line-faq-q" onclick="toggleLineFaq(this)">
+          <span>加好友會一直收到廣告訊息嗎？</span>
+          <span class="chevron"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="line-faq-a"><div class="line-faq-a-inner">不會。只有你自己的案件有進度更新時才會通知你，不會有其他推播或行銷訊息。</div></div>
+      </div>
+      <div class="line-faq-item">
+        <button type="button" class="line-faq-q" onclick="toggleLineFaq(this)">
+          <span>我是需求人員，也可以加嗎？</span>
+          <span class="chevron"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="line-faq-a"><div class="line-faq-a-inner">可以，需求人員跟設計師都能加好友，登記後系統會自動辨識身分，顯示對應的功能。</div></div>
+      </div>
+      <div class="line-faq-item">
+        <button type="button" class="line-faq-q" onclick="toggleLineFaq(this)">
+          <span>加好友後可以查詢案件進度嗎？</span>
+          <span class="chevron"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="line-faq-a"><div class="line-faq-a-inner">可以，登記完成後輸入「案件」兩個字，就能查看你送出過的案件清單與目前狀態。</div></div>
+      </div>
+    </div>
+
+    <div class="line-modal-sub2">加好友後，輸入你的姓名即可完成登記，之後有案件更新會直接用 LINE 通知你</div>
+    <a href="https://line.me/R/ti/p/@671gzkis" target="_blank" rel="noopener" class="line-modal-addfriend">
+      <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M12 2C6.477 2 2 5.79 2 10.44c0 4.17 3.55 7.66 8.35 8.32.325.07.767.215.879.494.101.253.066.65.032.906l-.142.855c-.043.253-.2.988.865.539 1.066-.45 5.752-3.389 7.847-5.802C21.267 13.9 22 12.26 22 10.44 22 5.79 17.523 2 12 2z"></path></svg>
+      直接加好友
+    </a>
   </div>
 </div>
 
@@ -668,6 +763,8 @@ const SUPABASE_URL = 'https://qvhfbgnglheepwdqybbr.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2aGZiZ25nbGhlZXB3ZHF5YmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMDU3NzYsImV4cCI6MjEwMjc4MTc3Nn0.i-ya01hkl4Cvt6t_5nMUZXQBs9mTof373mheyzO9Svw';
 const SUPABASE_HEADERS = { 'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY };
 function sbUrl(table,query){ return SUPABASE_URL+'/rest/v1/'+table+(query?'?'+query:''); }
+// 送出新需求、意見箱這類寫入動作，走 Edge Function（伺服器端限制可寫欄位）
+const PUBLIC_ACTION_URL = 'https://qvhfbgnglheepwdqybbr.supabase.co/functions/v1/public-action';
 
 const BRAND_GROUPS = {
   S1: ['TESCOM','康定','PMZ','舒福德','方太','sOlac','KOHLER','DoctorAir','Santeco','Siroca','brinno','VELOSAN','INIU','YAMAZEN','HAWRIN','Townew','群光選品','ITD部門相關','支援其他部門','其他'],
@@ -1022,6 +1119,14 @@ function initFillDate(){
 }
 initFillDate();
 
+// LINE Rich Menu 深連結：網址帶 ?feedback=1 時，自動開啟意見箱彈窗
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('feedback') === '1'){
+    setTimeout(function(){ openFeedbackModal(); }, 200);
+  }
+})();
+
 const CASE_TYPE_MAP = {
   '包材設計': ['絲印/中標貼紙','說明書','彩盒','外箱'],
   '產品素材': ['情境合成','產品修圖','插畫設計'],
@@ -1363,6 +1468,7 @@ function doActualSubmit(payload){
   document.getElementById('confirmBanner').classList.remove('show');
 
   const sbBody = {
+    action:              'submitNewCase',
     brand:               payload.brand,
     req_type:            payload.reqType,
     req_name:            payload.reqName,
@@ -1378,17 +1484,17 @@ function doActualSubmit(payload){
     case_fields:         payload.caseFields,
     is_urgent:           payload.isUrgent||'N',
     urgent_reason_cat:   payload.urgentReasonCat||'',
-    urgent_reason_other: payload.urgentReasonOther||'',
-    status:              '待處理'
+    urgent_reason_other: payload.urgentReasonOther||''
   };
 
-  fetch(sbUrl('cases',''),{
+  fetch(PUBLIC_ACTION_URL,{
     method:'POST',
-    headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=minimal'}),
+    headers:{ 'Content-Type':'application/json' },
     body:JSON.stringify(sbBody)
   })
-  .then(function(res){
-    if(!res.ok) throw new Error('HTTP '+res.status);
+  .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
+  .then(function(result){
+    if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
     showBanner('success','✓ 需求已送出，已存進資料庫。　<a href="design-request-status.html" style="color:#1F8A4C;font-weight:800;">查看我的需求狀態 →</a>');
     document.getElementById('requestForm').reset();
     initFillDate();
@@ -1424,6 +1530,23 @@ function openFeedbackModal(){
 
 function closeFeedbackModal(){
   document.getElementById('feedbackModalOverlay').classList.remove('show');
+}
+
+function openLineModal(){
+  document.getElementById('lineModalOverlay').classList.add('show');
+}
+
+function closeLineModal(){
+  document.getElementById('lineModalOverlay').classList.remove('show');
+}
+
+function toggleLineFaq(btn){
+  const item = btn.closest('.line-faq-item');
+  const wasOpen = item.classList.contains('open');
+  document.querySelectorAll('#lineFaqList .line-faq-item.open').forEach(function(el){
+    el.classList.remove('open');
+  });
+  if(!wasOpen) item.classList.add('open');
 }
 
 function submitFeedback(){

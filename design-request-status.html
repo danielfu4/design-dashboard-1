@@ -670,6 +670,7 @@ initCsel('statusFilter', [
   { value:'待處理', label:'待處理' },
   { value:'進行中', label:'進行中' },
   { value:'請校稿', label:'請校稿' },
+  { value:'停案', label:'停案' },
   { value:'已完成', label:'已完成' },
   { value:'退件', label:'退件' }
 ], 'all', function(){ applyStatusFilterAndRender(); });
@@ -681,9 +682,9 @@ const DAILY_LIMIT = 5;
 const LOCK_TAB_NAME = 'locked_dates';
 
 function sbUrl(table, query){ return SUPABASE_URL+'/rest/v1/'+table+(query?'?'+query:''); }
-function sbPatch(table, query, body){
-  return fetch(sbUrl(table,query),{method:'PATCH',headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=minimal'}),body:JSON.stringify(body)});
-}
+// 送出新需求、補充內容、修改需求日期、評分結案，都走這支 Edge Function
+// （伺服器端限制每個動作能寫入的欄位，不再是任意欄位可改）
+const PUBLIC_ACTION_URL = 'https://qvhfbgnglheepwdqybbr.supabase.co/functions/v1/public-action';
 
 function formatDateStr(val){
   if(!val) return '';
@@ -749,6 +750,7 @@ function statusInfo(status){
     case '已完成': return {label:s, bg:'#EAF7EF', fg:'#1F8A4C'};
     case '進行中': return {label:s, bg:'#FFF3E0', fg:'#C2720C'};
     case '請校稿': return {label:s, bg:'#F1EDFC', fg:'#6B46C1'};
+    case '停案':   return {label:s, bg:'#F1F1F3', fg:'#5A5A63'};
     case '退件':   return {label:s, bg:'#FBEBEA', fg:'#B3324A'};
     default:       return {label:'待處理', bg:'#F1F1F3', fg:'#6B6B75'};
   }
@@ -1411,6 +1413,7 @@ function submitCopiedCase(){
   msg.className = 'modal-msg';
 
   const sbBody = {
+    action:             'submitNewCase',
     brand:              payload.brand,
     req_type:           payload.reqType,
     req_name:           payload.reqName,
@@ -1426,18 +1429,18 @@ function submitCopiedCase(){
     case_type:          payload.caseType,
     is_urgent:          payload.isUrgent||'N',
     urgent_reason_cat:  payload.urgentReasonCat||'',
-    urgent_reason_other:payload.urgentReasonOther||'',
-    status:             '待處理'
+    urgent_reason_other:payload.urgentReasonOther||''
   };
 
-  fetch(sbUrl('cases',''),{
+  fetch(PUBLIC_ACTION_URL,{
     method:'POST',
-    headers:Object.assign({},SUPABASE_HEADERS,{'Prefer':'return=minimal'}),
+    headers:{ 'Content-Type':'application/json' },
     body:JSON.stringify(sbBody)
   })
-  .then(function(res){
+  .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
+  .then(function(result){
     btn.disabled = false;
-    if(!res.ok) throw new Error('HTTP '+res.status);
+    if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
     msg.textContent = '✓ 已送出新需求';
     msg.className = 'modal-msg success';
     setTimeout(function(){ closeCopyModal(); }, 1000);
@@ -1478,20 +1481,15 @@ function submitSupplement(){
   msg.textContent = '送出中...';
   msg.className = 'modal-msg';
 
-  fetch(sbUrl('cases','id=eq.'+currentSupplementId+'&select=supplement,handler,req_name'),{headers:SUPABASE_HEADERS})
-  .then(function(res){ return res.json(); })
-  .then(function(rows){
-    const now = new Date();
-    const pad = function(n){ return n<10?'0'+n:''+n; };
-    const stamp = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+' '+pad(now.getHours())+':'+pad(now.getMinutes());
-    const existing = (rows[0]&&rows[0].supplement)||'';
-    const newEntry = '['+stamp+'] '+content;
-    const merged = existing?(existing+'\n\n'+newEntry):newEntry;
-    return sbPatch('cases','id=eq.'+currentSupplementId,{ supplement:merged, supplement_at:now.toISOString() });
+  fetch(PUBLIC_ACTION_URL,{
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body:JSON.stringify({ action:'submitSupplement', id: currentSupplementId, content: content })
   })
-  .then(function(res){
+  .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
+  .then(function(result){
     btn.disabled = false;
-    if(!res.ok) throw new Error('HTTP '+res.status);
+    if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
     msg.textContent = '✓ 已送出補充內容';
     msg.className = 'modal-msg success';
     setTimeout(function(){ closeSupplementModal(); }, 900);
@@ -1667,10 +1665,15 @@ function submitEditDate(){
   msg.textContent = '送出中...';
   msg.className = 'modal-msg';
 
-  sbPatch('cases','id=eq.'+currentEditDateId,{ due_date: newDate })
-  .then(function(res){
+  fetch(PUBLIC_ACTION_URL,{
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body:JSON.stringify({ action:'submitEditDate', id: currentEditDateId, due_date: newDate })
+  })
+  .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
+  .then(function(result){
     btn.disabled = false;
-    if(!res.ok) throw new Error('HTTP '+res.status);
+    if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
     msg.textContent = '✓ 需求日期已更新';
     msg.className = 'modal-msg success';
     setTimeout(function(){ closeEditDateModal(); doSearch(); }, 900);
@@ -1701,17 +1704,23 @@ function submitRating(){
   btn.disabled = true;
   btnText.textContent = '送出中...';
 
-  sbPatch('cases','id=eq.'+currentRatingId,{
-    rating_quality:       currentRating.quality,
-    rating_efficiency:    currentRating.efficiency,
-    rating_communication: currentRating.communication,
-    rating_price:         currentRating.price,
-    rating_reason:        reasonText,
-    status:               '已完成'
+  fetch(PUBLIC_ACTION_URL,{
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body:JSON.stringify({
+      action:'submitRating',
+      id: currentRatingId,
+      rating_quality:       currentRating.quality,
+      rating_efficiency:    currentRating.efficiency,
+      rating_communication: currentRating.communication,
+      rating_price:         currentRating.price,
+      rating_reason:        reasonText
+    })
   })
-  .then(function(res){
+  .then(function(res){ return res.json().then(function(data){ return { ok: res.ok, data: data }; }); })
+  .then(function(result){
     const msg = document.getElementById('rateModalMsg');
-    if(!res.ok) throw new Error('HTTP '+res.status);
+    if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
     msg.textContent = '';
     btnText.textContent = '確認結案';
     btn.classList.add('success-state');

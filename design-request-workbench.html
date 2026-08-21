@@ -596,10 +596,18 @@ const SUPABASE_HEADERS = {
   'Authorization': 'Bearer ' + SUPABASE_KEY
 };
 function sbUrl(table, query){ return SUPABASE_URL + '/rest/v1/' + table + (query ? '?' + query : ''); }
-function sbPatch(table, query, body){
-  return fetch(sbUrl(table, query), { method:'PATCH', headers: Object.assign({}, SUPABASE_HEADERS, {'Prefer':'return=minimal'}), body: JSON.stringify(body) });
+// 所有寫入動作都走這支 Edge Function，密碼驗證在伺服器端進行，
+// 前端不再保留密碼清單
+const DESIGNER_ACTION_URL = 'https://qvhfbgnglheepwdqybbr.supabase.co/functions/v1/designer-action';
+function designerAction(action, extra){
+  return fetch(DESIGNER_ACTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({ action: action, password: verifiedPassword, handler: CURRENT_DESIGNER }, extra || {}))
+  }).then(function(res){
+    return res.json().then(function(data){ return { ok: res.ok, data: data }; });
+  });
 }
-const DESIGNER_PASSWORDS = { 'Nikki':'8416', 'Yuly':'8901', 'Luna':'8780', 'Daniel':'8925' };
 const STATUS_OPTIONS = ['待處理','進行中','請校稿','停案','已完成','退件'];
 
 let TAB_NAME = '';
@@ -608,20 +616,33 @@ let verifiedPassword = null;
 
 function checkPassword(){
   const val = document.getElementById('gatePassword').value;
-  const matched = Object.keys(DESIGNER_PASSWORDS).filter(function(name){
-    return DESIGNER_PASSWORDS[name] === val;
-  })[0];
-  if(matched){
-    verifiedPassword = val;
-    CURRENT_DESIGNER = matched;
-    TAB_NAME = matched + '需求單';
-    document.getElementById('gateWrap').style.display = 'none';
-    document.getElementById('mainView').classList.add('show');
-    document.getElementById('viewingSubtitle').textContent = '目前檢視：' + matched;
-    loadCases();
-  }else{
+  if(!val){
     document.getElementById('gateError').classList.add('show');
+    return;
   }
+  document.getElementById('gateError').classList.remove('show');
+  fetch(DESIGNER_ACTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'verifyLogin', password: val })
+  })
+  .then(function(res){ return res.json(); })
+  .then(function(data){
+    if(data.status === 'success' && data.handler){
+      verifiedPassword = val;
+      CURRENT_DESIGNER = data.handler;
+      TAB_NAME = data.handler + '需求單';
+      document.getElementById('gateWrap').style.display = 'none';
+      document.getElementById('mainView').classList.add('show');
+      document.getElementById('viewingSubtitle').textContent = '目前檢視：' + data.handler;
+      loadCases();
+    }else{
+      document.getElementById('gateError').classList.add('show');
+    }
+  })
+  .catch(function(){
+    document.getElementById('gateError').classList.add('show');
+  });
 }
 
 function cellText(c){
@@ -1068,17 +1089,16 @@ function saveCase(id){
   btn.disabled = true;
   btnText.textContent = '儲存中...';
 
-  const updateBody = {
+  return designerAction('saveCase', {
+    id: id,
     status: status,
     reject_reason: (status === '退件' && rejectEl) ? rejectEl.value : '',
     delivery_link: deliveryEl ? deliveryEl.value : '',
     hours: (hoursEl && hoursEl.value) ? parseFloat(hoursEl.value) : null,
     fee: (feeEl && feeEl.value) ? parseFloat(feeEl.value) : null
-  };
-
-  return sbPatch('cases', 'id=eq.' + id, updateBody)
-  .then(function(res){
-    if(!res.ok) throw new Error('HTTP ' + res.status);
+  })
+  .then(function(result){
+    if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
     btnText.textContent = '儲存';
     btn.classList.add('success-state');
     setTimeout(function(){
@@ -1268,20 +1288,10 @@ function confirmPauseCase(){
   msg.textContent = '處理中...';
   msg.className = 'modal-msg';
 
-  fetch(sbUrl('cases', 'id=eq.' + id + '&select=design_history'), { headers: SUPABASE_HEADERS })
-  .then(function(res){ return res.json(); })
-  .then(function(rows){
-    const existing = (rows[0] && rows[0].design_history) ? rows[0].design_history : '';
-    const now = new Date();
-    const pad = function(n){ return n < 10 ? '0'+n : ''+n; };
-    const stamp = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+' '+pad(now.getHours())+':'+pad(now.getMinutes());
-    const newEntry = '時間：' + stamp + '　狀態：停案（原因：' + reason + '）';
-    const merged = existing ? (existing + '\n' + newEntry) : newEntry;
-    return sbPatch('cases', 'id=eq.' + id, { status: '停案', design_history: merged });
-  })
-  .then(function(res){
+  designerAction('pauseCase', { id: id, reason: reason })
+  .then(function(result){
     btn.disabled = false;
-    if(!res.ok) throw new Error('HTTP ' + res.status);
+    if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
     document.getElementById('pauseReasonOverlay').classList.remove('show');
     pendingPauseCaseId = null;
     pendingPausePrevStatus = null;
@@ -1301,14 +1311,9 @@ function confirmLockDate(){
   msg.textContent = '處理中...';
   msg.className = 'modal-msg';
 
-  // upsert：同一設計師同一天只保留一筆（UNIQUE constraint）
-  fetch(sbUrl('locked_dates', ''), {
-    method: 'POST',
-    headers: Object.assign({}, SUPABASE_HEADERS, {'Prefer': 'resolution=merge-duplicates'}),
-    body: JSON.stringify({ handler: CURRENT_DESIGNER, date: pendingLockDate, reason: reason })
-  })
-  .then(function(res){
-    if(!res.ok) throw new Error('HTTP ' + res.status);
+  designerAction('lockDate', { date: pendingLockDate, reason: reason })
+  .then(function(result){
+    if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
     lockedDatesMap[pendingLockDate] = reason;
     closeLockReasonModal();
     renderLockCalendar();
@@ -1320,12 +1325,9 @@ function confirmLockDate(){
 }
 
 function doUnlockDate(dateStr){
-  fetch(sbUrl('locked_dates', 'handler=eq.' + encodeURIComponent(CURRENT_DESIGNER) + '&date=eq.' + dateStr), {
-    method: 'DELETE',
-    headers: SUPABASE_HEADERS
-  })
-  .then(function(res){
-    if(!res.ok) throw new Error('HTTP ' + res.status);
+  designerAction('unlockDate', { date: dateStr })
+  .then(function(result){
+    if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
     delete lockedDatesMap[dateStr];
     renderLockCalendar();
   })
@@ -1363,10 +1365,10 @@ function saveReply(){
   msg.textContent = '送出中...';
   msg.className = 'modal-msg';
 
-  sbPatch('cases', 'id=eq.' + currentReplyId, { designer_reply: text })
-  .then(function(res){
+  designerAction('replyRating', { id: currentReplyId, reply: text })
+  .then(function(result){
     btn.disabled = false;
-    if(!res.ok) throw new Error('HTTP ' + res.status);
+    if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
     msg.textContent = '✓ 已送出回覆';
     msg.className = 'modal-msg success';
     setTimeout(function(){
@@ -1394,21 +1396,9 @@ function addDesignHistory(id){
   msg.textContent = '送出中...';
   msg.style.color = 'var(--ink-soft)';
 
-  // 先讀現有歷程，再 append 新紀錄
-  const now = new Date();
-  const pad = function(n){ return n < 10 ? '0'+n : ''+n; };
-  const stamp = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+' '+pad(now.getHours())+':'+pad(now.getMinutes());
-  const newEntry = '時間：' + stamp + '　狀態：' + text;
-
-  fetch(sbUrl('cases', 'id=eq.' + id + '&select=design_history'), { headers: SUPABASE_HEADERS })
-  .then(function(res){ return res.json(); })
-  .then(function(rows){
-    const existing = (rows[0] && rows[0].design_history) ? rows[0].design_history : '';
-    const merged = existing ? (existing + '\n' + newEntry) : newEntry;
-    return sbPatch('cases', 'id=eq.' + id, { design_history: merged });
-  })
-  .then(function(res){
-    if(!res.ok) throw new Error('HTTP ' + res.status);
+  designerAction('addDesignHistory', { id: id, content: text })
+  .then(function(result){
+    if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
     msg.textContent = '';
     input.value = '';
     loadCases();
