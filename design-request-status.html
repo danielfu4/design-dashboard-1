@@ -91,6 +91,12 @@
   }
 
   .req-card{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:20px 22px;margin-bottom:14px;}
+  .req-card.deep-link-highlight{animation:deepLinkPulse2 2.6s ease;}
+  @keyframes deepLinkPulse2{
+    0%{box-shadow:0 0 0 3px #3E7BFA, var(--shadow);}
+    70%{box-shadow:0 0 0 3px #3E7BFA, var(--shadow);}
+    100%{box-shadow:var(--shadow);}
+  }
   .req-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
   .req-name{font-size:16px;font-weight:800;}
   .badge-group{display:flex;align-items:center;gap:6px;flex:none;}
@@ -900,7 +906,43 @@ function applyStatusFilterAndRender(){
   html += normalMatches.map(renderReqCard).join('');
 
   results.innerHTML = html;
+  scrollToDeepLinkedReqCase();
 }
+
+// ---- LINE 深連結：網址帶 ?case=<id> 時，自動捲動並標亮該案件卡片（只做一次）----
+let __reqDeepLinkHandled = false;
+function scrollToDeepLinkedReqCase(){
+  if(__reqDeepLinkHandled) return;
+  const params = new URLSearchParams(window.location.search);
+  const caseId = (params.get('case') || '').trim();
+  if(!caseId) return;
+
+  let attempts = 0;
+  const maxAttempts = 10;
+  const tryFind = function(){
+    const el = document.getElementById('req-card-' + caseId);
+    if(el){
+      __reqDeepLinkHandled = true;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('deep-link-highlight');
+      setTimeout(function(){ el.classList.remove('deep-link-highlight'); }, 2600);
+      return;
+    }
+    attempts++;
+    if(attempts < maxAttempts) setTimeout(tryFind, 300);
+  };
+  setTimeout(tryFind, 150);
+}
+
+// 網址帶 ?name=<姓名>&case=<id> 時，自動帶入姓名並查詢（來自 LINE 通知的「查看」按鈕）
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const autoName = params.get('name');
+  if(autoName){
+    document.getElementById('searchName').value = autoName;
+    doSearch();
+  }
+})();
 
 function renderReqCard(m){
     const si = statusInfo(m.status);
@@ -997,7 +1039,7 @@ const hasRating = m.quality && m.efficiency && m.communication && m.price;
       : '';
 
     return (
-      '<div class="req-card' + (isUrgent ? ' urgent' : '') + '">' +
+      '<div class="req-card' + (isUrgent ? ' urgent' : '') + '" id="req-card-' + (m.id || '') + '">' +
         '<div class="req-top">' +
           '<div>' +
             '<div class="req-name">' + m.reqName + '</div>' +
