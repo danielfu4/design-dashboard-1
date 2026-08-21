@@ -107,6 +107,12 @@
 
   .case-card{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:20px 22px;margin-bottom:14px;}
   .case-card.urgent{box-shadow:0 0 0 1.5px #F3C5C0, 0 6px 16px rgba(20,20,30,.04);}
+  .case-card.deep-link-highlight{animation:deepLinkPulse 2.6s ease;}
+  @keyframes deepLinkPulse{
+    0%{box-shadow:0 0 0 3px var(--accent), 0 6px 16px rgba(20,20,30,.04);}
+    70%{box-shadow:0 0 0 3px var(--accent), 0 6px 16px rgba(20,20,30,.04);}
+    100%{box-shadow:var(--shadow);}
+  }
   .case-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
   .case-name{font-size:16px;font-weight:800;}
   .case-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
@@ -806,6 +812,36 @@ function applyFilterAndRender(){
 
   list.innerHTML = cases.map(renderCaseCard).join('');
   initCaseFieldVisibility();
+  scrollToDeepLinkedCase();
+}
+
+// ---- LINE 深連結：網址帶 ?case=<id> 時，自動捲動並標亮該案件卡片（只做一次）----
+let __deepLinkHandled = false;
+function scrollToDeepLinkedCase(){
+  if(__deepLinkHandled) return;
+  const params = new URLSearchParams(window.location.search);
+  const caseId = (params.get('case') || '').trim();
+  if(!caseId) return;
+
+  let attempts = 0;
+  const maxAttempts = 10;
+  const tryFind = function(){
+    const el = document.getElementById('card-' + caseId);
+    if(el){
+      __deepLinkHandled = true;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('deep-link-highlight');
+      setTimeout(function(){ el.classList.remove('deep-link-highlight'); }, 2600);
+      return;
+    }
+    attempts++;
+    if(attempts < maxAttempts){
+      setTimeout(tryFind, 300);
+    }else{
+      console.warn('deep-link: 找不到 case=' + caseId + ' 對應的卡片，可能是這筆案件不屬於目前登入的設計師，或 ID 不吻合。');
+    }
+  };
+  setTimeout(tryFind, 150);
 }
 
 function renderCaseCard(m){
