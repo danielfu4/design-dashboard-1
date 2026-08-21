@@ -436,6 +436,28 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="pauseReasonOverlay" onclick="if(event.target===this) cancelPauseCase()">
+  <div class="modal-card" style="max-width:360px;">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">確定要停案嗎？</div>
+        <div class="modal-sub" id="pauseReasonCaseName"></div>
+      </div>
+      <button class="modal-close" onclick="cancelPauseCase()">✕</button>
+    </div>
+    <div class="field-simple">
+      <label>停案原因 <span style="color:#B3324A;">*</span></label>
+      <input type="text" id="pauseReasonInput" placeholder="請說明停案原因，會記錄進設計歷程">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button type="button" onclick="cancelPauseCase()" style="flex:1;border:1px solid var(--line);background:var(--card);color:var(--ink);font-family:inherit;font-weight:700;font-size:13px;padding:11px;border-radius:10px;cursor:pointer;">取消</button>
+      <button class="modal-submit" id="pauseReasonSubmitBtn" onclick="confirmPauseCase()" style="flex:1;margin-top:0;">確認停案</button>
+    </div>
+    <div class="modal-msg" id="pauseReasonModalMsg"></div>
+  </div>
+</div>
+
+
 <div class="modal-overlay" id="replyModalOverlay" onclick="if(event.target===this) closeReplyModal()">
   <div class="modal-card">
     <div class="modal-head">
@@ -497,6 +519,7 @@ function renderCselPanel(id){
 
 function cselChoose(id, val){
   const st = cselState[id];
+  const oldValue = st.value;
   const opt = st.options.filter(function(o){ return o.value === val; })[0];
   st.value = val;
   document.getElementById(id).value = val;
@@ -504,7 +527,20 @@ function cselChoose(id, val){
   if(textEl) textEl.textContent = opt ? opt.label : val;
   closeAllCsel();
   renderCselPanel(id);
-  if(st.onChange) st.onChange(val);
+  if(st.onChange) st.onChange(val, oldValue);
+}
+
+// 不觸發 onChange，單純把選單顯示的值改回去（取消操作時用）
+function cselSetValueSilent(id, val){
+  const st = cselState[id];
+  if(!st) return;
+  const opt = st.options.filter(function(o){ return o.value === val; })[0];
+  st.value = val;
+  const hiddenEl = document.getElementById(id);
+  if(hiddenEl) hiddenEl.value = val;
+  const textEl = document.getElementById('csel_' + id + '_text');
+  if(textEl) textEl.textContent = opt ? opt.label : val;
+  renderCselPanel(id);
 }
 
 function toggleCsel(id){
@@ -1004,9 +1040,17 @@ function toggleCaseFields(id){
 function initCaseFieldVisibility(){
   const statusOptions = STATUS_OPTIONS.map(function(s){ return { value: s, label: s }; });
   (window.__cases || []).forEach(function(m){
-    initCsel('status-' + m.id, statusOptions, m.status || '待處理', function(v){ toggleCaseFields(m.id); });
+    initCsel('status-' + m.id, statusOptions, m.status || '待處理', function(v, oldV){ onStatusChange(m.id, v, oldV); });
     toggleCaseFields(m.id);
   });
+}
+
+// 選到「停案」時跳出必填原因的視窗，其他狀態切換維持原本行為
+function onStatusChange(id, newValue, oldValue){
+  toggleCaseFields(id);
+  if(newValue === '停案' && oldValue !== '停案'){
+    openPauseReasonModal(id, oldValue);
+  }
 }
 
 function saveCase(id){
@@ -1179,6 +1223,75 @@ function onLockDayClick(dateStr){
 function closeLockReasonModal(){
   document.getElementById('lockReasonOverlay').classList.remove('show');
   pendingLockDate = null;
+}
+
+// ---- 停案原因彈窗 ----
+let pendingPauseCaseId = null;
+let pendingPausePrevStatus = null;
+
+function openPauseReasonModal(id, prevStatus){
+  pendingPauseCaseId = id;
+  pendingPausePrevStatus = prevStatus || '待處理';
+  const c = (window.__cases || []).filter(function(m){ return m.id === id; })[0];
+  document.getElementById('pauseReasonCaseName').textContent = c ? c.reqName : '';
+  document.getElementById('pauseReasonInput').value = '';
+  document.getElementById('pauseReasonModalMsg').textContent = '';
+  document.getElementById('pauseReasonModalMsg').className = 'modal-msg';
+  document.getElementById('pauseReasonOverlay').classList.add('show');
+  setTimeout(function(){ document.getElementById('pauseReasonInput').focus(); }, 100);
+}
+
+function cancelPauseCase(){
+  if(pendingPauseCaseId){
+    cselSetValueSilent('status-' + pendingPauseCaseId, pendingPausePrevStatus);
+    toggleCaseFields(pendingPauseCaseId);
+  }
+  document.getElementById('pauseReasonOverlay').classList.remove('show');
+  pendingPauseCaseId = null;
+  pendingPausePrevStatus = null;
+}
+
+function confirmPauseCase(){
+  const id = pendingPauseCaseId;
+  if(!id) return;
+  const reason = document.getElementById('pauseReasonInput').value.trim();
+  const msg = document.getElementById('pauseReasonModalMsg');
+  const btn = document.getElementById('pauseReasonSubmitBtn');
+
+  if(!reason){
+    msg.textContent = '請先填寫停案原因';
+    msg.className = 'modal-msg error';
+    return;
+  }
+
+  btn.disabled = true;
+  msg.textContent = '處理中...';
+  msg.className = 'modal-msg';
+
+  fetch(sbUrl('cases', 'id=eq.' + id + '&select=design_history'), { headers: SUPABASE_HEADERS })
+  .then(function(res){ return res.json(); })
+  .then(function(rows){
+    const existing = (rows[0] && rows[0].design_history) ? rows[0].design_history : '';
+    const now = new Date();
+    const pad = function(n){ return n < 10 ? '0'+n : ''+n; };
+    const stamp = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+' '+pad(now.getHours())+':'+pad(now.getMinutes());
+    const newEntry = '時間：' + stamp + '　狀態：停案（原因：' + reason + '）';
+    const merged = existing ? (existing + '\n' + newEntry) : newEntry;
+    return sbPatch('cases', 'id=eq.' + id, { status: '停案', design_history: merged });
+  })
+  .then(function(res){
+    btn.disabled = false;
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    document.getElementById('pauseReasonOverlay').classList.remove('show');
+    pendingPauseCaseId = null;
+    pendingPausePrevStatus = null;
+    loadCases();
+  })
+  .catch(function(err){
+    btn.disabled = false;
+    msg.textContent = '停案失敗：' + (err && err.message ? err.message : '未知錯誤');
+    msg.className = 'modal-msg error';
+  });
 }
 
 function confirmLockDate(){
