@@ -545,6 +545,18 @@
       <button class="modal-close" onclick="closeCopyModal()">✕</button>
     </div>
     <div class="field-simple">
+      <label>品牌 <span style="color:#B3324A;">*</span></label>
+      <select id="copyBrand" onchange="onCopyBrandChange()"></select>
+    </div>
+    <div class="field-simple">
+      <label>設計類型 <span style="color:#B3324A;">*</span></label>
+      <select id="copyReqType" onchange="onCopyReqTypeChange()"></select>
+    </div>
+    <div class="field-simple">
+      <label>案件類型 <span style="color:#B3324A;">*</span></label>
+      <select id="copyCaseType"></select>
+    </div>
+    <div class="field-simple">
       <label>需求名稱 <span style="color:#B3324A;">*</span></label>
       <input type="text" id="copyReqName" placeholder="請輸入需求名稱">
     </div>
@@ -1152,8 +1164,65 @@ const BRAND_GROUPS = {
   S3: ['TCL','BALMUDA','LUPLUP','IRIS','WINIX','Majority','群光選品','ITD部門相關','支援其他部門','其他']
 };
 const GROUP_DESIGNERS = { S1: ['Nikki','Yuly'], S2: ['Nikki','Luna'], S3: ['Nikki','Daniel'] };
+const CASE_TYPE_MAP = {
+  '包材設計': ['絲印/中標貼紙','說明書','彩盒','外箱'],
+  '產品素材': ['情境合成','產品修圖','插畫設計'],
+  'EC電商/品牌官網': ['產品詳情頁','商品主圖','靜態Banner','動態Banner'],
+  '數位行銷': ['靜態Banner','動態Banner','影片剪輯'],
+  '實體協銷': ['DM/規格DM/A4立牌','型錄','海報','輔銷物','DP點','場勘/手做加工/現場支援'],
+  '專案': ['產品詳情頁','商品主圖','靜態Banner','動態Banner'],
+  'ITD部門相關': ['歡迎牌','主管交辦事項','支援其他工作']
+};
 
 let copyOriginalData = null;
+
+function buildCopyBrandOptionsHtml(selectedBrand){
+  return Object.keys(BRAND_GROUPS).map(function(g){
+    return '<optgroup label="' + g + '">' + BRAND_GROUPS[g].map(function(b){
+      return '<option value="' + b + '"' + (b === selectedBrand ? ' selected' : '') + '>' + b + '</option>';
+    }).join('') + '</optgroup>';
+  }).join('');
+}
+
+function buildCopyReqTypeOptionsHtml(selectedType){
+  return Object.keys(CASE_TYPE_MAP).map(function(t){
+    return '<option value="' + t + '"' + (t === selectedType ? ' selected' : '') + '>' + t + '</option>';
+  }).join('');
+}
+
+function buildCopyCaseTypeOptionsHtml(reqType, selectedCaseType){
+  const list = CASE_TYPE_MAP[reqType] || [];
+  return list.map(function(c){
+    return '<option value="' + c + '"' + (c === selectedCaseType ? ' selected' : '') + '>' + c + '</option>';
+  }).join('');
+}
+
+function onCopyBrandChange(){
+  const brand = document.getElementById('copyBrand').value;
+  let group = null;
+  Object.keys(BRAND_GROUPS).forEach(function(g){
+    if(BRAND_GROUPS[g].indexOf(brand) !== -1) group = g;
+  });
+  copyOriginalData.group = group;
+  copyOriginalData.brand = brand;
+
+  const designerWrap = document.getElementById('copyDesignerWrap');
+  const designers = group ? GROUP_DESIGNERS[group] : [];
+  if(designers.length > 1){
+    document.getElementById('copyDesigner').innerHTML = designers.map(function(d){
+      return '<option value="' + d + '">' + d + '</option>';
+    }).join('');
+    designerWrap.style.display = 'block';
+  }else{
+    designerWrap.style.display = 'none';
+  }
+  loadCopyDateCounts();
+}
+
+function onCopyReqTypeChange(){
+  const reqType = document.getElementById('copyReqType').value;
+  document.getElementById('copyCaseType').innerHTML = buildCopyCaseTypeOptionsHtml(reqType, '');
+}
 
 function copyCaseAndCreate(data){
   copyOriginalData = data;
@@ -1164,8 +1233,10 @@ function copyCaseAndCreate(data){
   });
   copyOriginalData.group = group;
 
-  document.getElementById('copyModalOrigin').textContent =
-    data.brand + '・' + data.reqType + (data.caseType ? '・' + data.caseType : '');
+  document.getElementById('copyModalOrigin').textContent = '原案件：' + (data.reqName || '');
+  document.getElementById('copyBrand').innerHTML = buildCopyBrandOptionsHtml(data.brand);
+  document.getElementById('copyReqType').innerHTML = buildCopyReqTypeOptionsHtml(data.reqType);
+  document.getElementById('copyCaseType').innerHTML = buildCopyCaseTypeOptionsHtml(data.reqType, data.caseType);
   document.getElementById('copyReqName').value = '';
   document.getElementById('copyReqPerson').value = data.reqPerson || '';
   document.getElementById('copyChannel').value = data.channel || '';
@@ -1365,10 +1436,13 @@ function submitCopiedCase(){
   const reqName = document.getElementById('copyReqName').value.trim();
   const reqPerson = document.getElementById('copyReqPerson').value.trim();
   const dueDate = document.getElementById('copyDueDate').value;
+  const brand = document.getElementById('copyBrand').value;
+  const reqType = document.getElementById('copyReqType').value;
+  const caseType = document.getElementById('copyCaseType').value;
   const msg = document.getElementById('copyModalMsg');
 
-  if(!reqName || !reqPerson || !dueDate){
-    msg.textContent = '請填寫需求名稱、需求人員、需求日期';
+  if(!reqName || !reqPerson || !dueDate || !brand || !reqType || !caseType){
+    msg.textContent = '請完整填寫品牌、設計類型、案件類型、需求名稱、需求人員、需求日期';
     msg.className = 'modal-msg error';
     return;
   }
@@ -1392,9 +1466,9 @@ function submitCopiedCase(){
   const payload = {
     group: group || '',
     handler: handler,
-    brand: copyOriginalData.brand,
-    reqType: copyOriginalData.reqType,
-    caseType: copyOriginalData.caseType || '',
+    brand: brand,
+    reqType: reqType,
+    caseType: caseType,
     reqName: reqName,
     reqPerson: reqPerson,
     fillDate: fillDate,
