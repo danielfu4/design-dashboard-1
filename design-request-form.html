@@ -32,9 +32,15 @@
   header{margin-bottom:22px;}
   .header-top{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;}
   .header-actions-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-  .segmented{display:inline-flex;background:#E7E7EA;border-radius:12px;padding:3px;gap:2px;flex:none;}
-  .seg-btn{border:none;background:transparent;color:var(--ink-soft);font:inherit;font-weight:700;font-size:12.5px;padding:8px 16px;border-radius:9px;cursor:pointer;}
-  .seg-btn.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(20,20,30,.14);}
+  .segmented{display:inline-flex;position:relative;background:#E7E7EA;border-radius:12px;padding:3px;gap:2px;flex:none;}
+  .seg-thumb{
+    position:absolute;top:3px;bottom:3px;left:0;width:0;
+    background:#fff;border-radius:9px;box-shadow:0 1px 3px rgba(20,20,30,.14);
+    transition:transform .28s cubic-bezier(.4,0,.2,1), width .28s cubic-bezier(.4,0,.2,1);
+    z-index:0;
+  }
+  .seg-btn{position:relative;z-index:1;border:none;background:transparent;color:var(--ink-soft);font:inherit;font-weight:700;font-size:12.5px;padding:8px 16px;border-radius:9px;cursor:pointer;transition:color .2s ease;}
+  .seg-btn.active{color:var(--ink);}
   .eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--ink-soft);margin:0 0 4px;text-transform:uppercase;}
   h1{font-size:26px;font-weight:800;margin:0 0 6px;letter-spacing:-.01em;}
   .subtitle{font-size:13px;color:var(--ink-soft);}
@@ -423,7 +429,7 @@
         <li>勾選<b>「急件」</b>可以突破每日 5 件上限，但無法突破設計師手動封鎖的日期</li>
         <li>設計師手動封鎖的日期，<b>任何情況都無法選擇</b>（包含急件）</li>
         <li>急件需要填寫原因，並確認了解可能影響你自己其他既有需求的排程</li>
-        <li>如需對既有案件內容做<b>微調</b>，請改用「急件」重新填寫需求</li>
+        <li>如需對既有案件內容做<b>微調</b>，請到「查看案件進度」頁面點選該案件的<b>「補充內容」</b>，不用重新填單</li>
       </ul>
     </div>
   </div>
@@ -434,6 +440,7 @@
       <div class="field">
         <label>選擇分組 <span class="required">*</span></label>
         <div class="segmented" id="groupSwitch" style="width:fit-content;">
+          <div class="seg-thumb" id="segThumb"></div>
           <button type="button" class="seg-btn active" data-g="S1">S1</button>
           <button type="button" class="seg-btn" data-g="S2">S2</button>
           <button type="button" class="seg-btn" data-g="S3">S3</button>
@@ -603,6 +610,10 @@
           </div>
         </button>
         <a href="design-request-status.html" class="status-link">查看案件進度</a>
+        <button type="button" class="line-btn" onclick="openLineModal()">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M12 2C6.477 2 2 5.79 2 10.44c0 4.17 3.55 7.66 8.35 8.32.325.07.767.215.879.494.101.253.066.65.032.906l-.142.855c-.043.253-.2.988.865.539 1.066-.45 5.752-3.389 7.847-5.802C21.267 13.9 22 12.26 22 10.44 22 5.79 17.523 2 12 2z"></path></svg>
+          加入官方LINE
+        </button>
         <button type="button" class="feedback-btn" onclick="openFeedbackModal()">
           <span class="feedback-btn-text">意見箱</span>
           <span class="feedback-btn-icon">
@@ -611,10 +622,6 @@
               <polyline points="4 6.5 12 13.5 20 6.5" fill="none" stroke="#3E7BFA" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></polyline>
             </svg>
           </span>
-        </button>
-        <button type="button" class="line-btn" onclick="openLineModal()">
-          <svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor"><path d="M12 2C6.477 2 2 5.79 2 10.44c0 4.17 3.55 7.66 8.35 8.32.325.07.767.215.879.494.101.253.066.65.032.906l-.142.855c-.043.253-.2.988.865.539 1.066-.45 5.752-3.389 7.847-5.802C21.267 13.9 22 12.26 22 10.44 22 5.79 17.523 2 12 2z"></path></svg>
-          加入官方LINE
         </button>
       </div>
       <div class="preview-note" style="margin-top:8px;">送出後會存進試算表「設計需求單」分頁</div>
@@ -907,11 +914,20 @@ function updateUrgentCounter(){
   });
 }
 
+function updateSegThumb(){
+  const activeBtn = document.querySelector('#groupSwitch .seg-btn.active');
+  const thumb = document.getElementById('segThumb');
+  if(!activeBtn || !thumb) return;
+  thumb.style.width = activeBtn.offsetWidth + 'px';
+  thumb.style.transform = 'translateX(' + activeBtn.offsetLeft + 'px)';
+}
+
 document.getElementById('groupSwitch').addEventListener('click', function(e){
   const btn = e.target.closest('.seg-btn');
   if(!btn) return;
   document.querySelectorAll('#groupSwitch .seg-btn').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
+  updateSegThumb();
   currentGroup = btn.getAttribute('data-g');
   populateBrands(currentGroup);
   toggleDesignerPicker(currentGroup);
@@ -922,6 +938,8 @@ document.getElementById('groupSwitch').addEventListener('click', function(e){
     document.getElementById('dueDateDisplay').value = '';
   }
 });
+updateSegThumb();
+window.addEventListener('resize', updateSegThumb);
 
 initCsel('brand', [], '請選擇品牌', function(v){ toggleOtherBrand(v); });
 initCsel('reqType', [
