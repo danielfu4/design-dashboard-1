@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>使用說明 — ITD設計案統計表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F1F1F3;
+    --card:#FFFFFF;
+    --shadow:0 1px 2px rgba(20,20,30,.05), 0 6px 16px rgba(20,20,30,.04);
+    --ink:#17181C;
+    --ink-soft:#8A8A93;
+    --line:#ECECEE;
+    --accent:#3E7BFA;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Noto Sans TC','Plus Jakarta Sans',sans-serif;
+  }
+  .top-bar{
+    position:sticky;top:0;z-index:10;background:var(--card);border-bottom:1px solid var(--line);
+    padding:14px 24px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .top-bar-title{font-size:14px;font-weight:800;color:var(--ink);}
+  .back-link{
+    display:inline-flex;align-items:center;gap:6px;color:var(--ink-soft);text-decoration:none;
+    font-size:12.5px;font-weight:700;
+  }
+  .back-link:hover{color:var(--ink);}
+  .page-wrap{
+    max-width:900px;margin:0 auto;padding:40px 24px 80px;
+    background:var(--card);border-radius:24px;box-shadow:var(--shadow);
+    margin-top:24px;margin-bottom:40px;
+  }
+  @media (max-width:640px){
+    .page-wrap{padding:28px 18px 60px;border-radius:16px;margin-top:12px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="index.html" class="back-link">← 返回統計面板</a>
+  <span class="top-bar-title">使用說明</span>
+</div>
+
+<div class="page-wrap">
+  <div style="display:flex; align-items:center; gap:8px; margin-bottom:18px;">
+    <span style="width:8px; height:8px; border-radius:50%; background:#14141A; display:inline-block;"></span>
+    <span style="font-size:10pt; letter-spacing:0.08em; color:#6B6B78;">ITD設計團隊</span>
+  </div>
+
+  <h1 style="font-size:34pt; line-height:1.15; font-weight:600; letter-spacing:-0.02em; margin:0 0 14px;">設計案系統<br />快速指南</h1>
+  <p style="font-size:12pt; color:#6B6B78; margin:0 0 8px; max-width:30em;">從送出需求到結案評分，一份看完整套流程。包含需求人員填單、進度查詢、設計師工作台與統計面板四個部分。</p>
+  <p style="font-size:9.5pt; color:#9A9AA6; margin:0 0 34px;">系統網址 danielfu4.github.io/design-dashboard-1</p>
+
+  <div style="height:1px; background:#E6E6EA; margin:0 0 34px;"></div>
+
+  <h2 style="font-size:16pt; font-weight:600; margin:0 0 6px;">01　系統地圖</h2>
+  <p style="font-size:10.5pt; color:#6B6B78; margin:0 0 20px;">四個頁面，各自對應不同角色。統計面板與設計師工作台需要密碼。</p>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:38px;">
+    <div style="background:#F4F4F6; border-radius:18px; padding:22px 22px 20px; break-inside:avoid;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <span style="font-size:8.5pt; font-weight:600; color:#3E7BFA; background:#E7EFFD; border-radius:999px; padding:4px 10px;">需求人員</span>
+      </div>
+      <div style="font-size:13pt; font-weight:600; margin-bottom:6px;">設計需求申請單</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">填寫並送出設計需求。選品牌、設計類型、指定設計師與需求日期，可勾選急件。</p>
+    </div>
+    <div style="background:#F4F4F6; border-radius:18px; padding:22px 22px 20px; break-inside:avoid;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <span style="font-size:8.5pt; font-weight:600; color:#3E7BFA; background:#E7EFFD; border-radius:999px; padding:4px 10px;">需求人員</span>
+      </div>
+      <div style="font-size:13pt; font-weight:600; margin-bottom:6px;">我的需求查詢</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">輸入姓名查詢自己的案件進度，並進行補充內容、改期、複製新增與結案評分。</p>
+    </div>
+    <div style="background:#F4F4F6; border-radius:18px; padding:22px 22px 20px; break-inside:avoid;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <span style="font-size:8.5pt; font-weight:600; color:#14141A; background:#E6E6EA; border-radius:999px; padding:4px 10px;">設計師</span>
+      </div>
+      <div style="font-size:13pt; font-weight:600; margin-bottom:6px;">設計師工作台</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">管理自己的案件狀態、封鎖班表日期、停案與回覆評價。需要密碼進入。</p>
+    </div>
+    <div style="background:#F4F4F6; border-radius:18px; padding:22px 22px 20px; break-inside:avoid;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <span style="font-size:8.5pt; font-weight:600; color:#14141A; background:#E6E6EA; border-radius:999px; padding:4px 10px;">主管 / 設計師</span>
+      </div>
+      <div style="font-size:13pt; font-weight:600; margin-bottom:6px;">設計案統計表</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">設計費、滿意度、類別占比、品牌排行與月度趨勢。每小時整點自動同步。</p>
+    </div>
+  </div>
+
+  <h2 style="font-size:16pt; font-weight:600; margin:0 0 6px;">02　需求人員：四個步驟</h2>
+  <p style="font-size:10.5pt; color:#6B6B78; margin:0 0 20px;">從送單到結案的完整動線。</p>
+
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:38px; break-inside:avoid;">
+    <div style="border:1px solid #E6E6EA; border-radius:16px; padding:18px 16px;">
+      <div style="font-size:9pt; color:#3E7BFA; font-weight:700; margin-bottom:10px;">STEP 1</div>
+      <div style="font-size:11.5pt; font-weight:600; margin-bottom:6px;">填寫申請單</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">帶星號欄位必填，需求日期從日曆選取。</p>
+    </div>
+    <div style="border:1px solid #E6E6EA; border-radius:16px; padding:18px 16px;">
+      <div style="font-size:9pt; color:#3E7BFA; font-weight:700; margin-bottom:10px;">STEP 2</div>
+      <div style="font-size:11.5pt; font-weight:600; margin-bottom:6px;">送出需求</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">資料存入試算表「設計需求單」分頁。</p>
+    </div>
+    <div style="border:1px solid #E6E6EA; border-radius:16px; padding:18px 16px;">
+      <div style="font-size:9pt; color:#3E7BFA; font-weight:700; margin-bottom:10px;">STEP 3</div>
+      <div style="font-size:11.5pt; font-weight:600; margin-bottom:6px;">追蹤進度</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">在「我的需求查詢」輸入姓名，或用 LINE 通知。</p>
+    </div>
+    <div style="border:1px solid #E6E6EA; border-radius:16px; padding:18px 16px;">
+      <div style="font-size:9pt; color:#3E7BFA; font-weight:700; margin-bottom:10px;">STEP 4</div>
+      <div style="font-size:11.5pt; font-weight:600; margin-bottom:6px;">結案評分</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">送出評分後，案件狀態轉為「已完成」。</p>
+    </div>
+  </div>
+
+  <h2 style="font-size:16pt; font-weight:600; margin:0 0 6px;">03　五條一定要記得的規則</h2>
+  <p style="font-size:10.5pt; color:#6B6B78; margin:0 0 20px;">名額與急件的判定邏輯，決定你的需求日期能不能選。</p>
+
+  <div style="background:#F4F4F6; border-radius:20px; padding:8px 26px; margin-bottom:16px;">
+    <div style="display:flex; gap:16px; padding:18px 0; border-bottom:1px solid #E6E6EA; break-inside:avoid;">
+      <div style="font-size:10pt; font-weight:700; color:#3E7BFA; min-width:26px;">01</div>
+      <div><div style="font-weight:600; margin-bottom:3px;">每位設計師每天最多 5 件</div><p style="font-size:10pt; color:#6B6B78; margin:0;">額滿的日期當天會被鎖住，日曆上無法選擇。</p></div>
+    </div>
+    <div style="display:flex; gap:16px; padding:18px 0; border-bottom:1px solid #E6E6EA; break-inside:avoid;">
+      <div style="font-size:10pt; font-weight:700; color:#3E7BFA; min-width:26px;">02</div>
+      <div><div style="font-weight:600; margin-bottom:3px;">退件不占名額</div><p style="font-size:10pt; color:#6B6B78; margin:0;">被退件的案子會把當天名額空出來給其他需求。</p></div>
+    </div>
+    <div style="display:flex; gap:16px; padding:18px 0; border-bottom:1px solid #E6E6EA; break-inside:avoid;">
+      <div style="font-size:10pt; font-weight:700; color:#3E7BFA; min-width:26px;">03</div>
+      <div><div style="font-weight:600; margin-bottom:3px;">急件可以突破 5 件上限</div><p style="font-size:10pt; color:#6B6B78; margin:0;">但無法突破設計師手動封鎖的日期。急件需填寫原因。</p></div>
+    </div>
+    <div style="display:flex; gap:16px; padding:18px 0; border-bottom:1px solid #E6E6EA; break-inside:avoid;">
+      <div style="font-size:10pt; font-weight:700; color:#3E7BFA; min-width:26px;">04</div>
+      <div><div style="font-weight:600; margin-bottom:3px;">設計師封鎖的日期一律不可選</div><p style="font-size:10pt; color:#6B6B78; margin:0;">任何情況都無法選擇，包含急件。</p></div>
+    </div>
+    <div style="display:flex; gap:16px; padding:18px 0; break-inside:avoid;">
+      <div style="font-size:10pt; font-weight:700; color:#3E7BFA; min-width:26px;">05</div>
+      <div><div style="font-weight:600; margin-bottom:3px;">既有案件要微調，用急件重填</div><p style="font-size:10pt; color:#6B6B78; margin:0;">不要直接口頭修改，請重新填寫需求。</p></div>
+    </div>
+  </div>
+
+  <div style="border:1px solid #3E7BFA; background:#F4F8FE; border-radius:16px; padding:18px 22px; margin-bottom:38px; break-inside:avoid;">
+    <div style="font-size:10pt; font-weight:600; color:#3E7BFA; margin-bottom:5px;">急件責任聲明</div>
+    <p style="font-size:10pt; color:#4A4A57; margin:0;">送出急件前需勾選確認：因急件插入而延後申請人其他既有需求，或因此衍伸的其他部門問題，設計師一概不負責，相關排程調整由申請人自行承擔。</p>
+  </div>
+
+  <h2 style="font-size:16pt; font-weight:600; margin:0 0 6px;">04　申請單怎麼填</h2>
+  <p style="font-size:10.5pt; color:#6B6B78; margin:0 0 20px;">標示 * 為必填欄位。</p>
+
+  <div style="display:grid; grid-template-columns:0.9fr 1.1fr; gap:24px; align-items:start; margin-bottom:38px;">
+    <div style="background:#F4F4F6; border-radius:18px; padding:14px; break-inside:avoid; text-align:center;">
+      <img src="guide-form-screenshot.png" alt="設計需求申請單畫面" style="display:block; width:100%; border-radius:12px; box-shadow:0 1px 3px rgba(20,20,26,0.08);" />
+      <div style="font-size:8.5pt; color:#9A9AA6; margin-top:10px;">設計需求申請單畫面</div>
+    </div>
+
+    <div>
+      <div style="display:flex; justify-content:space-between; gap:16px; padding:11px 0; border-bottom:1px solid #E6E6EA;"><span style="font-weight:600; font-size:10.5pt;">品牌 *</span><span style="font-size:10pt; color:#6B6B78; text-align:right;">下拉選單，決定後續統計歸屬</span></div>
+      <div style="display:flex; justify-content:space-between; gap:16px; padding:11px 0; border-bottom:1px solid #E6E6EA;"><span style="font-weight:600; font-size:10.5pt;">通路</span><span style="font-size:10pt; color:#6B6B78; text-align:right;">選填</span></div>
+      <div style="display:flex; justify-content:space-between; gap:16px; padding:11px 0; border-bottom:1px solid #E6E6EA;"><span style="font-weight:600; font-size:10.5pt;">需求名稱 *</span><span style="font-size:10pt; color:#6B6B78; text-align:right;">寫清楚用途，方便後續查詢</span></div>
+      <div style="display:flex; justify-content:space-between; gap:16px; padding:11px 0; border-bottom:1px solid #E6E6EA;"><span style="font-weight:600; font-size:10.5pt;">設計類型 / 案件類型 *</span><span style="font-size:10pt; color:#6B6B78; text-align:right;">影響類別占比統計</span></div>
+      <div style="display:flex; justify-content:space-between; gap:16px; padding:11px 0; border-bottom:1px solid #E6E6EA;"><span style="font-weight:600; font-size:10.5pt;">指定設計師 *</span><span style="font-size:10pt; color:#6B6B78; text-align:right;">Nikki／Luna／Yuly／Daniel</span></div>
+      <div style="display:flex; justify-content:space-between; gap:16px; padding:11px 0; border-bottom:1px solid #E6E6EA;"><span style="font-weight:600; font-size:10.5pt;">需求人員 *</span><span style="font-size:10pt; color:#6B6B78; text-align:right;">查詢進度時要輸入完全相同的姓名</span></div>
+      <div style="display:flex; justify-content:space-between; gap:16px; padding:11px 0; border-bottom:1px solid #E6E6EA;"><span style="font-weight:600; font-size:10.5pt;">需求日期 *</span><span style="font-size:10pt; color:#6B6B78; text-align:right;">灰色日期代表已滿或已封鎖</span></div>
+      <div style="display:flex; justify-content:space-between; gap:16px; padding:11px 0; border-bottom:1px solid #E6E6EA;"><span style="font-weight:600; font-size:10.5pt;">急件 + 急件原因 *</span><span style="font-size:10pt; color:#6B6B78; text-align:right;">勾選後需選原因並確認責任聲明</span></div>
+      <div style="display:flex; justify-content:space-between; gap:16px; padding:11px 0;"><span style="font-weight:600; font-size:10.5pt;">素材 / 所需資料 / 備註</span><span style="font-size:10pt; color:#6B6B78; text-align:right;">附連結與說明，減少來回確認</span></div>
+    </div>
+  </div>
+
+  <h2 style="font-size:16pt; font-weight:600; margin:0 0 6px;">05　送出之後可以做什麼</h2>
+  <p style="font-size:10.5pt; color:#6B6B78; margin:0 0 20px;">在「我的需求查詢」輸入姓名後，每筆案件都有這四個動作。</p>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:38px;">
+    <div style="border:1px solid #E6E6EA; border-radius:16px; padding:20px; break-inside:avoid;">
+      <div style="font-size:11.5pt; font-weight:600; margin-bottom:5px;">補充內容</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">新增素材連結、補充文案或其他說明，不用重開一張單。</p>
+    </div>
+    <div style="border:1px solid #E6E6EA; border-radius:16px; padding:20px; break-inside:avoid;">
+      <div style="font-size:11.5pt; font-weight:600; margin-bottom:5px;">修改需求日期</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">改到另一個可選日期；已封鎖或已額滿的日期一樣不能選。</p>
+    </div>
+    <div style="border:1px solid #E6E6EA; border-radius:16px; padding:20px; break-inside:avoid;">
+      <div style="font-size:11.5pt; font-weight:600; margin-bottom:5px;">複製並新增</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">以既有案件為底新增一筆，只改名稱、日期與數量。</p>
+    </div>
+    <div style="border:1px solid #E6E6EA; border-radius:16px; padding:20px; break-inside:avoid;">
+      <div style="font-size:11.5pt; font-weight:600; margin-bottom:5px;">結案評分</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">品質、效率、溝通、價格四項評分。任一項 2 顆星以下需說明原因。</p>
+    </div>
+  </div>
+
+  <h2 style="font-size:16pt; font-weight:600; margin:0 0 6px;">06　案件狀態對照</h2>
+  <p style="font-size:10.5pt; color:#6B6B78; margin:0 0 20px;">正常流程由左至右推進；退件與停案是流程外的兩種結果。</p>
+
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px; break-inside:avoid;">
+    <div style="background:#F4F4F6; border-radius:16px; padding:18px 16px;">
+      <div style="font-size:8.5pt; color:#9A9AA6; font-weight:600; margin-bottom:8px;">01</div>
+      <div style="font-size:11.5pt; font-weight:600; margin-bottom:5px;">待接案</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">需求已送出，等設計師接手。</p>
+    </div>
+    <div style="background:#F4F4F6; border-radius:16px; padding:18px 16px;">
+      <div style="font-size:8.5pt; color:#9A9AA6; font-weight:600; margin-bottom:8px;">02</div>
+      <div style="font-size:11.5pt; font-weight:600; margin-bottom:5px;">進行中</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">設計師已接案並開始製作。</p>
+    </div>
+    <div style="background:#F4F4F6; border-radius:16px; padding:18px 16px;">
+      <div style="font-size:8.5pt; color:#9A9AA6; font-weight:600; margin-bottom:8px;">03</div>
+      <div style="font-size:11.5pt; font-weight:600; margin-bottom:5px;">請校稿</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">稿件已完成，等需求人員確認。</p>
+    </div>
+    <div style="background:#E7EFFD; border-radius:16px; padding:18px 16px;">
+      <div style="font-size:8.5pt; color:#3E7BFA; font-weight:600; margin-bottom:8px;">04</div>
+      <div style="font-size:11.5pt; font-weight:600; margin-bottom:5px; color:#1E52C4;">已完成</div>
+      <p style="font-size:9.5pt; color:#2F4E8F; margin:0;">送出結案評分後自動轉為此狀態。</p>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:38px;">
+    <div style="border:1px solid #E6E6EA; border-radius:16px; padding:16px 20px; break-inside:avoid;">
+      <div style="font-size:11pt; font-weight:600; margin-bottom:4px;">退件</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">設計師不受理該需求。退件的案子不占用當天 5 件名額。</p>
+    </div>
+    <div style="border:1px solid #E6E6EA; border-radius:16px; padding:16px 20px; break-inside:avoid;">
+      <div style="font-size:11pt; font-weight:600; margin-bottom:4px;">停案</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">案件中途終止，設計師須在工作台填寫停案原因。</p>
+    </div>
+  </div>
+
+  <h2 style="font-size:16pt; font-weight:600; margin:0 0 6px;">07　設計師工作台</h2>
+  <p style="font-size:10.5pt; color:#6B6B78; margin:0 0 20px;">設計師專用，需要密碼。改完記得按「一鍵儲存」。</p>
+
+  <div style="background:#F4F4F6; border-radius:20px; padding:8px 26px; margin-bottom:38px;">
+    <div style="display:flex; gap:16px; padding:18px 0; border-bottom:1px solid #E6E6EA; break-inside:avoid;">
+      <div style="font-weight:600; font-size:10.5pt; min-width:110px;">案件清單</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">可依排序、狀態篩選與搜尋找案件，直接更新狀態。</p>
+    </div>
+    <div style="display:flex; gap:16px; padding:18px 0; border-bottom:1px solid #E6E6EA; break-inside:avoid;">
+      <div style="font-weight:600; font-size:10.5pt; min-width:110px;">設計師班表</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">點日期即可封鎖，可填不對外顯示的原因。封鎖後填單人員完全選不到，急件也擋。</p>
+    </div>
+    <div style="display:flex; gap:16px; padding:18px 0; border-bottom:1px solid #E6E6EA; break-inside:avoid;">
+      <div style="font-weight:600; font-size:10.5pt; min-width:110px;">停案</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">需填寫停案原因後確認。</p>
+    </div>
+    <div style="display:flex; gap:16px; padding:18px 0; break-inside:avoid;">
+      <div style="font-weight:600; font-size:10.5pt; min-width:110px;">評價回覆</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">針對需求人員的結案評分回覆說明。</p>
+    </div>
+  </div>
+
+  <h2 style="font-size:16pt; font-weight:600; margin:0 0 6px;">08　統計面板怎麼看</h2>
+  <p style="font-size:10.5pt; color:#6B6B78; margin:0 0 20px;">上方切換設計師（全部／Nikki／Luna／Yuly／Daniel），所有數字都跟著篩選範圍走。</p>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:16px;">
+    <div style="background:#F4F4F6; border-radius:18px; padding:20px; break-inside:avoid;">
+      <div style="font-size:11pt; font-weight:600; margin-bottom:4px;">設計費總額</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">依目前篩選範圍加總。</p>
+    </div>
+    <div style="background:#F4F4F6; border-radius:18px; padding:20px; break-inside:avoid;">
+      <div style="font-size:11pt; font-weight:600; margin-bottom:4px;">滿意度統計</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">來自結案評分，含不滿意原因。</p>
+    </div>
+    <div style="background:#F4F4F6; border-radius:18px; padding:20px; break-inside:avoid;">
+      <div style="font-size:11pt; font-weight:600; margin-bottom:4px;">設計類別占比</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">類別占比／品牌排行／月度趨勢／類型分布可切換。</p>
+    </div>
+    <div style="background:#F4F4F6; border-radius:18px; padding:20px; break-inside:avoid;">
+      <div style="font-size:11pt; font-weight:600; margin-bottom:4px;">案件總數與品牌佔比</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">看各品牌的案量分布。</p>
+    </div>
+    <div style="background:#F4F4F6; border-radius:18px; padding:20px; break-inside:avoid;">
+      <div style="font-size:11pt; font-weight:600; margin-bottom:4px;">各品牌工時</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">依工時高到低排序。</p>
+    </div>
+    <div style="background:#F4F4F6; border-radius:18px; padding:20px; break-inside:avoid;">
+      <div style="font-size:11pt; font-weight:600; margin-bottom:4px;">急件案件統計</div>
+      <p style="font-size:9.5pt; color:#6B6B78; margin:0;">觀察急件比例是否偏高。</p>
+    </div>
+  </div>
+
+  <p style="font-size:10pt; color:#6B6B78; margin:0 0 38px;">資料來源為 Google 試算表（Daniel／Nikki／Luna／Yuly 分頁），即時讀取，每小時整點自動同步一次。數字有疑問時可按「重新整理」，或直接開啟原始試算表核對。</p>
+
+  <h2 style="font-size:16pt; font-weight:600; margin:0 0 6px;">09　LINE 官方帳號</h2>
+  <p style="font-size:10.5pt; color:#6B6B78; margin:0 0 20px;">日常最常用的入口。登記之後，案件有進度就直接通知你，不用登入系統也不用另外裝 App。</p>
+
+  <div style="background:#F4F4F6; border-radius:20px; padding:26px; margin-bottom:16px; break-inside:avoid;">
+    <div style="font-size:9pt; font-weight:600; color:#3E7BFA; letter-spacing:0.06em; margin-bottom:16px;">登記三步驟</div>
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px;">
+      <div style="background:#FFFFFF; border-radius:14px; padding:18px;">
+        <div style="font-size:9pt; font-weight:700; color:#3E7BFA; margin-bottom:8px;">STEP 1</div>
+        <div style="font-size:11pt; font-weight:600; margin-bottom:4px;">加好友</div>
+        <p style="font-size:9.5pt; color:#6B6B78; margin:0;">在申請單頁面點「加入官方LINE」，掃 QRCODE 或直接點加好友連結。</p>
+      </div>
+      <div style="background:#FFFFFF; border-radius:14px; padding:18px;">
+        <div style="font-size:9pt; font-weight:700; color:#3E7BFA; margin-bottom:8px;">STEP 2</div>
+        <div style="font-size:11pt; font-weight:600; margin-bottom:4px;">輸入姓名</div>
+        <p style="font-size:9.5pt; color:#6B6B78; margin:0;">在聊天室輸入你的姓名即可完成登記，系統會自動辨識你是需求人員或設計師。</p>
+      </div>
+      <div style="background:#FFFFFF; border-radius:14px; padding:18px;">
+        <div style="font-size:9pt; font-weight:700; color:#3E7BFA; margin-bottom:8px;">STEP 3</div>
+        <div style="font-size:11pt; font-weight:600; margin-bottom:4px;">輸入「案件」</div>
+        <p style="font-size:9.5pt; color:#6B6B78; margin:0;">隨時輸入「案件」兩個字，就會列出你送過的案件清單與目前狀態。</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="border:1px solid #3E7BFA; background:#F4F8FE; border-radius:16px; padding:18px 22px; margin-bottom:24px; break-inside:avoid;">
+    <div style="font-size:10pt; font-weight:600; color:#3E7BFA; margin-bottom:5px;">姓名一定要一致</div>
+    <p style="font-size:10pt; color:#4A4A57; margin:0;">需求人員登記時輸入的姓名，必須跟填單時的「需求人員」欄位完全相同（例如都是「王小明」，不要一次寫全名一次寫小名）。名字對不起來，系統就找不到你的案件，也不會發通知。</p>
+  </div>
+
+  <h3 style="font-size:12pt; font-weight:600; margin:0 0 12px;">常見問題</h3>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:24px;">
+    <div style="border:1px solid #E6E6EA; border-radius:16px; padding:20px; break-inside:avoid;">
+      <div style="font-size:11pt; font-weight:600; margin-bottom:5px;">加好友會一直收到廣告嗎？</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">不會。只有你自己的案件有進度更新時才會通知，沒有其他推播或行銷訊息。</p>
+    </div>
+    <div style="border:1px solid #E6E6EA; border-radius:16px; padding:20px; break-inside:avoid;">
+      <div style="font-size:11pt; font-weight:600; margin-bottom:5px;">需求人員也可以加嗎？</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">可以。需求人員與設計師都能加，登記後系統會自動辨識身分，顯示對應的功能。</p>
+    </div>
+    <div style="border:1px solid #E6E6EA; border-radius:16px; padding:20px; break-inside:avoid;">
+      <div style="font-size:11pt; font-weight:600; margin-bottom:5px;">可以直接查案件進度嗎？</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">可以。登記完成後輸入「案件」，就能看到案件清單與目前狀態，不必再開網頁查詢。</p>
+    </div>
+    <div style="border:1px solid #E6E6EA; border-radius:16px; padding:20px; break-inside:avoid;">
+      <div style="font-size:11pt; font-weight:600; margin-bottom:5px;">什麼時候會收到通知？</div>
+      <p style="font-size:10pt; color:#6B6B78; margin:0;">案件狀態變動時，例如被接案、轉為請校稿、退件或停案。校稿通知出現時，記得回系統確認並結案評分。</p>
+    </div>
+  </div>
+
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:20px; background:#14141A; border-radius:18px; padding:22px 26px; margin-bottom:34px; break-inside:avoid;">
+    <div>
+      <div style="font-size:12pt; font-weight:600; color:#FFFFFF; margin-bottom:4px;">ITD設計團隊 官方 LINE</div>
+      <p style="font-size:9.5pt; color:#9A9AA6; margin:0;">申請單頁面右下角「加入官方LINE」可掃 QRCODE，或使用下方連結。</p>
+    </div>
+    <a href="https://line.me/R/ti/p/@671gzkis" style="font-size:10pt; font-weight:600; color:#14141A; background:#FFFFFF; border-radius:999px; padding:10px 20px; white-space:nowrap;">直接加好友</a>
+  </div>
+
+  <div style="height:1px; background:#E6E6EA; margin:0 0 18px;"></div>
+  <p style="font-size:9.5pt; color:#9A9AA6; margin:0;">使用上有任何問題或想法，可以透過申請單頁面的「意見箱」留言給設計團隊。</p>
+</div>
+
+</body>
+</html>
