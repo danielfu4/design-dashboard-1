@@ -380,15 +380,15 @@
   <header>
     <p class="eyebrow">ITD設計團隊</p>
     <h1>我的需求查詢</h1>
-    <div class="subtitle">輸入填單時填寫的「需求人員」姓名，查詢送出過的需求進度</div>
+    <div class="subtitle">輸入填單時填寫的「需求人員」姓名，或輸入品牌名稱，查詢送出過的需求進度</div>
   </header>
 
   <div class="search-card">
     <form class="search-row" onsubmit="return doSearch(event)">
-      <input type="text" id="searchName" placeholder="請輸入你的姓名" autocomplete="off">
+      <input type="text" id="searchName" placeholder="請輸入你的姓名或品牌名稱" autocomplete="off">
       <button type="submit">查詢</button>
     </form>
-    <div class="search-hint">姓名需與填單時輸入的完全相同（例如都是「王小明」）</div>
+    <div class="search-hint">姓名需與填單時輸入的完全相同（例如都是「王小明」）；輸入品牌名稱可查看該品牌所有案件</div>
   </div>
 
   <div class="filter-bar">
@@ -761,12 +761,13 @@ function doSearch(e){
   const name = document.getElementById('searchName').value.trim();
   const results = document.getElementById('results');
   if(!name){
-    results.innerHTML = '<div class="state-msg">請先輸入姓名再查詢</div>';
+    results.innerHTML = '<div class="state-msg">請先輸入姓名或品牌名稱再查詢</div>';
     return false;
   }
   results.innerHTML = '<div class="state-msg">查詢中...</div>';
 
-  fetch(sbUrl('cases','req_person=eq.'+encodeURIComponent(name)+'&limit=500&order=created_at.desc'),{headers:SUPABASE_HEADERS})
+  const orQuery = 'or=(req_person.eq.' + encodeURIComponent(name) + ',brand.ilike.*' + encodeURIComponent(name) + '*)';
+  fetch(sbUrl('cases', orQuery + '&limit=500&order=created_at.desc'),{headers:SUPABASE_HEADERS})
   .then(function(res){ return res.ok ? res.json() : []; })
   .then(function(rows){
     renderResults(rows, name);
@@ -808,7 +809,7 @@ function progressBarHtml(status){
 function renderResults(rows, name){
   const results = document.getElementById('results');
   if(!rows || !rows.length){
-    results.innerHTML = '<div class="state-msg">查無「' + name + '」的需求紀錄，請確認姓名是否與填單時完全一致。</div>';
+    results.innerHTML = '<div class="state-msg">查無「' + name + '」的需求紀錄，請確認姓名是否與填單時完全一致，或確認品牌名稱是否正確。</div>';
     return;
   }
   const matches = rows.map(function(r){
