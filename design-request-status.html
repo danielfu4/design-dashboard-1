@@ -74,6 +74,26 @@
   .csel-item:hover{background:#F1F1F3;}
   .csel-item.selected{background:#F1F1F3;font-weight:700;}
   .search-row{display:flex;gap:10px;}
+
+  .ac-wrap{position:relative;}
+  .ac-panel{
+    display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;
+    background:#fff;border-radius:16px;box-shadow:0 14px 32px rgba(20,20,30,.16);
+    padding:8px;max-height:280px;overflow-y:auto;
+    scrollbar-width:thin;scrollbar-color:var(--ink-faint) var(--track);
+  }
+  .ac-panel.show{display:block;}
+  .ac-panel::-webkit-scrollbar{width:6px;}
+  .ac-panel::-webkit-scrollbar-track{background:transparent;}
+  .ac-panel::-webkit-scrollbar-thumb{background:var(--ink-faint);border-radius:3px;}
+  .ac-item{
+    display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    padding:10px 14px;border-radius:10px;cursor:pointer;line-height:1.4;
+  }
+  .ac-item + .ac-item{margin-top:3px;}
+  .ac-item:hover{background:#F1F1F3;}
+  .ac-item-en{font-size:14px;font-weight:700;color:var(--ink);}
+  .ac-item-zh{font-size:12px;color:var(--ink-soft);flex:none;}
   .search-row input{
     flex:1;border:1px solid var(--line);border-radius:12px;padding:11px 14px;
     font-family:inherit;font-size:14px;color:var(--ink);background:#FAFAFB;
@@ -391,7 +411,10 @@
 
   <div class="search-card">
     <form class="search-row" onsubmit="return doSearch(event)">
-      <input type="text" id="searchName" placeholder="請輸入你的姓名或品牌名稱" autocomplete="off">
+      <div class="ac-wrap" style="flex:1;">
+        <input type="text" id="searchName" placeholder="請輸入你的姓名或品牌名稱" autocomplete="off" oninput="filterSearchNameList()" onfocus="filterSearchNameList()">
+        <div class="ac-panel" id="searchNamePanel"></div>
+      </div>
       <button type="submit">查詢</button>
     </form>
     <div class="search-hint">姓名需與填單時輸入的完全相同（例如都是「王小明」）；輸入品牌名稱可查看該品牌所有案件</div>
@@ -773,6 +796,51 @@ function statusInfo(status){
     default:       return {label:'待處理', bg:'#F1F1F3', fg:'#6B6B75'};
   }
 }
+
+// ---- 搜尋框的姓名建議（點了會自動帶入「英文名(工號)」，跟申請單存的格式一致；
+//      不選也可以直接照原樣打字查詢，不影響原本用姓名或品牌查詢的功能）----
+function filterSearchNameList(){
+  const q = document.getElementById('searchName').value.trim().toLowerCase();
+  const panel = document.getElementById('searchNamePanel');
+  if(!q){
+    panel.classList.remove('show');
+    panel.innerHTML = '';
+    return;
+  }
+  const matches = STAFF_LIST.filter(function(p){
+    return p.en.toLowerCase().indexOf(q) === 0;
+  }).slice(0, 30);
+
+  if(matches.length === 0){
+    panel.classList.remove('show');
+    panel.innerHTML = '';
+    return;
+  }
+
+  panel.innerHTML = matches.map(function(p, i){
+    return '<div class="ac-item" onclick="selectSearchName(' + i + ')">' +
+      '<span class="ac-item-en">' + p.en + '</span>' +
+      '<span class="ac-item-zh">' + p.zh + '・' + p.id + '</span>' +
+    '</div>';
+  }).join('');
+  panel.classList.add('show');
+  panel.__matches = matches;
+}
+
+function selectSearchName(i){
+  const panel = document.getElementById('searchNamePanel');
+  const p = panel.__matches[i];
+  if(!p) return;
+  document.getElementById('searchName').value = p.en + '(' + p.id + ')';
+  panel.classList.remove('show');
+}
+
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.ac-wrap')){
+    const panel = document.getElementById('searchNamePanel');
+    if(panel) panel.classList.remove('show');
+  }
+});
 
 function doSearch(e){
   if(e) e.preventDefault();
@@ -1181,6 +1249,80 @@ function closeRateModal(){
 
 // ---- 補充內容 ----
 let currentSupplementId = null;
+
+// 需求人員名單（跟申請單同一份，全公司合併不分組，搜尋時用英文名比對，工號用來區分同名）
+const STAFF_LIST = [
+  {en:'OA', zh:'許瑞文', id:'5805'},
+  {en:'Dennis', zh:'吳光榮', id:'8478'},
+  {en:'Carol', zh:'王凱貞', id:'6030'},
+  {en:'Kate', zh:'郭綺靜', id:'8403'},
+  {en:'Roy', zh:'陳君閔', id:'8865'},
+  {en:'Rita', zh:'吳倩雯', id:'8867'},
+  {en:'Antony', zh:'傅皇吉', id:'6106'},
+  {en:'Shung', zh:'吳清順', id:'5979'},
+  {en:'Elvis', zh:'邱浚彥', id:'7176'},
+  {en:'Jivin', zh:'程浚銘', id:'7473'},
+  {en:'Mayaw', zh:'游正忠', id:'8637'},
+  {en:'Kit', zh:'廖泳樺', id:'6666'},
+  {en:'John', zh:'謝宗佑', id:'6029'},
+  {en:'Albee', zh:'洪青儒', id:'6564'},
+  {en:'Emily', zh:'潘怡靜', id:'8033'},
+  {en:'Ken', zh:'施鎮岳', id:'8408'},
+  {en:'Perry', zh:'黃桂蘭', id:'8110'},
+  {en:'Sam', zh:'林靖軒', id:'8632'},
+  {en:'Denim', zh:'趙家佑', id:'6870'},
+  {en:'Kelly', zh:'沈仕昌', id:'6034'},
+  {en:'Leo', zh:'林明輝', id:'6052'},
+  {en:'Julia', zh:'陳淑惠', id:'8347'},
+  {en:'Andy', zh:'高承志', id:'7708'},
+  {en:'JC', zh:'陳昱瑋', id:'7747'},
+  {en:'Carol_Sun', zh:'孫于涵', id:'8821'},
+  {en:'Luna', zh:'呂奕妏', id:'8780'},
+  {en:'Ivy', zh:'葉怡君', id:'8348'},
+  {en:'Rity', zh:'陳雅玲', id:'7631'},
+  {en:'Sandra', zh:'陳淑芬', id:'6670'},
+  {en:'Ying', zh:'張中盈', id:'8224'},
+  {en:'Ben', zh:'古孟召', id:'7432'},
+  {en:'Peggy', zh:'江旻瑩', id:'7310'},
+  {en:'Jack', zh:'鄧照融', id:'8400'},
+  {en:'Anliang', zh:'鄭又源', id:'6594'},
+  {en:'Shannon', zh:'李紫彤', id:'6560'},
+  {en:'Nina', zh:'黃文琪', id:'5819'},
+  {en:'Wayne', zh:'陳旻緯', id:'8946'},
+  {en:'Alice', zh:'許雅茹', id:'8127'},
+  {en:'Daniel', zh:'傅泰誠', id:'8925'},
+  {en:'Effie', zh:'蘇盈瑋', id:'8377'},
+  {en:'Angela', zh:'陳雅玲', id:'6542'},
+  {en:'Sanya', zh:'張舒涵', id:'7303'},
+  {en:'Claudia', zh:'黃亦筠', id:'7959'},
+  {en:'John', zh:'吳秉學', id:'8919'},
+  {en:'Vera', zh:'李姿瑩', id:'8934'},
+  {en:'Zora', zh:'陳彥汝', id:'8940'},
+  {en:'Antony', zh:'朱英龍', id:'5810'},
+  {en:'Ting', zh:'劉彥婷', id:'7626'},
+  {en:'Yaowen', zh:'劉耀文', id:'8237'},
+  {en:'Janice', zh:'余沛芸', id:'8636'},
+  {en:'Alesi', zh:'謝勳忠', id:'5790'},
+  {en:'TZ', zh:'徐廷樂', id:'5806'},
+  {en:'Jerry', zh:'莊曜聰', id:'6352'},
+  {en:'Alan', zh:'葉皇志', id:'7729'},
+  {en:'Steven', zh:'王鑫暉', id:'6150'},
+  {en:'YH', zh:'沈彥宏', id:'5817'},
+  {en:'Ricky', zh:'郭瑄濱', id:'6985'},
+  {en:'Franny', zh:'黃範玲', id:'7968'},
+  {en:'Lala', zh:'潘欣柔', id:'8760'},
+  {en:'Nikki', zh:'吳琪苑', id:'8416'},
+  {en:'Yuly', zh:'柳仔佳', id:'8901'},
+  {en:'Miki', zh:'米慧萍', id:'5956'},
+  {en:'Mei', zh:'吳靜美', id:'5799'},
+  {en:'Tina', zh:'陳藝文', id:'5920'},
+  {en:'Sharon', zh:'吳書嫻', id:'8519'},
+  {en:'Gesar', zh:'陳矩宏', id:'5792'},
+  {en:'Joy', zh:'陳美君', id:'6427'},
+  {en:'David', zh:'吳政衛', id:'6906'},
+  {en:'Eddie_Lai', zh:'賴震宇', id:'8594'},
+  {en:'Amanda', zh:'徐泳鋅', id:'8730'}
+];
 
 const BRAND_GROUPS = {
   S1: ['TESCOM','康定','PMZ','舒福德','方太','sOlac','KOHLER','DoctorAir','Santeco','Siroca','brinno','VELOSAN','INIU','YAMAZEN','HAWRIN','Townew','群光選品','ITD部門相關','支援其他部門','其他'],
