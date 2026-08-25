@@ -471,7 +471,7 @@
   </div>
 
   <div class="card">
-    <form id="requestForm" onsubmit="return handleSubmit(event)">
+    <form id="requestForm" onsubmit="return handleSubmit(event)" novalidate>
 
       <div class="field">
         <label>選擇分組 <span class="required">*</span></label>
@@ -1593,6 +1593,7 @@ function showBanner(type, msg){
   el.innerHTML = msg;
   el.classList.toggle('error', type === 'error');
   el.classList.add('show');
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function buildPayload(){
@@ -1623,31 +1624,47 @@ function buildPayload(){
   };
 }
 
-function validateCselFields(){
-  const checks = [
+function validateAllFields(){
+  const missing = [];
+
+  const plainChecks = [
+    { id:'reqName', label:'需求名稱' },
+    { id:'reqPerson', label:'需求人員' },
+    { id:'dueDate', label:'需求日期' }
+  ];
+  plainChecks.forEach(function(c){
+    const el = document.getElementById(c.id);
+    if(el && !el.value) missing.push(c.label);
+  });
+
+  const cselChecks = [
     { id:'brand', label:'品牌' },
     { id:'reqType', label:'設計類型' },
     { id:'caseType', label:'案件類型' },
     { id:'assignDesigner', label:'指定設計師' },
     { id:'urgentReasonCat', label:'急件原因' }
   ];
-  const missing = [];
-  checks.forEach(function(c){
+  cselChecks.forEach(function(c){
     const el = document.getElementById(c.id);
     if(el && el.required && !el.value) missing.push(c.label);
   });
+
+  if(document.getElementById('isUrgent').checked){
+    const otherEl = document.getElementById('urgentOtherText');
+    if(otherEl && otherEl.required && !otherEl.value.trim()) missing.push('急件原因說明');
+  }
+
+  document.querySelectorAll('#caseFieldsBody [data-label][required]').forEach(function(el){
+    if(!el.value.trim()) missing.push(el.getAttribute('data-label'));
+  });
+
   return missing;
 }
 
 function handleSubmit(e){
   e.preventDefault();
 
-  const form = document.getElementById('requestForm');
-  if(!form.checkValidity()){
-    form.reportValidity();
-    return false;
-  }
-  const missing = validateCselFields();
+  const missing = validateAllFields();
   if(missing.length > 0){
     showBanner('error', '請完成以下欄位：' + missing.join('、'));
     return false;
