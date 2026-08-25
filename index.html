@@ -304,7 +304,11 @@
   .donut-center-value{font-weight:800;color:var(--ink);line-height:1.1;letter-spacing:-.01em;white-space:nowrap;}
   .donut-center-pct{font-size:14px;color:var(--ink-faint);margin-top:6px;}
   .gauge-center{position:static;margin-top:-8px;pointer-events:auto;padding:0 16px;}
-  .legend{display:flex;flex-direction:column;gap:14px;}
+  .legend{display:flex;flex-direction:column;gap:14px;max-height:340px;overflow-y:auto;padding-right:4px;
+    scrollbar-width:thin;scrollbar-color:var(--ink-faint) var(--track);}
+  .legend::-webkit-scrollbar{width:4px;}
+  .legend::-webkit-scrollbar-track{background:transparent;}
+  .legend::-webkit-scrollbar-thumb{background:var(--ink-faint);border-radius:2px;}
   .legend-item{display:flex;align-items:center;gap:8px;font-size:13.5px;min-width:200px;}
   .legend-item .leader{flex:1;border-bottom:1.5px dashed var(--ink-faint);min-width:20px;margin:0 2px;height:0;align-self:center;}
   .legend-swatch{width:9px;height:9px;border-radius:2px;flex:none;}
@@ -632,9 +636,8 @@
       <div style="display:flex;justify-content:center;margin-top:18px;">
         <div class="segmented" id="chartSwitch">
           <button class="seg-btn active" data-chart="pie">類別占比</button>
-          <button class="seg-btn" data-chart="brandRank">品牌排行</button>
+          <button class="seg-btn" data-chart="brandRank">品牌設計費排行</button>
           <button class="seg-btn" data-chart="monthTrend">月度趨勢</button>
-          <button class="seg-btn" data-chart="typeDist">類型分布</button>
         </div>
       </div>
     </div>
@@ -661,12 +664,17 @@
     <div class="card-head">
       <div>
         <div class="card-title">各品牌工時</div>
-        <div class="card-sub">依工時高到低排序</div>
+        <div class="card-sub">依工時佔比排序</div>
       </div>
     </div>
-    <div id="brandHoursBars"></div>
-    <button class="expand-btn" id="hoursExpandBtn" onclick="toggleHoursExpand()" style="display:none;"></button>
+    <div class="pie-wrap">
+      <div class="pie-svg-wrap">
+        <svg id="brandHoursPieSvg" viewBox="0 0 340 340" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div class="pie-legend" id="brandHoursPieLegend"></div>
+    </div>
   </div>
+  <div class="pie-tooltip" id="brandHoursPieTooltip"></div>
 
   <div class="card full-card">
     <div class="card-head"><div><div class="card-title">各品牌平均滿意度</div></div></div>
@@ -908,6 +916,114 @@ function renderBrandPie(brandList, byBrand, total){
     };
   });
 }
+function renderBrandHoursPie(brandList, byBrand, totalHours){
+  const svg = document.getElementById('brandHoursPieSvg');
+  const legend = document.getElementById('brandHoursPieLegend');
+  const tooltip = document.getElementById('brandHoursPieTooltip');
+  if(!svg || !legend) return;
+
+  const cx = 170, cy = 170, R = 150, rInner = 68;
+  const filtered = brandList.filter(function(b){ return byBrand[b] && byBrand[b].hours > 0; });
+  if(!filtered.length || !totalHours){ svg.innerHTML = ''; legend.innerHTML = ''; return; }
+
+  let startAngle = -Math.PI / 2;
+  const slices = filtered.map(function(b){
+    const pct = byBrand[b].hours / totalHours;
+    const angle = pct * 2 * Math.PI;
+    const s = { brand:b, hours:byBrand[b].hours, pct:pct, start:startAngle, end:startAngle + angle };
+    startAngle += angle;
+    return s;
+  });
+
+  function polar(angle, radius){
+    return [cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)];
+  }
+  function arcPath(s, outerR){
+    const [x1,y1] = polar(s.start, outerR);
+    const [x2,y2] = polar(s.end, outerR);
+    const [x3,y3] = polar(s.end, rInner);
+    const [x4,y4] = polar(s.start, rInner);
+    const lg = (s.end - s.start) > Math.PI ? 1 : 0;
+    return 'M'+x1+' '+y1+' A'+outerR+' '+outerR+' 0 '+lg+' 1 '+x2+' '+y2+
+           ' L'+x3+' '+y3+' A'+rInner+' '+rInner+' 0 '+lg+' 0 '+x4+' '+y4+' Z';
+  }
+
+  function setCenterText(active){
+    const label = document.getElementById('hoursPieLabel');
+    const val   = document.getElementById('hoursPieVal');
+    const sub   = document.getElementById('hoursPieSub');
+    if(!label) return;
+    if(active !== null){
+      label.textContent = slices[active].brand;
+      val.textContent   = fmtHours(slices[active].hours);
+      sub.textContent   = fmtPct(slices[active].pct * 100);
+    } else {
+      label.textContent = '各品牌';
+      val.textContent   = fmtHours(totalHours);
+      sub.textContent   = '工時';
+    }
+  }
+
+  function setSliceActive(active){
+    svg.querySelectorAll('path[data-idx]').forEach(function(p, i){
+      const outerR = (active === i) ? R + 9 : R;
+      p.setAttribute('d', arcPath(slices[i], outerR));
+    });
+    setCenterText(active);
+    legend.querySelectorAll('.pie-legend-item').forEach(function(li, i){
+      li.classList.toggle('active', active === i);
+    });
+  }
+
+  const gap = slices.length > 1 ? ' stroke="#fff" stroke-width="1.5"' : '';
+  svg.innerHTML =
+    slices.map(function(s, i){
+      return '<path d="'+arcPath(s,R)+'" fill="'+brandColor(s.brand)+'"'+gap+
+             ' style="cursor:pointer;" data-idx="'+i+'"></path>';
+    }).join('') +
+    '<text id="hoursPieLabel" x="'+cx+'" y="'+(cy-12)+'" text-anchor="middle" font-size="13" font-weight="700" fill="#8A8A93" font-family="Noto Sans TC,sans-serif">各品牌</text>' +
+    '<text id="hoursPieVal"   x="'+cx+'" y="'+(cy+18)+'" text-anchor="middle" font-size="28" font-weight="800" fill="#17181C" font-family="Noto Sans TC,sans-serif">'+fmtHours(totalHours)+'</text>' +
+    '<text id="hoursPieSub"  x="'+cx+'" y="'+(cy+40)+'" text-anchor="middle" font-size="13" fill="#C2C2C8" font-family="Noto Sans TC,sans-serif">工時</text>';
+
+  let activeIdx = null;
+  svg.onmousemove = function(e){
+    const el = e.target.closest('path[data-idx]');
+    if(!el){
+      if(activeIdx !== null){ activeIdx = null; setSliceActive(null); tooltip.classList.remove('show'); }
+      return;
+    }
+    const idx = parseInt(el.getAttribute('data-idx'), 10);
+    if(idx !== activeIdx){ activeIdx = idx; setSliceActive(idx); }
+    const s = slices[idx];
+    tooltip.innerHTML = '<b>'+s.brand+'</b><br>'+fmtHours(s.hours)+'・'+fmtPct(s.pct*100);
+    tooltip.style.left = (e.clientX + 16) + 'px';
+    tooltip.style.top  = (e.clientY + 16) + 'px';
+    tooltip.classList.add('show');
+  };
+  svg.onmouseleave = function(){
+    activeIdx = null;
+    setSliceActive(null);
+    tooltip.classList.remove('show');
+  };
+
+  legend.innerHTML = slices.map(function(s, i){
+    return '<div class="pie-legend-item" data-idx="'+i+'">' +
+      '<div class="pie-legend-swatch" style="background:'+brandColor(s.brand)+'"></div>' +
+      '<span class="pie-legend-name">'+s.brand+'</span>' +
+      '<span class="pie-legend-val">'+fmtHours(s.hours)+'・'+fmtPct(s.pct*100)+'</span>' +
+    '</div>';
+  }).join('');
+
+  legend.querySelectorAll('.pie-legend-item').forEach(function(li){
+    li.onmouseenter = function(){
+      const idx = parseInt(li.getAttribute('data-idx'), 10);
+      activeIdx = idx; setSliceActive(idx);
+    };
+    li.onmouseleave = function(){
+      activeIdx = null; setSliceActive(null); tooltip.classList.remove('show');
+    };
+  });
+}
 function pointColor(pts){
   if(pts === null || pts === undefined) return '#D9D9DD';
   if(pts >= 60) return '#22C55E';
@@ -918,7 +1034,6 @@ function pointColor(pts){
 let currentDesigner = 'all';
 let currentMonth = 'all';
 let currentYear = Object.keys(YEARS)[0];
-let hoursExpanded = false;
 let ratingExpanded = false;
 let currentChartView = 'pie';
 let brandRankExpanded = false;
@@ -941,10 +1056,6 @@ function onYearChange(v){
   loadAll(true);
 }
 
-function toggleHoursExpand(){
-  hoursExpanded = !hoursExpanded;
-  applyFilterAndRender();
-}
 function toggleRatingExpand(){
   ratingExpanded = !ratingExpanded;
   applyFilterAndRender();
@@ -1357,8 +1468,6 @@ function render(cases, allCases){
     const byCategory = {};
     const catTotals = {};
     const monthAgg = {};
-    const typeCounts = {};
-    const typeLabels = {};
     const status = { done:0, notDone:0, stopped:0, other:0 };
     const ratingDist = {1:0,2:0,3:0,4:0,5:0};
     const issues = [];
@@ -1382,12 +1491,6 @@ function render(cases, allCases){
         if(!monthAgg[c.month]) monthAgg[c.month] = { fee:0, hours:0 };
         monthAgg[c.month].fee += c.fee;
         monthAgg[c.month].hours += c.hours;
-      }
-      if(c.caseType){
-        const cm = c.caseType.match(/^([A-Za-z])\)/);
-        const code = cm ? cm[1].toUpperCase() : '其他';
-        typeCounts[code] = (typeCounts[code]||0) + 1;
-        if(!typeLabels[code]) typeLabels[code] = c.caseType;
       }
 
       if(c.done) status.done++;
@@ -1482,7 +1585,7 @@ function render(cases, allCases){
 
     // multi-chart panel (類別占比 / 品牌排行 / 月度趨勢 / 類型分布)
     const categories = Object.keys(byCategory);
-    window.__chartData = { cases:cases, byBrand:byBrand, brandList:brandList, catTotals:catTotals, categories:categories, monthAgg:monthAgg, monthAggFull:monthAggFull, typeCounts:typeCounts, typeLabels:typeLabels };
+    window.__chartData = { cases:cases, byBrand:byBrand, brandList:brandList, catTotals:catTotals, categories:categories, monthAgg:monthAgg, monthAggFull:monthAggFull };
     renderChartPanel();
 
     // brand pie chart — 依件數由多到少排序
@@ -1491,32 +1594,12 @@ function render(cases, allCases){
       .sort(function(a, b2){ return byBrand[b2].count - byBrand[a].count; });
     renderBrandPie(pieSortedBrands, byBrand, totals.count);
 
-    // brand hours (sorted by hours desc, independent of the fee-based brandList order)
-    const hoursSorted = Object.keys(byBrand).sort(function(a,b2){ return byBrand[b2].hours - byBrand[a].hours; });
-    const maxHours = Math.max.apply(null, hoursSorted.map(function(b){ return byBrand[b].hours; }).concat([1]));
-    const HOURS_COLLAPSE = 6;
-    const visibleHoursBrands = hoursExpanded ? hoursSorted : hoursSorted.slice(0, HOURS_COLLAPSE);
-    document.getElementById('brandHoursBars').innerHTML = visibleHoursBrands.map(function(b){
-      const d = byBrand[b];
-      const w = (d.hours/maxHours*100);
-      return (
-        '<div class="hbar-row">' +
-          '<div class="name">' + b + '</div>' +
-          '<div class="hbar-track"><div class="hbar-fill" style="width:' + w + '%;background:' + brandColor(b) + '"></div></div>' +
-          '<div class="hbar-val">' + fmtHours(d.hours) + '</div>' +
-        '</div>'
-      );
-    }).join('');
-    const hoursBtn = document.getElementById('hoursExpandBtn');
-    if(hoursSorted.length > HOURS_COLLAPSE){
-      hoursBtn.style.display = 'inline-flex';
-      hoursBtn.classList.toggle('expanded', hoursExpanded);
-      hoursBtn.innerHTML = hoursExpanded
-        ? '收合 <span class="chevron"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polyline points="6 9 12 15 18 9"></polyline></svg></span>'
-        : '顯示全部（還有 ' + (hoursSorted.length - HOURS_COLLAPSE) + ' 個品牌） <span class="chevron"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;"><polyline points="6 9 12 15 18 9"></polyline></svg></span>';
-    }else{
-      hoursBtn.style.display = 'none';
-    }
+    // brand hours pie chart — 依工時佔比
+    const hoursSorted = Object.keys(byBrand)
+      .filter(function(b){ return byBrand[b].hours > 0; })
+      .sort(function(a,b2){ return byBrand[b2].hours - byBrand[a].hours; });
+    const totalHours = hoursSorted.reduce(function(s,b){ return s + byBrand[b].hours; }, 0);
+    renderBrandHoursPie(hoursSorted, byBrand, totalHours);
 
     // brand rating bars
     const RATING_COLLAPSE = 6;
@@ -1575,17 +1658,13 @@ function renderChartPanel(){
   const body = document.getElementById('chartPanelBody');
   if(currentChartView === 'brandRank'){
     titleEl.textContent = '品牌設計費排行';
-    subEl.textContent = '依設計費由高到低排序';
+    subEl.textContent = '依設計費金額佔比排序';
     renderBrandRank(d, body);
   }else if(currentChartView === 'monthTrend'){
     titleEl.textContent = '月度趨勢';
     subEl.textContent = '設計費與工時的月份變化（各自依自身最大值換算高度，實際數值請看標籤）' +
       (currentMonth !== 'all' ? '　－　此圖固定顯示全年走勢，不受左上角月份篩選影響' : '');
     renderMonthTrend(d, body);
-  }else if(currentChartView === 'typeDist'){
-    titleEl.textContent = '案件類型分布';
-    subEl.textContent = '依案件類型代碼統計件數・可左右滑動查看更多類型';
-    renderTypeDist(d, body);
   }else{
     titleEl.textContent = '設計類別占比';
     subEl.textContent = '依目前篩選範圍統計（依設計費金額）';
@@ -1677,21 +1756,48 @@ function renderBrandRank(d, body){
     return;
   }
   const sorted = d.brandList.slice().sort(function(a,b){ return d.byBrand[b].fee - d.byBrand[a].fee; });
-  const maxFee = Math.max.apply(null, sorted.map(function(b){ return d.byBrand[b].fee; }).concat([1]));
+  const total = sorted.reduce(function(s,b){ return s + (d.byBrand[b].fee||0); }, 0);
+  const cx = 120, cy = 120, r = 98, sw = 22;
+  const circumference = 2 * Math.PI * r;
+  let offset = 0;
+  let segsHtml = '<g transform="rotate(-90 120 120)">';
+  sorted.forEach(function(b, i){
+    const val = d.byBrand[b].fee || 0;
+    const frac = total ? val/total : 0;
+    const len = frac * circumference;
+    const pct = total ? (val/total*100) : 0;
+    const safeLabel = b.replace(/'/g, "\\'");
+    segsHtml += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="' + brandColor(b) +
+      '" stroke-width="' + sw + '" stroke-dasharray="' + len + ' ' + (circumference-len) +
+      '" stroke-dashoffset="' + (-offset) + '" style="cursor:default;" ' +
+      'onmouseenter="showDonutCenter(\'' + safeLabel + '\',\'' + fmtMoney(val) + '\',\'' + fmtPct(pct) + '\')" onmouseleave="resetDonutCenter()"></circle>';
+    offset += len;
+  });
+  segsHtml += '</g>';
 
-  const rows = sorted.map(function(b){
-    const fee = d.byBrand[b].fee;
-    const w = (fee/maxFee*100);
+  const legendHtml = sorted.map(function(b,i){
+    const val = d.byBrand[b].fee || 0;
+    const pct = total ? (val/total*100) : 0;
     return (
-      '<div class="hbar-row">' +
-        '<div class="name">' + b + '</div>' +
-        '<div class="hbar-track"><div class="hbar-fill" style="width:' + w + '%;background:' + brandColor(b) + '"></div></div>' +
-        '<div class="hbar-val">' + fmtMoney(fee) + '</div>' +
+      '<div class="legend-item">' +
+        '<span class="legend-swatch" style="background:' + brandColor(b) + '"></span>' +
+        '<span>' + b + '</span>' +
+        '<span class="leader"></span>' +
+        '<b>' + fmtMoney(val) + '・' + fmtPct(pct) + '</b>' +
       '</div>'
     );
   }).join('');
 
-  body.innerHTML = '<div class="v-scroll-list" style="margin-top:6px;">' + rows + '</div>';
+  window.__donutDefaultHtml = donutCenterHtml('設計費總額', fmtMoney(total), null);
+
+  body.innerHTML =
+    '<div class="donut-wrap">' +
+      '<div class="donut-svg-wrap">' +
+        '<svg viewBox="0 0 240 240" width="240" height="240">' + segsHtml + '</svg>' +
+        '<div class="donut-center" id="donutCenter">' + window.__donutDefaultHtml + '</div>' +
+      '</div>' +
+      '<div class="legend">' + legendHtml + '</div>' +
+    '</div>';
 }
 
 function renderMonthTrend(d, body){
@@ -1753,31 +1859,6 @@ function renderMonthTrend(d, body){
     '</div>';
 
   body.innerHTML = '<div style="margin-top:6px;">' + legend + svg + '</div>';
-}
-
-function renderTypeDist(d, body){
-  const codes = Object.keys(d.typeCounts).sort();
-  if(codes.length === 0){
-    body.innerHTML = '<div class="empty-state" style="margin-top:10px;">目前沒有案件類型資料。</div>';
-    return;
-  }
-  const maxCount = Math.max.apply(null, codes.map(function(c){ return d.typeCounts[c]; }).concat([1]));
-  const chartH = 200;
-  const colsHtml = codes.map(function(code, i){
-    const val = d.typeCounts[code];
-    const h = (val/maxCount) * chartH;
-    const label = d.typeLabels[code] || code;
-    return (
-      '<div class="stack-col-wrap">' +
-        '<div class="stack-col">' +
-          '<div class="stack-seg" style="bottom:0;height:' + h + 'px;background:' + catColor(i) + '" data-tt-title="' + code + ' 類" data-tt-sub="' + label + '" data-tt-value="' + val + ' 件"></div>' +
-        '</div>' +
-        '<div class="stack-label"><span>' + code + '</span></div>' +
-      '</div>'
-    );
-  }).join('');
-  body.innerHTML = '<div class="stackchart" style="margin-top:6px;">' + colsHtml + '</div>';
-  applyMarquee();
 }
 
 document.getElementById('chartSwitch').addEventListener('click', function(e){
