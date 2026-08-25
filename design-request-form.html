@@ -111,7 +111,7 @@
   }
   .ac-wrap input:focus{outline:none;border-color:var(--accent);background:#fff;}
   .ac-panel{
-    display:none;position:fixed;z-index:600;
+    display:none;position:absolute;z-index:600;
     background:#fff;border-radius:16px;box-shadow:0 14px 32px rgba(20,20,30,.16);
     padding:8px;max-height:280px;overflow-y:auto;
     scrollbar-width:thin;scrollbar-color:var(--ink-faint) var(--track);
@@ -1021,10 +1021,15 @@ function toggleUrgentOther(v){
 
 // ---- 需求人員搜尋式選單（打英文名前綴搜尋，工號區分同名）----
 // 讓下拉選單用 fixed 定位浮在最上層，不會被彈窗的 overflow 裁切
+// 把選單搬到 body 底下，逃出彈窗 overflow 的裁切範圍；
+// 用「文件座標」（含 scrollY/scrollX）定位，這樣選單會跟著頁面自然捲動，不用額外監聽 scroll 事件、不會有延遲
 function positionAcPanel(inputEl, panelEl){
+  if(panelEl.parentElement !== document.body){
+    document.body.appendChild(panelEl);
+  }
   const rect = inputEl.getBoundingClientRect();
-  panelEl.style.top = (rect.bottom + 6) + 'px';
-  panelEl.style.left = rect.left + 'px';
+  panelEl.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+  panelEl.style.left = (rect.left + window.scrollX) + 'px';
   panelEl.style.width = rect.width + 'px';
 }
 
@@ -1071,7 +1076,7 @@ function selectReqPerson(i){
 }
 
 document.addEventListener('click', function(e){
-  if(!e.target.closest('.ac-wrap')){
+  if(!e.target.closest('.ac-wrap') && !e.target.closest('.ac-panel')){
     const panel = document.getElementById('reqPersonPanel');
     if(panel) panel.classList.remove('show');
     const resumePanel = document.getElementById('resumeDraftPanel');
@@ -1972,11 +1977,13 @@ function openResumeDraftModal(){
   document.getElementById('resumeDraftNameValue').value = '';
   document.getElementById('resumeDraftMsg').textContent = '';
   document.getElementById('resumeDraftMsg').className = 'modal-msg';
+  document.getElementById('resumeDraftPanel').classList.remove('show');
   document.getElementById('resumeDraftOverlay').classList.add('show');
 }
 
 function closeResumeDraftModal(){
   document.getElementById('resumeDraftOverlay').classList.remove('show');
+  document.getElementById('resumeDraftPanel').classList.remove('show');
 }
 
 function submitResumeDraft(){
