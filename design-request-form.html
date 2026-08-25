@@ -792,8 +792,12 @@
     </div>
     <div class="field">
       <label>需求人員姓名</label>
-      <input type="text" id="resumeDraftName" placeholder="暫存時輸入的姓名">
+      <div class="ac-wrap">
+        <input type="text" id="resumeDraftName" placeholder="輸入英文名搜尋（例如：Daniel）" autocomplete="off" oninput="filterResumeDraftList()" onfocus="filterResumeDraftList()">
+        <div class="ac-panel" id="resumeDraftPanel"></div>
+      </div>
     </div>
+    <input type="hidden" id="resumeDraftNameValue">
     <button class="modal-submit" id="resumeDraftBtn" onclick="submitResumeDraft()">取回內容</button>
     <div class="modal-msg" id="resumeDraftMsg"></div>
   </div>
@@ -1059,8 +1063,48 @@ document.addEventListener('click', function(e){
   if(!e.target.closest('.ac-wrap')){
     const panel = document.getElementById('reqPersonPanel');
     if(panel) panel.classList.remove('show');
+    const resumePanel = document.getElementById('resumeDraftPanel');
+    if(resumePanel) resumePanel.classList.remove('show');
   }
 });
+
+function filterResumeDraftList(){
+  document.getElementById('resumeDraftNameValue').value = '';
+  const q = document.getElementById('resumeDraftName').value.trim().toLowerCase();
+  const panel = document.getElementById('resumeDraftPanel');
+  if(!q){
+    panel.classList.remove('show');
+    panel.innerHTML = '';
+    return;
+  }
+  const matches = STAFF_LIST.filter(function(p){
+    return p.en.toLowerCase().indexOf(q) === 0;
+  }).slice(0, 30);
+
+  if(matches.length === 0){
+    panel.innerHTML = '<div class="ac-empty">查無符合的人員</div>';
+    panel.classList.add('show');
+    return;
+  }
+
+  panel.innerHTML = matches.map(function(p, i){
+    return '<div class="ac-item" onclick="selectResumeDraftName(' + i + ')">' +
+      '<span class="ac-item-en">' + p.en + '</span>' +
+      '<span class="ac-item-zh">' + p.zh + '・' + p.id + '</span>' +
+    '</div>';
+  }).join('');
+  panel.classList.add('show');
+  panel.__matches = matches;
+}
+
+function selectResumeDraftName(i){
+  const panel = document.getElementById('resumeDraftPanel');
+  const p = panel.__matches[i];
+  if(!p) return;
+  document.getElementById('resumeDraftName').value = p.en + '（' + p.zh + '・' + p.id + '）';
+  document.getElementById('resumeDraftNameValue').value = p.en + '(' + p.id + ')';
+  panel.classList.remove('show');
+}
 
 function updateUrgentCounter(){
   const el = document.getElementById('urgentCounter');
@@ -1911,6 +1955,7 @@ function saveDraft(){
 
 function openResumeDraftModal(){
   document.getElementById('resumeDraftName').value = '';
+  document.getElementById('resumeDraftNameValue').value = '';
   document.getElementById('resumeDraftMsg').textContent = '';
   document.getElementById('resumeDraftMsg').className = 'modal-msg';
   document.getElementById('resumeDraftOverlay').classList.add('show');
@@ -1921,12 +1966,12 @@ function closeResumeDraftModal(){
 }
 
 function submitResumeDraft(){
-  const name = document.getElementById('resumeDraftName').value.trim();
+  const name = document.getElementById('resumeDraftNameValue').value.trim();
   const msg = document.getElementById('resumeDraftMsg');
   const btn = document.getElementById('resumeDraftBtn');
 
   if(!name){
-    msg.textContent = '請輸入姓名';
+    msg.textContent = '請從清單中選擇姓名';
     msg.className = 'modal-msg error';
     return;
   }
