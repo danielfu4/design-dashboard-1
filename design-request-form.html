@@ -111,7 +111,7 @@
   }
   .ac-wrap input:focus{outline:none;border-color:var(--accent);background:#fff;}
   .ac-panel{
-    display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;
+    display:none;position:fixed;z-index:600;
     background:#fff;border-radius:16px;box-shadow:0 14px 32px rgba(20,20,30,.16);
     padding:8px;max-height:280px;overflow-y:auto;
     scrollbar-width:thin;scrollbar-color:var(--ink-faint) var(--track);
@@ -1020,8 +1020,17 @@ function toggleUrgentOther(v){
 }
 
 // ---- 需求人員搜尋式選單（打英文名前綴搜尋，工號區分同名）----
+// 讓下拉選單用 fixed 定位浮在最上層，不會被彈窗的 overflow 裁切
+function positionAcPanel(inputEl, panelEl){
+  const rect = inputEl.getBoundingClientRect();
+  panelEl.style.top = (rect.bottom + 6) + 'px';
+  panelEl.style.left = rect.left + 'px';
+  panelEl.style.width = rect.width + 'px';
+}
+
 function filterReqPersonList(){
-  const q = document.getElementById('reqPersonSearch').value.trim().toLowerCase();
+  const inputEl = document.getElementById('reqPersonSearch');
+  const q = inputEl.value.trim().toLowerCase();
   const panel = document.getElementById('reqPersonPanel');
   if(!q){
     panel.classList.remove('show');
@@ -1031,6 +1040,8 @@ function filterReqPersonList(){
   const matches = STAFF_LIST.filter(function(p){
     return p.en.toLowerCase().indexOf(q) === 0;
   }).slice(0, 30);
+
+  positionAcPanel(inputEl, panel);
 
   if(matches.length === 0){
     panel.innerHTML = '<div class="ac-empty">查無符合的人員</div>';
@@ -1070,7 +1081,8 @@ document.addEventListener('click', function(e){
 
 function filterResumeDraftList(){
   document.getElementById('resumeDraftNameValue').value = '';
-  const q = document.getElementById('resumeDraftName').value.trim().toLowerCase();
+  const inputEl = document.getElementById('resumeDraftName');
+  const q = inputEl.value.trim().toLowerCase();
   const panel = document.getElementById('resumeDraftPanel');
   if(!q){
     panel.classList.remove('show');
@@ -1080,6 +1092,8 @@ function filterResumeDraftList(){
   const matches = STAFF_LIST.filter(function(p){
     return p.en.toLowerCase().indexOf(q) === 0;
   }).slice(0, 30);
+
+  positionAcPanel(inputEl, panel);
 
   if(matches.length === 0){
     panel.innerHTML = '<div class="ac-empty">查無符合的人員</div>';
