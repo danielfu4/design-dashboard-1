@@ -32,15 +32,26 @@
   header{margin-bottom:22px;}
   .header-top{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;}
   .header-actions-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-  .segmented{display:inline-flex;position:relative;background:#E7E7EA;border-radius:12px;padding:3px;gap:2px;flex:none;}
+  .segmented{
+    display:inline-flex;position:relative;background:#fff;border:1px solid #E3E8EE;
+    border-radius:999px;padding:6px;gap:4px;flex:none;
+    box-shadow:0 1px 1px rgba(14,17,22,.04), 0 20px 40px -24px rgba(14,17,22,.18);
+  }
   .seg-thumb{
-    position:absolute;top:3px;bottom:3px;left:0;width:0;
-    background:#fff;border-radius:9px;box-shadow:0 1px 3px rgba(20,20,30,.14);
-    transition:transform .28s cubic-bezier(.4,0,.2,1), width .28s cubic-bezier(.4,0,.2,1);
+    position:absolute;top:6px;bottom:6px;left:0;width:0;
+    background:#3E7BFA;border-radius:999px;
+    box-shadow:0 1px 1px rgba(14,17,22,.06), 0 8px 18px -10px rgba(62,123,250,.5);
+    transition:transform .28s cubic-bezier(.22,1,.36,1), width .28s cubic-bezier(.22,1,.36,1);
     z-index:0;
   }
-  .seg-btn{position:relative;z-index:1;border:none;background:transparent;color:var(--ink-soft);font:inherit;font-weight:700;font-size:12.5px;padding:8px 16px;border-radius:9px;cursor:pointer;transition:color .2s ease;}
-  .seg-btn.active{color:var(--ink);}
+  .seg-btn{
+    position:relative;z-index:1;border:none;background:transparent;color:#5B6472;
+    font:inherit;font-weight:500;font-size:14px;height:36px;padding:0 18px;
+    display:inline-flex;align-items:center;justify-content:center;
+    border-radius:999px;cursor:pointer;transition:color .22s ease;
+  }
+  .seg-btn:hover{color:#0E1116;}
+  .seg-btn.active{color:#fff;}
   .eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--ink-soft);margin:0 0 4px;text-transform:uppercase;}
   h1{font-size:26px;font-weight:800;margin:0 0 6px;letter-spacing:-.01em;}
   .subtitle{font-size:13px;color:var(--ink-soft);}
@@ -1069,8 +1080,8 @@ function selectReqPerson(i){
   const panel = document.getElementById('reqPersonPanel');
   const p = panel.__matches[i];
   if(!p) return;
-  document.getElementById('reqPersonSearch').value = p.en + '（' + p.zh + '・' + p.id + '）';
-  document.getElementById('reqPerson').value = p.en + '(' + p.id + ')';
+  document.getElementById('reqPersonSearch').value = p.en;
+  document.getElementById('reqPerson').value = p.en;
   panel.classList.remove('show');
   updateUrgentCounter();
 }
@@ -1120,8 +1131,8 @@ function selectResumeDraftName(i){
   const panel = document.getElementById('resumeDraftPanel');
   const p = panel.__matches[i];
   if(!p) return;
-  document.getElementById('resumeDraftName').value = p.en + '（' + p.zh + '・' + p.id + '）';
-  document.getElementById('resumeDraftNameValue').value = p.en + '(' + p.id + ')';
+  document.getElementById('resumeDraftName').value = p.en;
+  document.getElementById('resumeDraftNameValue').value = p.en;
   panel.classList.remove('show');
 }
 
@@ -2064,11 +2075,10 @@ function restoreDraftData(d){
   // 6. 其餘一般欄位
   document.getElementById('reqName').value = d.reqName || '';
   document.getElementById('reqPerson').value = d.reqPerson || '';
-  // 搜尋框顯示：如果存的值對得上名單（英文名(工號)格式），顯示完整資訊；對不上就照原樣顯示（相容舊格式的暫存資料）
-  const matched = STAFF_LIST.filter(function(p){ return (p.en + '(' + p.id + ')') === d.reqPerson; })[0];
-  document.getElementById('reqPersonSearch').value = matched
-    ? (matched.en + '（' + matched.zh + '・' + matched.id + '）')
-    : (d.reqPerson || '');
+  // 搜尋框顯示：如果存的值對得上名單（純英文名），直接顯示英文名；
+  // 對不上就照原樣顯示（相容改版前「英文名(工號)」格式的暫存資料）
+  const matched = STAFF_LIST.filter(function(p){ return p.en === d.reqPerson; })[0];
+  document.getElementById('reqPersonSearch').value = matched ? matched.en : (d.reqPerson || '');
   document.getElementById('channel').value = d.channel || '';
   document.getElementById('materials').value = d.materials || '';
   document.getElementById('notes').value = d.notes || '';

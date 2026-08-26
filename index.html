@@ -245,6 +245,29 @@
   }
   #designerSwitch .seg-btn:focus-visible{box-shadow:0 0 0 3px rgba(62,123,250,.32);outline:none;}
 
+  /* 圖表切換（類別占比／品牌設計費排行／月度趨勢）：套用跟設計師篩選一樣的樣式 */
+  #chartSwitch{
+    position:relative;
+    background:#fff;border:1px solid #E3E8EE;border-radius:999px;padding:6px;gap:4px;
+    box-shadow:0 1px 1px rgba(14,17,22,.04), 0 20px 40px -24px rgba(14,17,22,.18);
+  }
+  #chartSwitch::before{
+    content:'';position:absolute;top:6px;left:0;height:36px;border-radius:999px;
+    background:#3E7BFA;box-shadow:0 1px 1px rgba(14,17,22,.06), 0 8px 18px -10px rgba(62,123,250,.5);
+    transform:translateX(var(--chart-seg-x,0px));width:var(--chart-seg-w,0px);
+    transition:transform 300ms cubic-bezier(.22,1,.36,1),width 300ms cubic-bezier(.22,1,.36,1);
+    z-index:0;pointer-events:none;
+  }
+  #chartSwitch .seg-btn{
+    position:relative;z-index:1;
+    height:36px;padding:0 18px;border-radius:999px;font-size:14px;font-weight:500;
+    color:#5B6472;background:transparent;box-shadow:none;
+    transition:color 220ms cubic-bezier(.22,1,.36,1);
+  }
+  #chartSwitch .seg-btn:hover{color:#0E1116;}
+  #chartSwitch .seg-btn.active{background:transparent;color:#fff;box-shadow:none;}
+  #chartSwitch .seg-btn:focus-visible{box-shadow:0 0 0 3px rgba(62,123,250,.32);outline:none;}
+
   #errorBanner{
     display:none;background:#fff2f4;border:1px solid #f6c7d0;color:#b3324a;
     padding:12px 16px;border-radius:14px;font-size:12.5px;margin-bottom:18px;line-height:1.6;
@@ -523,6 +546,14 @@
     #designerSwitch::before{top:0;}
     #designerSwitch::-webkit-scrollbar{display:none;}
     #designerSwitch .seg-btn{flex:none;white-space:nowrap;}
+
+    /* 圖表切換按鈕在手機版也不換行、超出可橫向滑動，避免藍色滑塊在換行時對不齊 */
+    #chartSwitch{
+      flex-wrap:nowrap;overflow-x:auto;max-width:100%;
+      -webkit-overflow-scrolling:touch;scrollbar-width:none;
+    }
+    #chartSwitch::-webkit-scrollbar{display:none;}
+    #chartSwitch .seg-btn{flex:none;white-space:nowrap;}
 
     /* 底部懸浮列會蓋住內容，頁面底部留出對應空間 */
     body{padding-bottom:76px;}
@@ -1148,6 +1179,16 @@ function positionDesignerSlider(){
   if(!active) return;
   wrap.style.setProperty('--seg-x', active.offsetLeft + 'px');
   wrap.style.setProperty('--seg-w', active.offsetWidth + 'px');
+}
+
+// 讓藍色滑塊橫移對齊目前選中的圖表切換按鈕
+function positionChartSlider(){
+  const wrap = document.getElementById('chartSwitch');
+  if(!wrap) return;
+  const active = wrap.querySelector('.seg-btn.active');
+  if(!active) return;
+  wrap.style.setProperty('--chart-seg-x', active.offsetLeft + 'px');
+  wrap.style.setProperty('--chart-seg-w', active.offsetWidth + 'px');
 }
 
 function rebuildDesignerSwitch(){
@@ -1977,6 +2018,7 @@ document.getElementById('chartSwitch').addEventListener('click', function(e){
   if(!btn) return;
   document.querySelectorAll('#chartSwitch .seg-btn').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
+  positionChartSlider();
   currentChartView = btn.getAttribute('data-chart');
   renderChartPanel();
 });
@@ -1999,7 +2041,11 @@ function scheduleHourlyRefresh(){
 initYearSelect();
 initChartTooltip();
 positionDesignerSlider();
-window.addEventListener('resize', positionDesignerSlider);
+positionChartSlider();
+window.addEventListener('resize', function(){
+  positionDesignerSlider();
+  positionChartSlider();
+});
 const DASHBOARD_PASSWORDS = ['5805', '5790', '5806', '6352', '7729', '6870', '6034', '6052', '6594', '6030', '8403', '8925', '8416', '8901', '8780'];
 
 function checkDashboardPassword(){
