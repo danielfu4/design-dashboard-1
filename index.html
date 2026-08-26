@@ -1784,7 +1784,7 @@ function renderChartPanel(){
 }
 
 function renderCategoryPie(d, body){
-  const categories = d.categories;
+  const categories = d.categories.slice().sort(function(a,b){ return (d.catTotals[b]||0) - (d.catTotals[a]||0); });
   if(categories.length === 0){
     body.innerHTML = '<div class="empty-state" style="margin-top:10px;">目前沒有資料。</div>';
     return;
