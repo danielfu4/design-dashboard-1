@@ -295,6 +295,7 @@
 
   .donut-wrap{display:flex;align-items:center;gap:30px;flex-wrap:wrap;justify-content:center;margin-top:6px;}
   .donut-svg-wrap{position:relative;width:240px;height:240px;flex:none;}
+  .donut-svg-wrap svg{display:block;width:100%;height:100%;}
   .gauge-svg-wrap{display:flex;flex-direction:column;align-items:center;flex:none;}
   .donut-center{
     position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -462,26 +463,33 @@
     body{padding:16px 12px 40px;}
     .wrap{max-width:100%;}
 
-    header{gap:12px;margin-bottom:18px;}
+    header{gap:12px;margin-bottom:18px;position:relative;}
     h1{font-size:21px;}
     .eyebrow{font-size:11px;}
-    .header-right{width:100%;align-items:stretch;}
-    .header-right > div{justify-content:flex-start !important;}
-    .header-right .sync-row{justify-content:space-between;}
 
-    /* 頁首按鈕列（使用說明／填寫設計需求／設計師工作台）平均分配寬度 */
+    /* 每小時整點自動更新：移到右上角，跟標題平行 */
+    #refreshScheduleLabel{position:absolute;top:2px;right:0;margin:0;}
+
+    .header-right{width:100%;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px;}
+
+    /* 頁首按鈕列（填寫設計需求／設計師工作台）獨立一行、平均分配寬度 */
     .header-right > div[style*="display:flex;gap:10px"]{width:100%;}
     .new-request-btn{flex:1;justify-content:center;text-align:center;}
     .sp{flex:none;}
 
-    /* 設計師篩選改成固定在畫面最下方、懸浮的卡片樣式（像手機 App 的底部導覽列） */
+    /* 年月篩選放左邊；上次更新＋重新整理 移到同一列、靠右對齊 */
+    .header-right > div:last-of-type{order:1;}
+    .sync-row{order:2;margin-left:auto;}
+
+    /* 設計師篩選改成固定在畫面最下方、懸浮的卡片樣式（像手機 App 的底部導覽列），並置中 */
     .designer-switch-sticky-wrap{
       position:fixed;left:12px;right:12px;bottom:14px;z-index:100;
       background:#fff;border-radius:16px;padding:8px;
       box-shadow:0 8px 24px rgba(20,20,30,.18);
+      display:flex;justify-content:center;
     }
     #designerSwitch{
-      display:flex;flex-wrap:nowrap;overflow-x:auto;max-width:100%;
+      display:inline-flex;flex-wrap:nowrap;overflow-x:auto;max-width:100%;
       -webkit-overflow-scrolling:touch;scrollbar-width:none;
     }
     #designerSwitch::-webkit-scrollbar{display:none;}
