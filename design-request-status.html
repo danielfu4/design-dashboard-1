@@ -417,7 +417,7 @@
       </div>
       <button type="submit">查詢</button>
     </form>
-    <div class="search-hint">姓名需與填單時輸入的完全相同（例如都是「王小明」）；輸入品牌名稱可查看該品牌所有案件</div>
+    <div class="search-hint">輸入姓名或品牌的一部分即可查詢，不用打得跟填單時完全一致（例如打「Daniel」就能查到）</div>
   </div>
 
   <div class="filter-bar">
@@ -852,7 +852,15 @@ function doSearch(e){
   }
   results.innerHTML = '<div class="state-msg">查詢中...</div>';
 
-  const orQuery = 'or=(req_person.eq.' + encodeURIComponent(name) + ',brand.ilike.*' + encodeURIComponent(name) + '*)';
+  // 需求人員存進資料庫的格式是「英文名(工號)」，例如 Daniel(0012)；
+  // 1) 原本用 eq 精確比對，使用者幾乎不可能剛好打出一模一樣的字串，改成跟品牌一樣用 ilike 模糊比對
+  // 2) 名字裡的括號在 PostgREST 的 or=(...) 語法裡是保留字元，沒加雙引號會把整個查詢語法弄壞，
+  //    導致不管怎麼打都查不到，這裡統一把值加上雙引號再做 URL 編碼
+  function pgQuote(v){
+    return '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+  }
+  const pattern = pgQuote('*' + name + '*');
+  const orQuery = 'or=(req_person.ilike.' + encodeURIComponent(pattern) + ',brand.ilike.' + encodeURIComponent(pattern) + ')';
   fetch(sbUrl('cases', orQuery + '&limit=500&order=created_at.desc'),{headers:SUPABASE_HEADERS})
   .then(function(res){ return res.ok ? res.json() : []; })
   .then(function(rows){
