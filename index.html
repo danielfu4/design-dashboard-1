@@ -454,6 +454,52 @@
   }
   .guide-btn-square:hover{opacity:.85;}
 
+  /* ============================================================
+     手機版調整
+     ============================================================ */
+  @media (max-width:600px){
+    body{padding:16px 12px 40px;}
+    .wrap{max-width:100%;}
+
+    header{gap:12px;margin-bottom:18px;}
+    h1{font-size:21px;}
+    .eyebrow{font-size:11px;}
+    .header-right{width:100%;align-items:stretch;}
+    .header-right > div{justify-content:flex-start !important;}
+    .header-right .sync-row{justify-content:space-between;}
+
+    /* 頁首按鈕列（使用說明／填寫設計需求／設計師工作台）平均分配寬度 */
+    .header-right > div[style*="display:flex;gap:10px"]{width:100%;}
+    .new-request-btn{flex:1;justify-content:center;text-align:center;}
+    .sp{flex:none;}
+
+    /* 設計師篩選改成可以左右滑動，不要硬擠成兩行 */
+    #designerSwitch{
+      display:flex;flex-wrap:nowrap;overflow-x:auto;max-width:100%;
+      -webkit-overflow-scrolling:touch;scrollbar-width:none;
+    }
+    #designerSwitch::-webkit-scrollbar{display:none;}
+    #designerSwitch .seg-btn{flex:none;white-space:nowrap;}
+
+    .csel{width:auto;}
+
+    .card{padding:16px 16px;border-radius:16px;}
+    .grid-top, .two-col{gap:12px;}
+
+    /* 圓餅圖／甜甜圈圖在小螢幕縮小尺寸，避免橫向超出畫面 */
+    .pie-svg-wrap{width:250px;height:250px;}
+    .pie-wrap{gap:16px;justify-content:center;}
+    .pie-legend{min-width:0;width:100%;max-height:260px;}
+
+    .donut-svg-wrap{width:200px;height:200px;}
+    .donut-wrap{gap:16px;justify-content:center;}
+    .legend{min-width:0;width:100%;}
+    .legend-item{min-width:0;}
+
+    .big-stat{font-size:26px !important;}
+
+    .gate-card{padding:24px 20px;max-width:100%;}
+  }
 </style>
 </head>
 <body>
