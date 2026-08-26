@@ -797,8 +797,7 @@ function statusInfo(status){
   }
 }
 
-// ---- 搜尋框的姓名建議（點了會自動帶入「英文名(工號)」，跟申請單存的格式一致；
-//      不選也可以直接照原樣打字查詢，不影響原本用姓名或品牌查詢的功能）----
+// ---- 搜尋框的姓名建議（點了會自動帶入純英文名，不含工號）----
 function filterSearchNameList(){
   const q = document.getElementById('searchName').value.trim().toLowerCase();
   const panel = document.getElementById('searchNamePanel');
@@ -831,7 +830,7 @@ function selectSearchName(i){
   const panel = document.getElementById('searchNamePanel');
   const p = panel.__matches[i];
   if(!p) return;
-  document.getElementById('searchName').value = p.en + '(' + p.id + ')';
+  document.getElementById('searchName').value = p.en;
   panel.classList.remove('show');
 }
 
@@ -852,14 +851,15 @@ function doSearch(e){
   }
   results.innerHTML = '<div class="state-msg">查詢中...</div>';
 
-  // 從自動完成清單點選姓名時，欄位會被帶入「英文名(工號)」格式（例如 Daniel(0012)），
-  // 這裡把結尾的括號工號拿掉，只留姓名本身去比對：
-  // 一來避免括號跑進 Supabase 的 or=(...) 查詢語法把它弄壞，二來不用打得跟工號一模一樣才查得到
-  // （注意：JS 的 encodeURIComponent 不會轉義括號／星號，所以絕對不能讓這些字元進到查詢字串裡）
-  const name = raw.replace(/\s*[（(][^（）()]*[）)]\s*$/, '').trim() || raw;
+  // 需求人員姓名查詢改成完全相同比對（不再支援部分吻合）：
+  // 打的字剛好跟名單上某個人的英文名一模一樣，就用精確比對查該人員的案件；
+  // 不是完整姓名的話，當作品牌名稱做模糊查詢（品牌維持原本的部分吻合）
+  const isExactStaffName = STAFF_LIST.some(function(p){ return p.en === raw; });
+  const query = isExactStaffName
+    ? 'req_person=eq.' + encodeURIComponent(raw)
+    : 'brand=ilike.*' + encodeURIComponent(raw) + '*';
 
-  const orQuery = 'or=(req_person.ilike.*' + encodeURIComponent(name) + '*,brand.ilike.*' + encodeURIComponent(name) + '*)';
-  fetch(sbUrl('cases', orQuery + '&limit=500&order=created_at.desc'),{headers:SUPABASE_HEADERS})
+  fetch(sbUrl('cases', query + '&limit=500&order=created_at.desc'),{headers:SUPABASE_HEADERS})
   .then(function(res){ return res.ok ? res.json() : []; })
   .then(function(rows){
     renderResults(rows, raw);
