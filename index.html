@@ -531,10 +531,14 @@
     .header-right > div:last-of-type{order:1;}
     .sync-row{order:2;margin-left:auto;}
 
-    /* 設計師篩選改成固定在畫面最下方、懸浮的卡片樣式（像手機 App 的底部導覽列），並置中 */
+    /* 設計師篩選改成固定在畫面最下方、懸浮的膠囊樣式，寬度貼合按鈕 + 毛玻璃模糊 */
     .designer-switch-sticky-wrap{
-      position:fixed;left:12px;right:12px;bottom:14px;z-index:100;
-      background:#fff;border-radius:16px;padding:8px;
+      position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:100;
+      width:fit-content;max-width:calc(100% - 24px);
+      background:rgba(255,255,255,.72);
+      -webkit-backdrop-filter:blur(18px) saturate(1.6);
+      backdrop-filter:blur(18px) saturate(1.6);
+      border-radius:999px;padding:8px;
       box-shadow:0 8px 24px rgba(20,20,30,.18);
       display:flex;justify-content:center;
     }
