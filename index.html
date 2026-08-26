@@ -54,6 +54,7 @@
   .gate-card{
     max-width:380px;width:100%;background:var(--card);border-radius:20px;
     box-shadow:0 20px 50px rgba(20,20,30,.25);padding:32px 28px;text-align:center;
+    overflow:hidden;
   }
   .gate-card h1{font-size:19px;font-weight:800;margin:0 0 6px;}
   .gate-card p{font-size:12.5px;color:var(--ink-soft);margin:0 0 20px;}
@@ -105,6 +106,31 @@
   /* header */
   header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;margin-bottom:22px;}
   .eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--ink-soft);margin:0 0 4px;text-transform:uppercase;}
+
+  /* ---- 系統公告跑馬燈 ---- */
+  .announce-bar{
+    display:flex;align-items:center;
+    background:#3E7BFA;
+    border-radius:0;
+    padding:10px 20px;margin:16px -28px -32px;
+    overflow:hidden;position:relative;
+  }
+  .announce-track{
+    flex:1;overflow:hidden;position:relative;
+    -webkit-mask-image:linear-gradient(to right,transparent 0%,#000 8%,#000 92%,transparent 100%);
+    mask-image:linear-gradient(to right,transparent 0%,#000 8%,#000 92%,transparent 100%);
+  }
+  .announce-text{
+    display:inline-block;white-space:nowrap;
+    font-size:13px;font-weight:600;color:#fff;
+    animation:marquee-scroll 22s linear infinite;
+    padding-left:100%;
+  }
+  .announce-bar:hover .announce-text{animation-play-state:paused;}
+  @keyframes marquee-scroll{
+    0%{transform:translateX(0);}
+    100%{transform:translateX(-100%);}
+  }
   h1{font-size:28px;font-weight:800;margin:0;letter-spacing:-.01em;}
   .header-right{display:flex;flex-direction:column;align-items:flex-end;gap:10px;}
   .new-request-btn{
@@ -482,11 +508,17 @@
   .csel-arrow{color:var(--ink-soft);transition:transform .15s ease;flex:none;display:flex;}
   .csel.open .csel-arrow{transform:rotate(180deg);}
   .csel-panel{
-    display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;
+    position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:60;
     background:#fff;border-radius:14px;box-shadow:0 14px 32px rgba(20,20,30,.16);
     padding:6px;max-height:220px;overflow-y:auto;min-width:120px;
+    opacity:0;visibility:hidden;transform:translateY(-6px) scale(.97);
+    transition:opacity .2s ease, visibility .2s ease, transform .2s ease;
+    pointer-events:none;
   }
-  .csel-panel.show{display:block;}
+  .csel-panel.show{
+    opacity:1;visibility:visible;transform:translateY(0) scale(1);
+    pointer-events:auto;
+  }
   .csel-item{padding:9px 12px;border-radius:9px;font-size:12.5px;color:var(--ink);cursor:pointer;white-space:nowrap;}
   .csel-item + .csel-item{margin-top:3px;}
   .csel-item:hover{background:#F1F1F3;}
@@ -580,6 +612,7 @@
     .big-stat{font-size:26px !important;}
 
     .gate-card{padding:24px 20px;max-width:100%;}
+    .gate-card .announce-bar{margin:16px -20px -24px;padding:10px 16px;}
   }
 </style>
 </head>
@@ -646,10 +679,14 @@
           </span>
         </div>
     </div>
+    <!-- 系統公告跑馬燈 -->
+    <div class="announce-bar" style="margin-top:16px;">
+      <div class="announce-track">
+        <span class="announce-text">系統公告：案件搜尋問題 已修正｜LINE 案件退件通知 已修正</span>
+      </div>
+    </div>
   </div>
 </div>
-
-<div class="wrap locked" id="dashboardWrap">
 
   <header>
     <div>
