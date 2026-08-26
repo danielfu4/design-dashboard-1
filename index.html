@@ -219,6 +219,32 @@
   .seg-btn{border:none;background:transparent;color:var(--ink-soft);font:inherit;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:9px;cursor:pointer;}
   .seg-btn.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(20,20,30,.14);}
 
+  /* 設計師篩選：套用 Uiverse cir-tabs 膠囊樣式，選中狀態改為藍底白字，並用橫移滑塊做動畫 */
+  #designerSwitch{
+    position:relative;
+    background:#fff;border:1px solid #E3E8EE;border-radius:999px;padding:6px;gap:4px;
+    box-shadow:0 1px 1px rgba(14,17,22,.04), 0 20px 40px -24px rgba(14,17,22,.18);
+  }
+  /* 藍色滑塊：跟著選中的按鈕橫向移動、變寬變窄 */
+  #designerSwitch::before{
+    content:'';position:absolute;top:6px;left:0;height:36px;border-radius:999px;
+    background:#3E7BFA;box-shadow:0 1px 1px rgba(14,17,22,.06), 0 8px 18px -10px rgba(62,123,250,.5);
+    transform:translateX(var(--seg-x,0px));width:var(--seg-w,0px);
+    transition:transform 300ms cubic-bezier(.22,1,.36,1),width 300ms cubic-bezier(.22,1,.36,1);
+    z-index:0;pointer-events:none;
+  }
+  #designerSwitch .seg-btn{
+    position:relative;z-index:1;
+    height:36px;padding:0 18px;border-radius:999px;font-size:14px;font-weight:500;
+    color:#5B6472;background:transparent;box-shadow:none;
+    transition:color 220ms cubic-bezier(.22,1,.36,1);
+  }
+  #designerSwitch .seg-btn:hover{color:#0E1116;}
+  #designerSwitch .seg-btn.active{
+    background:transparent;color:#fff;box-shadow:none;
+  }
+  #designerSwitch .seg-btn:focus-visible{box-shadow:0 0 0 3px rgba(62,123,250,.32);outline:none;}
+
   #errorBanner{
     display:none;background:#fff2f4;border:1px solid #f6c7d0;color:#b3324a;
     padding:12px 16px;border-radius:14px;font-size:12.5px;margin-bottom:18px;line-height:1.6;
@@ -467,8 +493,9 @@
     h1{font-size:21px;}
     .eyebrow{font-size:11px;}
 
-    /* 每小時整點自動更新：移到右上角，跟標題平行 */
-    #refreshScheduleLabel{position:absolute;top:2px;right:0;margin:0;}
+    /* 每小時整點自動更新文案已移除；改把上次更新時間放到右上角，跟標題平行 */
+    #refreshScheduleLabel{display:none;}
+    #lastSync{position:absolute;top:2px;right:0;}
 
     .header-right{width:100%;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px;}
 
@@ -491,7 +518,9 @@
     #designerSwitch{
       display:inline-flex;flex-wrap:nowrap;overflow-x:auto;max-width:100%;
       -webkit-overflow-scrolling:touch;scrollbar-width:none;
+      background:none;border:none;box-shadow:none;padding:0;
     }
+    #designerSwitch::before{top:0;}
     #designerSwitch::-webkit-scrollbar{display:none;}
     #designerSwitch .seg-btn{flex:none;white-space:nowrap;}
 
@@ -1111,12 +1140,23 @@ let loadTimeoutHandles = [];
 
 function currentYearTabs(){ return YEARS[currentYear] || []; }
 
+// 讓藍色滑塊橫移對齊目前選中的設計師按鈕
+function positionDesignerSlider(){
+  const wrap = document.getElementById('designerSwitch');
+  if(!wrap) return;
+  const active = wrap.querySelector('.seg-btn.active');
+  if(!active) return;
+  wrap.style.setProperty('--seg-x', active.offsetLeft + 'px');
+  wrap.style.setProperty('--seg-w', active.offsetWidth + 'px');
+}
+
 function rebuildDesignerSwitch(){
   const tabs = currentYearTabs();
   currentDesigner = 'all';
   document.getElementById('designerSwitch').innerHTML =
     '<button class="seg-btn active" data-d="all">全部</button>' +
     tabs.map(function(t){ return '<button class="seg-btn" data-d="' + t + '">' + t + '</button>'; }).join('');
+  positionDesignerSlider();
 }
 
 function onYearChange(v){
@@ -1527,6 +1567,7 @@ document.getElementById('designerSwitch').addEventListener('click', function(e){
   if(!btn) return;
   document.querySelectorAll('.seg-btn').forEach(function(b){ b.classList.remove('active'); });
   btn.classList.add('active');
+  positionDesignerSlider();
   currentDesigner = btn.getAttribute('data-d');
   applyFilterAndRender();
 });
@@ -1957,6 +1998,8 @@ function scheduleHourlyRefresh(){
 
 initYearSelect();
 initChartTooltip();
+positionDesignerSlider();
+window.addEventListener('resize', positionDesignerSlider);
 const DASHBOARD_PASSWORDS = ['5805', '5790', '5806', '6352', '7729', '6870', '6034', '6052', '6594', '6030', '8403', '8925', '8416', '8901', '8780'];
 
 function checkDashboardPassword(){
