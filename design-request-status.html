@@ -844,27 +844,25 @@ document.addEventListener('click', function(e){
 
 function doSearch(e){
   if(e) e.preventDefault();
-  const name = document.getElementById('searchName').value.trim();
+  const raw = document.getElementById('searchName').value.trim();
   const results = document.getElementById('results');
-  if(!name){
+  if(!raw){
     results.innerHTML = '<div class="state-msg">請先輸入姓名或品牌名稱再查詢</div>';
     return false;
   }
   results.innerHTML = '<div class="state-msg">查詢中...</div>';
 
-  // 需求人員存進資料庫的格式是「英文名(工號)」，例如 Daniel(0012)；
-  // 1) 原本用 eq 精確比對，使用者幾乎不可能剛好打出一模一樣的字串，改成跟品牌一樣用 ilike 模糊比對
-  // 2) 名字裡的括號在 PostgREST 的 or=(...) 語法裡是保留字元，沒加雙引號會把整個查詢語法弄壞，
-  //    導致不管怎麼打都查不到，這裡統一把值加上雙引號再做 URL 編碼
-  function pgQuote(v){
-    return '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
-  }
-  const pattern = pgQuote('*' + name + '*');
-  const orQuery = 'or=(req_person.ilike.' + encodeURIComponent(pattern) + ',brand.ilike.' + encodeURIComponent(pattern) + ')';
+  // 從自動完成清單點選姓名時，欄位會被帶入「英文名(工號)」格式（例如 Daniel(0012)），
+  // 這裡把結尾的括號工號拿掉，只留姓名本身去比對：
+  // 一來避免括號跑進 Supabase 的 or=(...) 查詢語法把它弄壞，二來不用打得跟工號一模一樣才查得到
+  // （注意：JS 的 encodeURIComponent 不會轉義括號／星號，所以絕對不能讓這些字元進到查詢字串裡）
+  const name = raw.replace(/\s*[（(][^（）()]*[）)]\s*$/, '').trim() || raw;
+
+  const orQuery = 'or=(req_person.ilike.*' + encodeURIComponent(name) + '*,brand.ilike.*' + encodeURIComponent(name) + '*)';
   fetch(sbUrl('cases', orQuery + '&limit=500&order=created_at.desc'),{headers:SUPABASE_HEADERS})
   .then(function(res){ return res.ok ? res.json() : []; })
   .then(function(rows){
-    renderResults(rows, name);
+    renderResults(rows, raw);
   })
   .catch(function(err){
     results.innerHTML = '<div class="state-msg">資料讀取失敗：'+(err.message||'未知錯誤')+'</div>';
