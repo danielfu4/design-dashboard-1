@@ -458,6 +458,7 @@
      手機版調整
      ============================================================ */
   @media (max-width:600px){
+    html, body{overflow-x:hidden;}
     body{padding:16px 12px 40px;}
     .wrap{max-width:100%;}
 
@@ -473,7 +474,12 @@
     .new-request-btn{flex:1;justify-content:center;text-align:center;}
     .sp{flex:none;}
 
-    /* 設計師篩選改成可以左右滑動，不要硬擠成兩行 */
+    /* 設計師篩選改成固定在畫面最下方、懸浮的卡片樣式（像手機 App 的底部導覽列） */
+    .designer-switch-sticky-wrap{
+      position:fixed;left:12px;right:12px;bottom:14px;z-index:100;
+      background:#fff;border-radius:16px;padding:8px;
+      box-shadow:0 8px 24px rgba(20,20,30,.18);
+    }
     #designerSwitch{
       display:flex;flex-wrap:nowrap;overflow-x:auto;max-width:100%;
       -webkit-overflow-scrolling:touch;scrollbar-width:none;
@@ -481,19 +487,22 @@
     #designerSwitch::-webkit-scrollbar{display:none;}
     #designerSwitch .seg-btn{flex:none;white-space:nowrap;}
 
+    /* 底部懸浮列會蓋住內容，頁面底部留出對應空間 */
+    body{padding-bottom:76px;}
+
     .csel{width:auto;}
 
     .card{padding:16px 16px;border-radius:16px;}
     .grid-top, .two-col{gap:12px;}
 
-    /* 圓餅圖／甜甜圈圖在小螢幕縮小尺寸，避免橫向超出畫面 */
+    /* 圓餅圖／甜甜圈圖在小螢幕改成上下堆疊，避免圖例被硬擠導致換行、撐開版面 */
+    .pie-wrap{flex-direction:column;align-items:center;gap:16px;}
     .pie-svg-wrap{width:250px;height:250px;}
-    .pie-wrap{gap:16px;justify-content:center;}
-    .pie-legend{min-width:0;width:100%;max-height:260px;}
+    .pie-legend{flex:none;min-width:0;width:100%;max-width:320px;max-height:260px;}
 
+    .donut-wrap{flex-direction:column;gap:16px;}
     .donut-svg-wrap{width:200px;height:200px;}
-    .donut-wrap{gap:16px;justify-content:center;}
-    .legend{min-width:0;width:100%;}
+    .legend{flex:none;min-width:0;width:100%;max-width:320px;}
     .legend-item{min-width:0;}
 
     .big-stat{font-size:26px !important;}
@@ -619,12 +628,14 @@
         <button id="refreshBtn" onclick="loadAll(true)"><span class="dot"></span>重新整理</button>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
-        <div class="segmented" id="designerSwitch">
-          <button class="seg-btn active" data-d="all">全部</button>
-          <button class="seg-btn" data-d="Nikki">Nikki</button>
-          <button class="seg-btn" data-d="Luna">Luna</button>
-          <button class="seg-btn" data-d="Yuly">Yuly</button>
-          <button class="seg-btn" data-d="Daniel">Daniel</button>
+        <div class="designer-switch-sticky-wrap">
+          <div class="segmented" id="designerSwitch">
+            <button class="seg-btn active" data-d="all">全部</button>
+            <button class="seg-btn" data-d="Nikki">Nikki</button>
+            <button class="seg-btn" data-d="Luna">Luna</button>
+            <button class="seg-btn" data-d="Yuly">Yuly</button>
+            <button class="seg-btn" data-d="Daniel">Daniel</button>
+          </div>
         </div>
         <div class="csel" id="csel_yearFilter">
           <button type="button" class="csel-trigger" onclick="toggleCsel('yearFilter')">
@@ -845,6 +856,11 @@ function brandColor(name){
 function catColor(i){ return PALETTE[i % PALETTE.length]; }
 
 function fmtMoney(n){ return 'NT$' + Math.round(n).toLocaleString('en-US'); }
+// 觸控裝置沒有真正的 hover/mouseleave，扇形放大互動在觸控上容易卡住造成視覺位移，
+// 偵測到是觸控裝置就固定扇形半徑，只保留提示框互動
+function isCoarsePointer(){
+  return window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
+}
 function fmtHours(n){
   const r = Math.round(n*10)/10;
   return (r % 1 === 0 ? r.toFixed(0) : r.toFixed(1)) + ' hr';
@@ -901,7 +917,7 @@ function renderBrandPie(brandList, byBrand, total){
 
   function setSliceActive(active){
     svg.querySelectorAll('path[data-idx]').forEach(function(p, i){
-      const outerR = (active === i) ? R + 9 : R;
+      const outerR = (active === i && !isCoarsePointer()) ? R + 9 : R;
       p.setAttribute('d', arcPath(slices[i], outerR));
     });
     setCenterText(active);
@@ -1012,7 +1028,7 @@ function renderBrandHoursPie(brandList, byBrand, totalHours){
 
   function setSliceActive(active){
     svg.querySelectorAll('path[data-idx]').forEach(function(p, i){
-      const outerR = (active === i) ? R + 9 : R;
+      const outerR = (active === i && !isCoarsePointer()) ? R + 9 : R;
       p.setAttribute('d', arcPath(slices[i], outerR));
     });
     setCenterText(active);
