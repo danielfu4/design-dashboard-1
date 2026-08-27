@@ -682,7 +682,7 @@
     <!-- 系統公告跑馬燈 -->
     <div class="announce-bar" style="margin-top:16px;">
       <div class="announce-track">
-        <span class="announce-text">系統公告：案件搜尋問題 已修正｜LINE 案件退件通知 已修正</span>
+        <span class="announce-text" id="announceText">系統公告：案件搜尋問題 已修正｜LINE 案件退件通知 已修正</span>
       </div>
     </div>
   </div>
@@ -937,6 +937,19 @@ const SUPABASE_URL = 'https://qvhfbgnglheepwdqybbr.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF2aGZiZ25nbGhlZXB3ZHF5YmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMDU3NzYsImV4cCI6MjEwMjc4MTc3Nn0.i-ya01hkl4Cvt6t_5nMUZXQBs9mTof373mheyzO9Svw';
 const SUPABASE_HEADERS = { 'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY };
 function sbUrl(table,query){ return SUPABASE_URL+'/rest/v1/'+table+(query?'?'+query:''); }
+
+// 從 Supabase system_config 表讀取公告文字
+function loadAnnouncement(){
+  fetch(sbUrl('system_config','select=value&key=eq.announcement&limit=1'), {headers:SUPABASE_HEADERS})
+    .then(function(res){ return res.ok ? res.json() : []; })
+    .then(function(rows){
+      if(rows && rows[0] && rows[0].value){
+        const el = document.getElementById('announceText');
+        if(el) el.textContent = rows[0].value;
+      }
+    })
+    .catch(function(){}); // 讀取失敗時保留靜態預設文字
+}
 
 // 每個年度對應的設計師列表（年份選單用）
 const YEARS = {
@@ -2082,6 +2095,7 @@ function scheduleHourlyRefresh(){
 }
 
 initYearSelect();
+loadAnnouncement();
 initChartTooltip();
 positionDesignerSlider();
 positionChartSlider();
