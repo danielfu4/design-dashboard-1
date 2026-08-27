@@ -780,9 +780,20 @@ function parseListDate(str){
 function toggleReqBody(id){
   const body = document.getElementById('reqBody-' + id);
   const chevron = document.getElementById('reqToggleChevron-' + id);
+  const card = body.closest('.req-card') || body.parentElement;
   const isOpen = body.classList.contains('open');
   body.classList.toggle('open', !isOpen);
   chevron.classList.toggle('open', !isOpen);
+
+  if(!isOpen){
+    setTimeout(function(){
+      const cardBottom = card.getBoundingClientRect().bottom;
+      const viewHeight = window.innerHeight;
+      if(cardBottom > viewHeight - 20){
+        window.scrollBy({ top: cardBottom - viewHeight + 40, behavior:'smooth' });
+      }
+    }, 320);
+  }
 }
 
 function statusInfo(status){

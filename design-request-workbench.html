@@ -1169,9 +1169,14 @@ function toggleCaseBody(id){
   chevron.classList.toggle('open', !isOpen);
 
   if(!isOpen){
+    // 等展開動畫跑完再計算
     setTimeout(function(){
-      card.scrollIntoView({ behavior:'smooth', block:'nearest' });
-    }, 50);
+      const cardBottom = card.getBoundingClientRect().bottom;
+      const viewHeight = window.innerHeight;
+      if(cardBottom > viewHeight - 20){
+        window.scrollBy({ top: cardBottom - viewHeight + 40, behavior:'smooth' });
+      }
+    }, 320);
   }
 }
 
