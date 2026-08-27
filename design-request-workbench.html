@@ -1169,14 +1169,16 @@ function toggleCaseBody(id){
   chevron.classList.toggle('open', !isOpen);
 
   if(!isOpen){
-    // 等展開動畫跑完再計算
-    setTimeout(function(){
-      const cardBottom = card.getBoundingClientRect().bottom;
+    // 監聽 transition 結束後再捲，高度才準確
+    function onEnd(){
+      body.removeEventListener('transitionend', onEnd);
+      const cardRect = card.getBoundingClientRect();
       const viewHeight = window.innerHeight;
-      if(cardBottom > viewHeight - 20){
-        window.scrollBy({ top: cardBottom - viewHeight + 40, behavior:'smooth' });
+      if(cardRect.bottom > viewHeight - 16){
+        window.scrollBy({ top: cardRect.bottom - viewHeight + 60, behavior:'smooth' });
       }
-    }, 420);
+    }
+    body.addEventListener('transitionend', onEnd);
   }
 }
 
