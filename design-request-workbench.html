@@ -1163,9 +1163,16 @@ function renderCaseCard(m){
 function toggleCaseBody(id){
   const body = document.getElementById('caseBody-' + id);
   const chevron = document.getElementById('caseToggleChevron-' + id);
+  const card = body.closest('.case-card') || body.parentElement;
   const isOpen = body.classList.contains('open');
   body.classList.toggle('open', !isOpen);
   chevron.classList.toggle('open', !isOpen);
+
+  if(!isOpen){
+    setTimeout(function(){
+      card.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }, 50);
+  }
 }
 
 function toggleCaseFields(id){
