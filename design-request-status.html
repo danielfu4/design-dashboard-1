@@ -1579,17 +1579,28 @@ function buildCopyCaseTypeOptions(reqType){
   });
 }
 
+// 取得某品牌所屬「所有」分組合併去重後的設計師清單
+// （有些品牌像「群光選品」「ITD部門相關」同時存在於 S1/S2/S3 多組，
+//   之前只抓最後比對到的一組，導致設計師選項不完整）
+function getDesignersForBrand(brand){
+  const list = [];
+  Object.keys(BRAND_GROUPS).forEach(function(g){
+    if(BRAND_GROUPS[g].indexOf(brand) !== -1){
+      GROUP_DESIGNERS[g].forEach(function(d){
+        if(list.indexOf(d) === -1) list.push(d);
+      });
+    }
+  });
+  return list;
+}
+
 function onCopyBrandChange(){
   const brand = document.getElementById('copyBrand').value;
-  let group = null;
-  Object.keys(BRAND_GROUPS).forEach(function(g){
-    if(BRAND_GROUPS[g].indexOf(brand) !== -1) group = g;
-  });
-  copyOriginalData.group = group;
+  const designers = getDesignersForBrand(brand);
   copyOriginalData.brand = brand;
+  copyOriginalData.designers = designers;
 
   const designerWrap = document.getElementById('copyDesignerWrap');
-  const designers = group ? GROUP_DESIGNERS[group] : [];
   if(designers.length > 1){
     const designerOptions = designers.map(function(d){ return { value: d, label: d }; });
     initCsel('copyDesigner', designerOptions, designers[0], function(){ loadCopyDateCounts(); });
@@ -1609,12 +1620,7 @@ function onCopyReqTypeChange(){
 
 function copyCaseAndCreate(data){
   copyOriginalData = data;
-
-  let group = null;
-  Object.keys(BRAND_GROUPS).forEach(function(g){
-    if(BRAND_GROUPS[g].indexOf(data.brand) !== -1) group = g;
-  });
-  copyOriginalData.group = group;
+  copyOriginalData.designers = getDesignersForBrand(data.brand);
 
   document.getElementById('copyModalTitle').textContent = data.isFix ? '修正需求' : '複製並新增';
   document.getElementById('copyModalOrigin').textContent = '原案件：' + (data.reqName || '');
@@ -1640,7 +1646,7 @@ function copyCaseAndCreate(data){
   document.getElementById('copyModalMsg').className = 'modal-msg';
 
   const designerWrap = document.getElementById('copyDesignerWrap');
-  const designers = group ? GROUP_DESIGNERS[group] : [];
+  const designers = copyOriginalData.designers;
   if(designers.length > 1){
     const designerOptions = designers.map(function(d){ return { value: d, label: d }; });
     const designerMatch = designers.indexOf(data.handler) !== -1;
@@ -1671,8 +1677,7 @@ function normalizeDateStr(str){
 }
 
 function copyCurrentHandler(){
-  const group = copyOriginalData.group;
-  const designers = group ? GROUP_DESIGNERS[group] : [];
+  const designers = copyOriginalData.designers || [];
   return designers.length > 1
     ? document.getElementById('copyDesigner').value
     : (designers[0] || copyOriginalData.handler || '');
@@ -1846,8 +1851,7 @@ function submitCopiedCase(){
     return;
   }
 
-  const group = copyOriginalData.group;
-  const designers = group ? GROUP_DESIGNERS[group] : [];
+  const designers = copyOriginalData.designers || [];
   let handler = designers[0] || copyOriginalData.handler || '';
   if(designers.length > 1){
     handler = document.getElementById('copyDesigner').value;
