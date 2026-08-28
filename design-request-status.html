@@ -1049,8 +1049,8 @@ function applyStatusFilterAndRender(){
     return;
   }
 
-  const urgentMatches = matches.filter(function(m){ return m.isUrgent === 'Y'; });
-  const normalMatches = matches.filter(function(m){ return m.isUrgent !== 'Y'; });
+  const urgentMatches = matches.filter(function(m){ return m.isUrgent === 'Y' && (m.status || '待處理').trim() !== '已完成'; });
+  const normalMatches = matches.filter(function(m){ return !(m.isUrgent === 'Y' && (m.status || '待處理').trim() !== '已完成'); });
 
   let html = '';
   if(urgentMatches.length > 0){
