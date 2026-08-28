@@ -1633,6 +1633,9 @@ function notifyDeliveryUpdate(id){
   const icon = document.getElementById('notifyIcon-' + id);
   if(!btn || btn.disabled) return;
 
+  const ok = confirm('確定要通知需求人員「案件內容已更新，請重新確認」嗎？');
+  if(!ok) return;
+
   btn.disabled = true;
   btn.title = '通知中...';
 
