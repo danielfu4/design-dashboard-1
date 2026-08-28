@@ -68,11 +68,34 @@
   }
 
   @media (max-width:600px){
+    html, body{overflow-x:hidden;}
+    body{padding:16px 12px 400px;}
+    .wrap{max-width:100%;}
+
+    h1{font-size:21px;}
+    .eyebrow{font-size:11px;}
+    .subtitle{font-size:12.5px;}
+
     /* 頁首按鈕列：返回連結獨立一行，按鈕群組換到下一行，
        按鈕維持原本尺寸不被壓縮，寬度不夠時自動換行而不是把文字擠爆 */
     .top-links{flex-direction:column;align-items:flex-start;gap:10px;}
     .top-links > div{flex-wrap:wrap;row-gap:8px;}
     .refresh-link, .save-all-btn, .theme-toggle-btn{flex:none;white-space:nowrap;}
+
+    /* 排序／狀態篩選／搜尋 三個欄位原本固定 200px 寬並排，改成單欄堆疊 */
+    .filter-bar{flex-direction:column;gap:12px;}
+    .filter-field{width:100%;}
+    .filter-field.search-field{min-width:0;}
+
+    .case-card{padding:16px 16px;border-radius:16px;}
+    .stack-front{padding:0 16px;}
+
+    /* 案件卡片頂部：標題跟徽章／評分星星／回覆按鈕改上下堆疊，避免跟標題擠在一起 */
+    .case-top{flex-direction:column;align-items:stretch;gap:10px;}
+    .case-top-right{align-items:flex-start;}
+    .badge-group{justify-content:flex-start;}
+
+    .modal-card{padding:20px 18px 18px;max-width:100%;}
   }
 
   /* ---- 密碼閘 ---- */
