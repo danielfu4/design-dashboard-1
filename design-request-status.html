@@ -477,6 +477,42 @@
   .modal-msg{font-size:12px;margin-top:10px;text-align:center;}
   .modal-msg.error{color:#B3324A;}
   .modal-msg.success{color:#1F8A4C;}
+
+  /* ============ 手機版 ============ */
+  @media (max-width:600px){
+    html, body{overflow-x:hidden;}
+    body{padding:16px 12px 400px;}
+    .wrap{max-width:100%;}
+
+    h1{font-size:21px;}
+    .eyebrow{font-size:11px;}
+    .subtitle{font-size:12.5px;}
+
+    .search-card{padding:18px 16px;border-radius:16px;}
+    .req-card{padding:16px 16px;border-radius:16px;position:relative;}
+
+    /* 急件標誌改成固定在案件面板右上角，不佔用堆疊空間 */
+    .urgent-badge{position:absolute;top:14px;right:14px;}
+    .req-card:has(.urgent-badge) .req-top{padding-right:60px;}
+
+    /* 排序／狀態篩選／搜尋 三個欄位原本固定 200px 寬並排，改成單欄堆疊 */
+    .filter-bar{flex-direction:column;gap:12px;}
+    .filter-field{width:100%;}
+    .filter-field.search-field{min-width:0;}
+
+    /* 案件卡片頂部：標題跟進度條/標籤改上下堆疊，進度條才有足夠寬度顯示 */
+    .req-top{flex-direction:column;align-items:stretch;gap:10px;}
+    .req-top-right{align-items:flex-start;}
+
+    /* 進度條在極窄螢幕仍可能偏擠，縮小尺寸並加上防溢出橫向捲動保底 */
+    .progress-bar{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;}
+    .progress-step{width:54px;}
+    .progress-dot{width:22px;height:22px;}
+    .progress-label{font-size:10px;}
+    .progress-line{min-width:22px;margin:9px -6px 0;}
+
+    .modal-card{padding:20px 18px 18px;max-width:100%;}
+  }
 </style>
 </head>
 <body>
