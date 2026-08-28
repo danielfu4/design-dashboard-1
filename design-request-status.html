@@ -23,6 +23,39 @@
   }
   .wrap{max-width:680px;margin:0 auto;}
 
+  /* 收合所有已展開案件的懸浮按鈕 */
+  .collapse-fab{
+    position:fixed;bottom:82px;left:calc(50% + 340px + 16px);z-index:150;
+    width:46px;height:46px;border:none;border-radius:14px;
+    background:#3E7BFA;color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 10px 24px rgba(62,123,250,.38);
+    cursor:pointer;
+    opacity:0;transform:translateY(-10px) scale(.9);pointer-events:none;
+    transition:opacity .25s ease, transform .25s ease;
+  }
+  .collapse-fab:hover{background:#2E6CE8;}
+  .collapse-fab.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+
+  /* 置頂按鈕：跟收合按鈕同尺寸，位置在其正下方 */
+  .top-fab{
+    position:fixed;bottom:24px;left:calc(50% + 340px + 16px);z-index:150;
+    width:46px;height:46px;border:none;border-radius:14px;
+    background:#3E7BFA;color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 10px 24px rgba(62,123,250,.38);
+    cursor:pointer;
+    opacity:0;transform:translateY(-10px) scale(.9);pointer-events:none;
+    transition:opacity .25s ease, transform .25s ease;
+  }
+  .top-fab:hover{background:#2E6CE8;}
+  .top-fab.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+
+  @media (max-width:900px){
+    .collapse-fab{left:auto;right:18px;bottom:82px;}
+    .top-fab{left:auto;right:18px;bottom:24px;}
+  }
+
   .top-links{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
   .back-link{
     display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);
@@ -398,6 +431,21 @@
 <body>
 <div class="wrap">
 
+  <!-- 收合所有已展開案件的懸浮按鈕：搜尋區塊捲出畫面時出現 -->
+  <button type="button" class="collapse-fab" id="collapseFab" onclick="collapseAllCases()" title="收合所有已展開的案件" aria-label="收合所有已展開的案件">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="1 4 1 10 7 10"></polyline>
+      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+    </svg>
+  </button>
+
+  <!-- 置頂按鈕：搜尋區塊捲出畫面時出現 -->
+  <button type="button" class="top-fab" id="topFab" onclick="scrollToTop()" title="回到頂部" aria-label="回到頂部">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="18 15 12 9 6 15"></polyline>
+    </svg>
+  </button>
+
   <div class="top-links">
     <a class="back-link" href="design-request-form.html" onclick="if(window.history.length>1){history.back();return false;}">← 返回設計需求申請單</a>
     <a class="new-link" href="design-request-form.html">＋ 填寫新需求</a>
@@ -409,7 +457,7 @@
     <div class="subtitle">輸入填單時填寫的「需求人員」姓名，或輸入品牌名稱，查詢送出過的需求進度</div>
   </header>
 
-  <div class="search-card">
+  <div class="search-card" id="searchCard">
     <form class="search-row" onsubmit="return doSearch(event)">
       <div class="ac-wrap" style="flex:1;">
         <input type="text" id="searchName" placeholder="請輸入你的姓名或品牌名稱" autocomplete="off" oninput="filterSearchNameList()" onfocus="filterSearchNameList()">
@@ -2002,6 +2050,36 @@ function submitRating(){
     btn.disabled = false;
   });
 }
+
+// ---- 收合所有目前已展開的案件卡片（懸浮按鈕用）----
+function collapseAllCases(){
+  document.querySelectorAll('.case-body.open').forEach(function(body){
+    body.classList.remove('open');
+  });
+  document.querySelectorAll('.case-toggle-chevron.open').forEach(function(chevron){
+    chevron.classList.remove('open');
+  });
+}
+
+// ---- 回到頁面頂部（懸浮按鈕用）----
+function scrollToTop(){
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ---- 懸浮按鈕（收合／置頂）：搜尋區塊捲出畫面時顯示，捲回頂部時隱藏 ----
+(function(){
+  const anchor = document.getElementById('searchCard');
+  const fab = document.getElementById('collapseFab');
+  const topFab = document.getElementById('topFab');
+  if(!anchor || !fab || !topFab) return;
+  const observer = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      fab.classList.toggle('show', !entry.isIntersecting);
+      topFab.classList.toggle('show', !entry.isIntersecting);
+    });
+  }, { threshold: 0 });
+  observer.observe(anchor);
+})();
 </script>
 </body>
 </html>
