@@ -266,6 +266,21 @@
   }
   .edit-field select:focus, .edit-field input:focus{outline:none;border-color:var(--accent);background:var(--card);}
 
+  /* 交付檔案連結欄位：手動通知需求人員按鈕 */
+  .delivery-field-row{display:flex;gap:8px;align-items:center;}
+  .delivery-field-row input{height:40px;flex:1;min-width:0;}
+  .notify-btn{
+    flex:none;width:40px;height:40px;
+    display:flex;align-items:center;justify-content:center;
+    border:none;background:var(--accent);color:#fff;
+    border-radius:10px;cursor:pointer;
+    transition:background-color .2s ease, opacity .2s ease;
+  }
+  .notify-btn:hover{opacity:.88;}
+  .notify-btn:disabled{opacity:.5;cursor:not-allowed;}
+  .notify-btn.sent{background:#1F8A4C;}
+  .notify-hint{font-size:11px;color:var(--ink-soft);margin-top:6px;line-height:1.6;}
+
   .csel{position:relative;}
   .csel-trigger{
     width:100%;display:flex;align-items:center;justify-content:space-between;
@@ -1170,7 +1185,16 @@ function renderCaseCard(m){
             '</div>' +
             '<div class="edit-field" id="deliveryWrap-' + m.id + '">' +
               '<label>交付檔案連結</label>' +
-              '<input type="text" id="delivery-' + m.id + '" value="' + (m.deliveryLink || '').replace(/"/g,'&quot;') + '" placeholder="貼上雲端連結">' +
+              '<div class="delivery-field-row">' +
+                '<input type="text" id="delivery-' + m.id + '" value="' + (m.deliveryLink || '').replace(/"/g,'&quot;') + '" placeholder="貼上雲端連結">' +
+                '<button type="button" class="notify-btn" id="notifyBtn-' + m.id + '" onclick="notifyDeliveryUpdate(\'' + m.id + '\')" title="通知需求人員內容已更新" aria-label="通知需求人員內容已更新">' +
+                  '<svg id="notifyIcon-' + m.id + '" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+                    '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>' +
+                    '<path d="M13.73 21a2 2 0 0 1-3.46 0"></path>' +
+                  '</svg>' +
+                '</button>' +
+              '</div>' +
+              '<div class="notify-hint">如果檔案放在共用資料夾裡直接更新、連結沒有變，可以按這顆按鈕手動通知需求人員重新確認。</div>' +
             '</div>' +
             '<div class="edit-field" id="hoursWrap-' + m.id + '">' +
               '<label>工時</label>' +
@@ -1601,6 +1625,38 @@ function addDesignHistory(id){
     msg.style.color = '#B3324A';
   });
 }
+
+// ---- 手動通知需求人員：交付檔案內容已更新（例如放在共用資料夾，連結本身沒變）----
+const BELL_ICON_PATH = '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path>';
+const CHECK_ICON_PATH = '<circle cx="12" cy="12" r="10"></circle><path d="M7 12.5 L10.5 16 L17 8.5"></path>';
+
+function notifyDeliveryUpdate(id){
+  const btn = document.getElementById('notifyBtn-' + id);
+  const icon = document.getElementById('notifyIcon-' + id);
+  if(!btn || btn.disabled) return;
+
+  btn.disabled = true;
+  btn.title = '通知中...';
+
+  designerAction('notifyDeliveryUpdate', { id: id })
+  .then(function(result){
+    if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
+    btn.classList.add('sent');
+    btn.title = '已通知需求人員（10 秒內鎖定，避免重複發送）';
+    icon.innerHTML = CHECK_ICON_PATH;
+    setTimeout(function(){
+      btn.disabled = false;
+      btn.classList.remove('sent');
+      btn.title = '通知需求人員內容已更新';
+      icon.innerHTML = BELL_ICON_PATH;
+    }, 10000);
+  })
+  .catch(function(err){
+    btn.disabled = false;
+    btn.title = '通知失敗：' + (err && err.message ? err.message : '未知錯誤') + '（點擊再試一次）';
+  });
+}
+
 // ---- 懸浮按鈕（收合／置頂）：頂部重新整理按鈕捲出畫面時顯示，捲回頂部時隱藏 ----
 (function(){
   const topBtn = document.getElementById('topRefreshBtn');
