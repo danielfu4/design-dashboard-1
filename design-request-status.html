@@ -106,6 +106,10 @@
   .csel-item + .csel-item{margin-top:3px;}
   .csel-item:hover{background:#F1F1F3;}
   .csel-item.selected{background:#F1F1F3;font-weight:700;}
+  .csel-group-label{
+    font-size:11px;font-weight:800;color:var(--ink-faint);letter-spacing:.03em;
+    padding:9px 12px 4px;
+  }
   .search-row{display:flex;gap:10px;}
 
   .ac-wrap{position:relative;}
@@ -708,15 +712,36 @@
     <div class="modal-scroll">
     <div class="field-simple">
       <label>品牌 <span style="color:#B3324A;">*</span></label>
-      <select id="copyBrand" onchange="onCopyBrandChange()"></select>
+      <div class="csel" id="csel_copyBrand">
+        <button type="button" class="csel-trigger" onclick="toggleCsel('copyBrand')">
+          <span class="csel-trigger-text" id="csel_copyBrand_text"></span>
+          <span class="csel-arrow"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="csel-panel" id="csel_copyBrand_panel"></div>
+      </div>
+      <input type="hidden" id="copyBrand">
     </div>
     <div class="field-simple">
       <label>設計類型 <span style="color:#B3324A;">*</span></label>
-      <select id="copyReqType" onchange="onCopyReqTypeChange()"></select>
+      <div class="csel" id="csel_copyReqType">
+        <button type="button" class="csel-trigger" onclick="toggleCsel('copyReqType')">
+          <span class="csel-trigger-text" id="csel_copyReqType_text"></span>
+          <span class="csel-arrow"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="csel-panel" id="csel_copyReqType_panel"></div>
+      </div>
+      <input type="hidden" id="copyReqType">
     </div>
     <div class="field-simple">
       <label>案件類型 <span style="color:#B3324A;">*</span></label>
-      <select id="copyCaseType"></select>
+      <div class="csel" id="csel_copyCaseType">
+        <button type="button" class="csel-trigger" onclick="toggleCsel('copyCaseType')">
+          <span class="csel-trigger-text" id="csel_copyCaseType_text"></span>
+          <span class="csel-arrow"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="csel-panel" id="csel_copyCaseType_panel"></div>
+      </div>
+      <input type="hidden" id="copyCaseType">
     </div>
     <div class="field-simple">
       <label>需求名稱 <span style="color:#B3324A;">*</span></label>
@@ -732,7 +757,14 @@
     </div>
     <div class="field-simple" id="copyDesignerWrap" style="display:none;">
       <label>指定設計師 <span style="color:#B3324A;">*</span></label>
-      <select id="copyDesigner" onchange="loadCopyDateCounts()"></select>
+      <div class="csel" id="csel_copyDesigner">
+        <button type="button" class="csel-trigger" onclick="toggleCsel('copyDesigner')">
+          <span class="csel-trigger-text" id="csel_copyDesigner_text"></span>
+          <span class="csel-arrow"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>
+        </button>
+        <div class="csel-panel" id="csel_copyDesigner_panel"></div>
+      </div>
+      <input type="hidden" id="copyDesigner">
     </div>
     <div class="field-simple date-field">
       <label>需求日期 <span style="color:#B3324A;">*</span></label>
@@ -795,11 +827,30 @@ function renderCselPanel(id){
   const st = cselState[id];
   const panel = document.getElementById('csel_' + id + '_panel');
   if(!panel || !st.options) return;
+  let lastGroup = null;
   panel.innerHTML = st.options.map(function(opt){
     const selected = opt.value === st.value;
     const safeVal = opt.value.replace(/'/g, "\\'");
-    return '<div class="csel-item' + (selected ? ' selected' : '') + '" onclick="cselChoose(\'' + id + '\',\'' + safeVal + '\')">' + opt.label + '</div>';
+    let groupHtml = '';
+    if(opt.group && opt.group !== lastGroup){
+      groupHtml = '<div class="csel-group-label">' + opt.group + '</div>';
+      lastGroup = opt.group;
+    }
+    return groupHtml + '<div class="csel-item' + (selected ? ' selected' : '') + '" onclick="cselChoose(\'' + id + '\',\'' + safeVal + '\')">' + opt.label + '</div>';
   }).join('');
+}
+
+// 靜默設定 csel 目前選中的值：更新畫面（顯示文字＋隱藏欄位）但不觸發 onChange
+function cselSetValueSilent(id, val){
+  const st = cselState[id];
+  if(!st) return;
+  const opt = (st.options || []).filter(function(o){ return o.value === val; })[0];
+  st.value = val;
+  const hiddenEl = document.getElementById(id);
+  if(hiddenEl) hiddenEl.value = val;
+  const textEl = document.getElementById('csel_' + id + '_text');
+  if(textEl) textEl.textContent = opt ? opt.label : (val || st.placeholder || '');
+  renderCselPanel(id);
 }
 
 function cselChoose(id, val){
@@ -1505,25 +1556,27 @@ const CASE_TYPE_MAP = {
 
 let copyOriginalData = null;
 
-function buildCopyBrandOptionsHtml(selectedBrand){
-  return Object.keys(BRAND_GROUPS).map(function(g){
-    return '<optgroup label="' + g + '">' + BRAND_GROUPS[g].map(function(b){
-      return '<option value="' + b + '"' + (b === selectedBrand ? ' selected' : '') + '>' + b + '</option>';
-    }).join('') + '</optgroup>';
-  }).join('');
+function buildCopyBrandOptions(){
+  const opts = [];
+  Object.keys(BRAND_GROUPS).forEach(function(g){
+    BRAND_GROUPS[g].forEach(function(b){
+      opts.push({ value: b, label: b, group: g });
+    });
+  });
+  return opts;
 }
 
-function buildCopyReqTypeOptionsHtml(selectedType){
+function buildCopyReqTypeOptions(){
   return Object.keys(CASE_TYPE_MAP).map(function(t){
-    return '<option value="' + t + '"' + (t === selectedType ? ' selected' : '') + '>' + t + '</option>';
-  }).join('');
+    return { value: t, label: t };
+  });
 }
 
-function buildCopyCaseTypeOptionsHtml(reqType, selectedCaseType){
+function buildCopyCaseTypeOptions(reqType){
   const list = CASE_TYPE_MAP[reqType] || [];
   return list.map(function(c){
-    return '<option value="' + c + '"' + (c === selectedCaseType ? ' selected' : '') + '>' + c + '</option>';
-  }).join('');
+    return { value: c, label: c };
+  });
 }
 
 function onCopyBrandChange(){
@@ -1538,9 +1591,8 @@ function onCopyBrandChange(){
   const designerWrap = document.getElementById('copyDesignerWrap');
   const designers = group ? GROUP_DESIGNERS[group] : [];
   if(designers.length > 1){
-    document.getElementById('copyDesigner').innerHTML = designers.map(function(d){
-      return '<option value="' + d + '">' + d + '</option>';
-    }).join('');
+    const designerOptions = designers.map(function(d){ return { value: d, label: d }; });
+    initCsel('copyDesigner', designerOptions, designers[0], function(){ loadCopyDateCounts(); });
     designerWrap.style.display = 'block';
   }else{
     designerWrap.style.display = 'none';
@@ -1550,7 +1602,9 @@ function onCopyBrandChange(){
 
 function onCopyReqTypeChange(){
   const reqType = document.getElementById('copyReqType').value;
-  document.getElementById('copyCaseType').innerHTML = buildCopyCaseTypeOptionsHtml(reqType, '');
+  const caseOpts = buildCopyCaseTypeOptions(reqType);
+  cselSetOptions('copyCaseType', caseOpts);
+  cselSetValueSilent('copyCaseType', caseOpts[0] ? caseOpts[0].value : '');
 }
 
 function copyCaseAndCreate(data){
@@ -1564,9 +1618,17 @@ function copyCaseAndCreate(data){
 
   document.getElementById('copyModalTitle').textContent = data.isFix ? '修正需求' : '複製並新增';
   document.getElementById('copyModalOrigin').textContent = '原案件：' + (data.reqName || '');
-  document.getElementById('copyBrand').innerHTML = buildCopyBrandOptionsHtml(data.brand);
-  document.getElementById('copyReqType').innerHTML = buildCopyReqTypeOptionsHtml(data.reqType);
-  document.getElementById('copyCaseType').innerHTML = buildCopyCaseTypeOptionsHtml(data.reqType, data.caseType);
+
+  const brandOpts = buildCopyBrandOptions();
+  initCsel('copyBrand', brandOpts, data.brand, onCopyBrandChange);
+
+  const reqTypeOpts = buildCopyReqTypeOptions();
+  initCsel('copyReqType', reqTypeOpts, data.reqType, onCopyReqTypeChange);
+
+  const caseTypeOpts = buildCopyCaseTypeOptions(data.reqType);
+  const caseTypeMatch = caseTypeOpts.filter(function(o){ return o.value === data.caseType; })[0];
+  initCsel('copyCaseType', caseTypeOpts, caseTypeMatch ? data.caseType : (caseTypeOpts[0] ? caseTypeOpts[0].value : ''), null);
+
   document.getElementById('copyReqName').value = '';
   document.getElementById('copyReqPerson').value = data.reqPerson || '';
   document.getElementById('copyChannel').value = data.channel || '';
@@ -1580,9 +1642,9 @@ function copyCaseAndCreate(data){
   const designerWrap = document.getElementById('copyDesignerWrap');
   const designers = group ? GROUP_DESIGNERS[group] : [];
   if(designers.length > 1){
-    document.getElementById('copyDesigner').innerHTML = designers.map(function(d){
-      return '<option value="' + d + '"' + (d === data.handler ? ' selected' : '') + '>' + d + '</option>';
-    }).join('');
+    const designerOptions = designers.map(function(d){ return { value: d, label: d }; });
+    const designerMatch = designers.indexOf(data.handler) !== -1;
+    initCsel('copyDesigner', designerOptions, designerMatch ? data.handler : designers[0], function(){ loadCopyDateCounts(); });
     designerWrap.style.display = 'block';
   }else{
     designerWrap.style.display = 'none';
@@ -2213,14 +2275,23 @@ function initResizeHandle(cardId, handleId){
   const card = document.getElementById(cardId);
   const handle = document.getElementById(handleId);
   if(!card || !handle) return;
-  let lastWidth = card.clientWidth;
-  let lastHeight = card.clientHeight;
-  let firstCall = true;
+  let lastWidth = 0;
+  let lastHeight = 0;
+  let hasBaseline = false;
+
   new ResizeObserver(function(){
-    if(firstCall){
-      firstCall = false;
+    // 面板還藏在 display:none 裡時量到的是 0，不能拿來當基準值
+    if(card.offsetParent === null){
+      hasBaseline = false;
+      return;
+    }
+    // 面板剛從隱藏變顯示：這是第一次量到真實尺寸，不算使用者調整過，
+    // 順便把 was-resized 拿掉，讓每次打開面板都能重新播放淡入閃爍
+    if(!hasBaseline){
+      hasBaseline = true;
       lastWidth = card.clientWidth;
       lastHeight = card.clientHeight;
+      handle.classList.remove('was-resized');
       return;
     }
     if(card.clientWidth !== lastWidth || card.clientHeight !== lastHeight){
