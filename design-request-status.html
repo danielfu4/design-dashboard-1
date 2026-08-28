@@ -357,14 +357,56 @@
   .modal-overlay.show{display:flex;}
   .modal-card{
     background:#fff;border-radius:20px;box-shadow:0 20px 50px rgba(20,20,30,.3);
-    padding:26px 26px 22px;max-width:380px;width:100%;
-    max-height:calc(100vh - 40px);overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
+    width:min(380px, calc(100vw - 40px));
+    max-width:calc(100vw - 40px);min-width:300px;
+    height:min(560px, calc(100vh - 40px));
+    min-height:280px;max-height:calc(100vh - 40px);
+    display:flex;flex-direction:column;overflow:hidden;
+    resize:both;position:relative;
   }
+  .modal-card::-webkit-resizer{display:none;}
   .modal-head{
-    position:sticky;top:0;background:#fff;z-index:1;
-    display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;
+    flex:none;padding:26px 26px 18px;background:#fff;
+    display:flex;justify-content:space-between;align-items:flex-start;
   }
+  .modal-body-wrap{flex:1;min-height:0;position:relative;display:flex;}
+  .modal-scroll{
+    flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    padding:0 26px 26px;
+    scrollbar-width:none;
+  }
+  .modal-scroll::-webkit-scrollbar{display:none;}
+
+  /* 自訂捲軸：只有滑動或hover時才淡入顯示，停止一段時間後淡出 */
+  .custom-scrollbar-track{
+    position:absolute;top:0;right:3px;bottom:0;width:6px;z-index:2;pointer-events:none;
+  }
+  .custom-scrollbar-thumb{
+    position:absolute;right:0;width:6px;border-radius:999px;background:rgba(0,0,0,.28);
+    opacity:0;transition:opacity .3s ease;
+  }
+  .custom-scrollbar-thumb.show{opacity:1;}
+
+  /* 拉伸把手：面板右下角，灰色。開啟時淡入並閃爍3次；拖曳調整過大小後消失，滑鼠移到面板上才會再出現 */
+  .resize-handle{
+    position:absolute;right:0;bottom:0;width:32px;height:32px;
+    display:flex;align-items:flex-end;justify-content:flex-end;padding:5px;
+    color:#9A9AA3;pointer-events:none;
+    opacity:0;animation:resizeHandleIntro 2.2s ease forwards;
+  }
+  .resize-handle svg{transform:rotate(180deg);transform-origin:50% 50%;}
+  @keyframes resizeHandleIntro{
+    0%{opacity:0;}
+    14%{opacity:1;}
+    28%{opacity:.15;}
+    42%{opacity:1;}
+    56%{opacity:.15;}
+    70%{opacity:1;}
+    84%{opacity:.15;}
+    100%{opacity:1;}
+  }
+  .resize-handle.was-resized{animation:none;opacity:0;transition:opacity .25s ease;}
+  .modal-card:hover .resize-handle.was-resized{opacity:1;}
   .modal-title{font-size:16px;font-weight:800;}
   .modal-sub{font-size:12px;color:var(--ink-soft);margin-top:3px;}
   .modal-close{border:none;background:none;font-size:18px;color:var(--ink-faint);cursor:pointer;line-height:1;}
@@ -509,7 +551,7 @@
 </div>
 
 <div class="modal-overlay" id="rateModalOverlay" onclick="if(event.target===this) closeRateModal()">
-  <div class="modal-card">
+  <div class="modal-card" id="rateModalCard">
     <div class="modal-head">
       <div>
         <div class="modal-title">結案評分</div>
@@ -522,6 +564,8 @@
       </div>
     </div>
 
+    <div class="modal-body-wrap">
+    <div class="modal-scroll">
     <div class="star-row">
       <div class="crit-label">品質</div>
       <div class="star-picker" data-crit="quality"></div>
@@ -556,11 +600,21 @@
       </div>
     </button>
     <div class="modal-msg" id="rateModalMsg"></div>
+    </div>
+    <div class="custom-scrollbar-track">
+      <div class="custom-scrollbar-thumb" id="rateScrollThumb"></div>
+    </div>
+    </div>
+    <div class="resize-handle" id="rateResizeHandle">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round">
+        <path d="M7 21 A14 14 0 0 1 21 7"></path>
+      </svg>
+    </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="supplementModalOverlay" onclick="if(event.target===this) closeSupplementModal()">
-  <div class="modal-card">
+  <div class="modal-card" id="supplementModalCard">
     <div class="modal-head">
       <div>
         <div class="modal-title">補充內容</div>
@@ -568,17 +622,29 @@
       </div>
       <button class="modal-close" onclick="closeSupplementModal()">✕</button>
     </div>
+    <div class="modal-body-wrap">
+    <div class="modal-scroll">
     <div class="field-simple">
       <label>要補充的內容（例如：新增素材連結、補充文案、其他說明）</label>
       <textarea id="supplementContent" placeholder="請輸入要補充的內容" style="min-height:120px;"></textarea>
     </div>
     <button class="modal-submit" id="supplementSubmitBtn" onclick="submitSupplement()">送出補充</button>
     <div class="modal-msg" id="supplementModalMsg"></div>
+    </div>
+    <div class="custom-scrollbar-track">
+      <div class="custom-scrollbar-thumb" id="supplementScrollThumb"></div>
+    </div>
+    </div>
+    <div class="resize-handle" id="supplementResizeHandle">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round">
+        <path d="M7 21 A14 14 0 0 1 21 7"></path>
+      </svg>
+    </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="editDateModalOverlay" onclick="if(event.target===this) closeEditDateModal()">
-  <div class="modal-card">
+  <div class="modal-card" id="editDateModalCard">
     <div class="modal-head">
       <div>
         <div class="modal-title">修改需求日期</div>
@@ -586,6 +652,8 @@
       </div>
       <button class="modal-close" onclick="closeEditDateModal()">✕</button>
     </div>
+    <div class="modal-body-wrap">
+    <div class="modal-scroll">
     <div class="field-simple">
       <label>目前需求日期</label>
       <div id="editDateCurrent" style="font-size:13.5px;font-weight:700;color:var(--ink);padding:4px 0 10px;"></div>
@@ -614,11 +682,21 @@
     </div>
     <button class="modal-submit" id="editDateSubmitBtn" onclick="submitEditDate()">確認修改</button>
     <div class="modal-msg" id="editDateModalMsg"></div>
+    </div>
+    <div class="custom-scrollbar-track">
+      <div class="custom-scrollbar-thumb" id="editDateScrollThumb"></div>
+    </div>
+    </div>
+    <div class="resize-handle" id="editDateResizeHandle">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round">
+        <path d="M7 21 A14 14 0 0 1 21 7"></path>
+      </svg>
+    </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="copyModalOverlay" onclick="if(event.target===this) closeCopyModal()">
-  <div class="modal-card">
+  <div class="modal-card" id="copyModalCard">
     <div class="modal-head">
       <div>
         <div class="modal-title" id="copyModalTitle">複製並新增</div>
@@ -626,6 +704,8 @@
       </div>
       <button class="modal-close" onclick="closeCopyModal()">✕</button>
     </div>
+    <div class="modal-body-wrap">
+    <div class="modal-scroll">
     <div class="field-simple">
       <label>品牌 <span style="color:#B3324A;">*</span></label>
       <select id="copyBrand" onchange="onCopyBrandChange()"></select>
@@ -687,6 +767,16 @@
     </label>
     <button class="modal-submit" id="copySubmitBtn" onclick="submitCopiedCase()">送出</button>
     <div class="modal-msg" id="copyModalMsg"></div>
+    </div>
+    <div class="custom-scrollbar-track">
+      <div class="custom-scrollbar-thumb" id="copyScrollThumb"></div>
+    </div>
+    </div>
+    <div class="resize-handle" id="copyResizeHandle">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round">
+        <path d="M7 21 A14 14 0 0 1 21 7"></path>
+      </svg>
+    </div>
   </div>
 </div>
 
@@ -2085,6 +2175,71 @@ function scrollToTop(){
   }, { threshold: 0 });
   observer.observe(anchor);
 })();
+
+// ---- 視窗（結案評分／補充內容／修改需求日期／複製並新增）共用：自訂捲軸，滑動或hover才淡入 ----
+function initModalScrollbar(scrollSelector, thumbId){
+  const scrollEl = document.querySelector(scrollSelector);
+  const thumb = document.getElementById(thumbId);
+  if(!scrollEl || !thumb) return;
+  const track = thumb.parentElement;
+  let hideTimer = null;
+
+  function updateThumb(){
+    const trackHeight = track.clientHeight;
+    const contentHeight = scrollEl.scrollHeight;
+    const visibleHeight = scrollEl.clientHeight;
+    if(contentHeight <= visibleHeight){
+      thumb.style.height = '0px';
+      return;
+    }
+    const thumbHeight = Math.max(24, (visibleHeight / contentHeight) * trackHeight);
+    const maxThumbTop = trackHeight - thumbHeight;
+    const scrollRatio = scrollEl.scrollTop / (contentHeight - visibleHeight);
+    thumb.style.height = thumbHeight + 'px';
+    thumb.style.top = (scrollRatio * maxThumbTop) + 'px';
+  }
+  function showThumb(){
+    thumb.classList.add('show');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(function(){ thumb.classList.remove('show'); }, 700);
+  }
+  scrollEl.addEventListener('scroll', function(){ updateThumb(); showThumb(); });
+  new ResizeObserver(function(){ updateThumb(); }).observe(scrollEl);
+  updateThumb();
+}
+
+// ---- 四個視窗共用：拉伸把手，拖曳調整過大小後隱藏，滑鼠移到面板上才會再出現 ----
+function initResizeHandle(cardId, handleId){
+  const card = document.getElementById(cardId);
+  const handle = document.getElementById(handleId);
+  if(!card || !handle) return;
+  let lastWidth = card.clientWidth;
+  let lastHeight = card.clientHeight;
+  let firstCall = true;
+  new ResizeObserver(function(){
+    if(firstCall){
+      firstCall = false;
+      lastWidth = card.clientWidth;
+      lastHeight = card.clientHeight;
+      return;
+    }
+    if(card.clientWidth !== lastWidth || card.clientHeight !== lastHeight){
+      handle.classList.add('was-resized');
+    }
+    lastWidth = card.clientWidth;
+    lastHeight = card.clientHeight;
+  }).observe(card);
+}
+
+initModalScrollbar('#rateModalOverlay .modal-scroll', 'rateScrollThumb');
+initModalScrollbar('#supplementModalOverlay .modal-scroll', 'supplementScrollThumb');
+initModalScrollbar('#editDateModalOverlay .modal-scroll', 'editDateScrollThumb');
+initModalScrollbar('#copyModalOverlay .modal-scroll', 'copyScrollThumb');
+
+initResizeHandle('rateModalCard', 'rateResizeHandle');
+initResizeHandle('supplementModalCard', 'supplementResizeHandle');
+initResizeHandle('editDateModalCard', 'editDateResizeHandle');
+initResizeHandle('copyModalCard', 'copyResizeHandle');
 </script>
 </body>
 </html>
