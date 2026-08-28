@@ -1821,6 +1821,8 @@ document.addEventListener('click', function(e){
 });
 
 function closeCopyModal(){
+  const ok = confirm('確定要關閉這個視窗嗎？目前輸入的內容不會被保留。');
+  if(!ok) return;
   document.getElementById('copyModalOverlay').classList.remove('show');
 }
 
