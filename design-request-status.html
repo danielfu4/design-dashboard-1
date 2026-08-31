@@ -1705,6 +1705,11 @@ let copyCalendarDate = new Date();
 
 function pad2(n){ return n < 10 ? '0' + n : '' + n; }
 function toDateStr(y,m,d){ return y + '-' + pad2(m+1) + '-' + pad2(d); }
+function tomorrowDateStr(){
+  const t = new Date();
+  t.setDate(t.getDate() + 1);
+  return toDateStr(t.getFullYear(), t.getMonth(), t.getDate());
+}
 function normalizeDateStr(str){
   if(!str) return null;
   const m = String(str).match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
@@ -2076,6 +2081,7 @@ function loadEditDateCounts(){
 function editIsDateBlocked(dateStr){
   const lockMap = editLockedDates[currentEditHandler] || {};
   if(lockMap.hasOwnProperty(dateStr)) return true;
+  if(dateStr === tomorrowDateStr()) return true; // 隔天不可選，至少要留一天以上的前置作業時間
   const counts = (editDateCounts[currentEditHandler] || {});
   return (counts[dateStr] || 0) >= DAILY_LIMIT;
 }

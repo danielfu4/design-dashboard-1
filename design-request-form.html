@@ -1328,13 +1328,23 @@ function loadDateCounts(){
   .catch(function(){ window.__lockedByDesigner={}; renderCalendar(); });
 }
 
+function tomorrowDateStr(){
+  const t = new Date();
+  t.setDate(t.getDate() + 1);
+  return toDateStr(t.getFullYear(), t.getMonth(), t.getDate());
+}
+
 function isDateBlocked(dateStr){
   const handler = currentHandler();
   const lockMap = window.__lockedByDesigner || {};
   if(handler && lockMap[handler] && lockMap[handler].hasOwnProperty(dateStr)){
     return true; // 設計師手動封鎖的日期，優先權最高，急件也不能跳過
   }
-  if(document.getElementById('isUrgent').checked) return false; // 急件可跳過每日上限（但跳不過手動封鎖）
+  const isUrgent = document.getElementById('isUrgent').checked;
+  if(!isUrgent && dateStr === tomorrowDateStr()){
+    return true; // 非急件：隔天不可選，至少要留一天以上的前置作業時間
+  }
+  if(isUrgent) return false; // 急件可跳過每日上限、也可以選隔天（但跳不過手動封鎖）
   const g = dateCounts[handler] || {};
   return (g[dateStr] || 0) >= DAILY_LIMIT;
 }
