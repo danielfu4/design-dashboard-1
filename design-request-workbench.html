@@ -234,6 +234,37 @@
   .case-top-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
   .score-stars{display:flex;gap:2px;}
   .score-stars svg{display:block;}
+
+  /* 評分星星 hover／點擊 顯示四項細分評分 */
+  .score-stars-wrap{position:relative;cursor:pointer;}
+  .rating-tooltip{
+    position:absolute;top:calc(100% + 10px);right:0;z-index:20;
+    background:var(--ink);color:#fff;border-radius:12px;padding:12px 14px;
+    box-shadow:0 12px 28px rgba(20,20,30,.3);
+    min-width:150px;
+    opacity:0;visibility:hidden;transform:translateY(-6px);
+    transition:opacity .18s ease, transform .18s ease, visibility .18s ease;
+    pointer-events:none;
+  }
+  /* 桌機：真正有滑鼠可以 hover 的裝置，滑過去就顯示 */
+  @media (hover:hover) and (pointer:fine){
+    .score-stars-wrap:hover .rating-tooltip{
+      opacity:1;visibility:visible;transform:translateY(0);
+    }
+  }
+  /* 手機／觸控：改成點一下切換顯示 */
+  .rating-tooltip.show{opacity:1;visibility:visible;transform:translateY(0);}
+  .rating-tooltip::after{
+    content:'';position:absolute;bottom:100%;right:14px;
+    border:6px solid transparent;border-bottom-color:var(--ink);
+  }
+  .rating-tooltip-row{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;
+    font-size:12px;padding:3px 0;
+  }
+  .rating-tooltip-label{color:#B8B8C0;font-weight:600;}
+  .rating-tooltip-stars{display:flex;gap:1px;}
+  .rating-tooltip-stars svg{display:block;}
   .reply-btn{
     display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--card);color:var(--ink);
     font-family:inherit;font-weight:700;font-size:11.5px;padding:5px 11px;border-radius:999px;cursor:pointer;
@@ -803,15 +834,35 @@ function scoreColor(score){
 
 const SCORE_STAR_PATH = 'M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z';
 
-function scoreStarsHtml(score){
-  const filled = Math.round(score / 20);
-  let html = '<div class="score-stars">';
+function starsHtml(score5, size){
+  size = size || 16;
+  const filled = Math.round(score5);
+  let html = '';
   for(let i=1;i<=5;i++){
-    html += '<svg viewBox="0 0 576 512" width="16" height="16" xmlns="http://www.w3.org/2000/svg" style="fill:' +
+    html += '<svg viewBox="0 0 576 512" width="' + size + '" height="' + size + '" xmlns="http://www.w3.org/2000/svg" style="fill:' +
       (i <= filled ? '#F5A623' : '#E4E4E8') + '"><path d="' + SCORE_STAR_PATH + '"></path></svg>';
   }
-  html += '</div>';
   return html;
+}
+
+function scoreStarsHtml(score, dims){
+  const avgFilled = score / 20;
+  const rows = [
+    {label:'品質', val:Number(dims.quality) || 0},
+    {label:'效率', val:Number(dims.efficiency) || 0},
+    {label:'溝通', val:Number(dims.communication) || 0},
+    {label:'價格', val:Number(dims.price) || 0}
+  ].map(function(d){
+    return '<div class="rating-tooltip-row">' +
+      '<span class="rating-tooltip-label">' + d.label + '</span>' +
+      '<span class="rating-tooltip-stars">' + starsHtml(d.val, 12) + '</span>' +
+    '</div>';
+  }).join('');
+
+  return '<div class="score-stars-wrap">' +
+    '<div class="score-stars">' + starsHtml(avgFilled, 16) + '</div>' +
+    '<div class="rating-tooltip">' + rows + '</div>' +
+  '</div>';
 }
 
 function statusInfo(status){
@@ -1167,7 +1218,7 @@ function renderCaseCard(m){
   const replyBtnHtml = hasRating
     ? '<button class="reply-btn' + (m.designerReply ? ' has-reply' : '') + '" onclick="openReplyModal(\'' + m.id + '\',\'' + (m.reqName || '').replace(/'/g,"\\'") + '\')">' + replyIconSvg + (m.designerReply ? '已回覆' : '評價回覆') + '</button>'
     : '';
-  const scoreDisplayHtml = hasRating ? scoreStarsHtml(score) : '';
+  const scoreDisplayHtml = hasRating ? scoreStarsHtml(score, {quality:m.quality, efficiency:m.efficiency, communication:m.communication, price:m.price}) : '';
 
   return (
     '<div class="case-card' + (isUrgent ? ' urgent' : '') + '" id="card-' + m.id + '">' +
@@ -1284,6 +1335,20 @@ function toggleCaseBody(id){
 }
 
 // 收合所有目前已展開的案件卡片（懸浮按鈕用）
+// ---- 評分星星：點擊切換顯示四項細分評分（手機／觸控用；桌機另外用 hover 顯示）----
+document.addEventListener('click', function(e){
+  const wrap = e.target.closest('.score-stars-wrap');
+  if(wrap){
+    e.stopPropagation();
+    const tooltip = wrap.querySelector('.rating-tooltip');
+    const isOpen = tooltip.classList.contains('show');
+    document.querySelectorAll('.rating-tooltip.show').forEach(function(t){ t.classList.remove('show'); });
+    if(!isOpen) tooltip.classList.add('show');
+  }else{
+    document.querySelectorAll('.rating-tooltip.show').forEach(function(t){ t.classList.remove('show'); });
+  }
+});
+
 function collapseAllCases(){
   document.querySelectorAll('.case-body.open').forEach(function(body){
     body.classList.remove('open');
