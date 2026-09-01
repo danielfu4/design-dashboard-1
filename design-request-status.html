@@ -948,6 +948,8 @@ document.addEventListener('click', function(e){
 function initCsel(id, options, value, onChange){
   const opt = options.filter(function(o){ return o.value === value; })[0];
   cselState[id] = { options: options, value: value, placeholder: options[0] ? options[0].label : '', onChange: onChange };
+  const hiddenEl = document.getElementById(id);
+  if(hiddenEl) hiddenEl.value = value || '';
   const textEl = document.getElementById('csel_' + id + '_text');
   if(textEl) textEl.textContent = opt ? opt.label : (options[0] ? options[0].label : '');
   renderCselPanel(id);
