@@ -1452,6 +1452,7 @@ loadDateCounts();
 
 // ---- 填單日期日曆（同樣式，不套用鎖定機制）----
 let fillCalendarDate = new Date();
+let fillDateManuallySet = false; // 使用者有沒有主動點過日曆選日期（補單用）；沒有的話送出時一律用當下真實日期
 
 function toggleFillCalendar(){
   const popup = document.getElementById('fillCalendarPopup');
@@ -1486,6 +1487,7 @@ function selectFillDate(dateStr){
   document.getElementById('fillDate').value = dateStr;
   document.getElementById('fillDateDisplay').value = dateStr;
   document.getElementById('fillCalendarPopup').classList.remove('show');
+  fillDateManuallySet = true;
   renderFillCalendar();
 }
 function initFillDate(){
@@ -1725,6 +1727,13 @@ function buildPayload(){
   const urgentCat = document.getElementById('urgentReasonCat').value;
   const urgentOther = document.getElementById('urgentOtherText').value;
 
+  // 填單日期：使用者有主動點日曆選過（補單情境）就用他選的；
+  // 沒動過的話一律用「這一刻」重新算，避免表單開著過夜、隔天才送出時記錄到舊日期
+  const now = new Date();
+  const realFillDate = fillDateManuallySet
+    ? document.getElementById('fillDate').value
+    : toDateStr(now.getFullYear(), now.getMonth(), now.getDate());
+
   return {
     group: currentGroup,
     handler: currentHandler(),
@@ -1733,7 +1742,7 @@ function buildPayload(){
     caseType: document.getElementById('caseType').value,
     reqName: document.getElementById('reqName').value,
     reqPerson: document.getElementById('reqPerson').value,
-    fillDate: document.getElementById('fillDate').value,
+    fillDate: realFillDate,
     dueDate: document.getElementById('dueDate').value,
     materials: document.getElementById('materials').value,
     channel: document.getElementById('channel').value,
