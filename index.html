@@ -1532,10 +1532,10 @@ function renderUrgentStats(statsByPerson){
 function computeUrgentStats(rows){
   const statsByPerson = {};
   rows.forEach(function(r){
-    if((r.is_urgent||'') !== 'Y' || !r.req_person) return;
-    const person = r.req_person.trim();
-    const cat = r.urgent_reason_cat || '';
-    const other = r.urgent_reason_other || '';
+    if((r.isUrgent||'') !== 'Y' || !r.reqPerson) return;
+    const person = r.reqPerson.trim();
+    const cat = r.urgentReasonCat || '';
+    const other = r.urgentReasonOther || '';
     const reason = (cat === '其他' && other) ? other : cat;
     if(!statsByPerson[person]) statsByPerson[person] = { count:0, reasons:[] };
     statsByPerson[person].count++;
@@ -1576,6 +1576,10 @@ function parseCaseRow(r){
     price:         price,
     rating:        rating,
     reason:        r.rating_reason || '',
+    isUrgent:         r.is_urgent || '',
+    urgentReasonCat:  r.urgent_reason_cat || '',
+    urgentReasonOther:r.urgent_reason_other || '',
+    reqPerson:        r.req_person || '',
     _source:       'cases'
   };
 }
@@ -1654,7 +1658,6 @@ function loadAll(manual){
       if(c) allCases.push(c);
     });
 
-    renderUrgentStats(computeUrgentStats(casesRows));
     if(allCases.length === 0){
       showError('Supabase 沒有讀到任何案件資料。');
     }
@@ -1679,6 +1682,7 @@ function applyFilterAndRender(){
   if(currentMonth !== 'all'){
     filtered = filtered.filter(function(c){ return c.month === Number(currentMonth); });
   }
+  renderUrgentStats(computeUrgentStats(filtered));
   render(filtered, designerFiltered);
 }
 
