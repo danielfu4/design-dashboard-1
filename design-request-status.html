@@ -1299,12 +1299,16 @@ function scrollToDeepLinkedReqCase(){
 }
 
 // 網址帶 ?name=<姓名>&case=<id> 時，自動帶入姓名並查詢（來自 LINE 通知的「查看」按鈕）
+// 用 setTimeout 延後執行，確保下面才宣告的 STAFF_LIST 等變數已經讀取完成，
+// 避免在還沒宣告完成前就呼叫 doSearch() 導致整段程式碼直接噴錯、後面全部停擺
 (function(){
   const params = new URLSearchParams(window.location.search);
   const autoName = params.get('name');
   if(autoName){
-    document.getElementById('searchName').value = autoName;
-    doSearch();
+    setTimeout(function(){
+      document.getElementById('searchName').value = autoName;
+      doSearch();
+    }, 0);
   }
 })();
 
