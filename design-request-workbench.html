@@ -217,6 +217,49 @@
   .stack-status-label{font-size:15px;font-weight:800;}
   .stack-count{font-size:12.5px;font-weight:700;opacity:.8;}
   .stack-chevron{display:flex;}
+  .stack-front-right{display:flex;align-items:center;gap:10px;}
+
+  /* ---- 通知中心：鈴鐺、角標、下拉清單 ---- */
+  .stack-card{position:relative;z-index:1;}
+  .stack-card.notif-open{z-index:50;}
+  .notif-bell-wrap{position:relative;}
+  .notif-bell{
+    width:32px;height:32px;border-radius:50%;border:none;background:var(--hover-bg);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-soft);
+    transition:background-color .15s ease, color .15s ease;
+  }
+  .notif-bell:hover{background:var(--line);color:var(--ink);}
+  .notif-bell.has-unread{color:var(--accent);background:#EAF1FF;}
+  html[data-theme="dark"] .notif-bell.has-unread{background:rgba(91,141,239,.18);}
+  .notif-badge{
+    position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;
+    background:#FF3B30;color:#fff;font-size:11px;font-weight:700;
+    border-radius:999px;display:flex;align-items:center;justify-content:center;
+    line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.2);
+  }
+  .notif-panel{
+    position:absolute;top:calc(100% + 8px);right:0;width:300px;z-index:30;
+    background:var(--card);border-radius:14px;box-shadow:0 12px 32px rgba(20,20,30,.18);
+    padding:8px;opacity:0;visibility:hidden;transform:translateY(-6px);
+    transition:opacity .18s ease, transform .18s ease, visibility .18s ease;
+  }
+  .notif-panel.show{opacity:1;visibility:visible;transform:translateY(0);}
+  .notif-item{
+    display:flex;gap:10px;padding:10px 10px;border-radius:10px;cursor:pointer;
+    margin-bottom:4px;transition:background-color .12s ease;
+  }
+  .notif-item:last-child{margin-bottom:0;}
+  .notif-item:hover{background:var(--hover-bg);}
+  .notif-item.unread{background:var(--hover-bg);}
+  .notif-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;margin-top:6px;}
+  .notif-item.read .notif-dot{background:transparent;}
+  .notif-item-body{flex:1;min-width:0;}
+  .notif-item-title{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:2px;}
+  .notif-item-desc{font-size:12px;color:var(--ink-soft);line-height:1.4;}
+  .notif-item-time{font-size:10.5px;color:var(--ink-faint);margin-top:3px;}
+  .notif-empty{padding:24px 12px;text-align:center;font-size:12.5px;color:var(--ink-faint);}
+  .notif-panel-footer{border-top:1px solid var(--line);margin-top:4px;padding:8px 10px 2px;display:flex;justify-content:flex-end;}
+  .notif-mark-all{border:none;background:none;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
   .case-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
   .case-name{font-size:16px;font-weight:800;}
   .case-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
@@ -1109,6 +1152,7 @@ function applyFilterAndRender(){
 
   initCaseFieldVisibility();
   scrollToDeepLinkedCase();
+  loadNotifications();
 }
 
 const STATUS_ORDER = ['待處理','進行中','請校稿','停案','已完成','退件'];
@@ -1125,6 +1169,21 @@ function renderStatusGroup(status, groupCases, expanded){
     return '<div class="status-group expanded" id="' + groupId + '">' + listHtml + '</div>';
   }
 
+  const NOTIF_TYPE_BY_STATUS = { '待處理':'new_case', '請校稿':'supplement', '已完成':'rating' };
+  const notifType = NOTIF_TYPE_BY_STATUS[status];
+  const notifBellHtml = notifType ? (
+    '<div class="notif-bell-wrap">' +
+      '<button class="notif-bell" onclick="event.stopPropagation(); toggleNotif(\'' + notifType + '\')">' +
+        '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path>' +
+          '<path d="M13.73 21a2 2 0 0 1-3.46 0"></path>' +
+        '</svg>' +
+        '<span class="notif-badge" id="notifBadge-' + notifType + '" style="display:none;">0</span>' +
+      '</button>' +
+      '<div class="notif-panel" id="notifPanel-' + notifType + '" onclick="event.stopPropagation();"></div>' +
+    '</div>'
+  ) : '';
+
   const stackHtml =
     '<div class="stack-card" onclick="toggleStatusGroup(\'' + groupId + '\')">' +
       '<div class="stack-front" style="background:var(--card);">' +
@@ -1132,7 +1191,10 @@ function renderStatusGroup(status, groupCases, expanded){
           '<span class="stack-status-label" style="color:' + si.fg + ';">' + si.label + '</span>' +
           '<span class="stack-count" style="color:' + si.fg + ';">' + groupCases.length + ' 件</span>' +
         '</div>' +
-        '<span class="stack-chevron" style="color:var(--ink-faint);"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>' +
+        '<div class="stack-front-right">' +
+          notifBellHtml +
+          '<span class="stack-chevron" style="color:var(--ink-faint);"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>' +
+        '</div>' +
       '</div>' +
     '</div>';
 
@@ -1152,6 +1214,148 @@ function renderStatusGroup(status, groupCases, expanded){
 function toggleStatusGroup(groupId){
   const el = document.getElementById(groupId);
   if(el) el.classList.toggle('expanded');
+}
+
+// ---- 通知中心：新案件／案件補充／案件評分，分別對應待處理／請校稿／已完成 ----
+const NOTIF_TYPES = ['new_case', 'supplement', 'rating'];
+let notifCache = { new_case: [], supplement: [], rating: [] };
+
+function timeAgo(isoStr){
+  const diffMs = Date.now() - new Date(isoStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if(mins < 1) return '剛剛';
+  if(mins < 60) return mins + ' 分鐘前';
+  const hrs = Math.floor(mins / 60);
+  if(hrs < 24) return hrs + ' 小時前';
+  const days = Math.floor(hrs / 24);
+  if(days < 2) return '昨天';
+  return days + ' 天前';
+}
+
+function loadNotifications(){
+  const handler = CURRENT_DESIGNER;
+  if(!handler) return;
+  fetch(sbUrl('notifications', 'handler=eq.' + encodeURIComponent(handler) + '&order=created_at.desc&limit=30'), { headers: SUPABASE_HEADERS })
+    .then(function(r){ return r.json(); })
+    .then(function(rows){
+      NOTIF_TYPES.forEach(function(type){
+        notifCache[type] = (rows || []).filter(function(r){ return r.type === type; });
+        renderNotifPanel(type);
+      });
+    })
+    .catch(function(err){ console.warn('通知讀取失敗：', err); });
+}
+
+function renderNotifPanel(type){
+  const panel = document.getElementById('notifPanel-' + type);
+  const badge = document.getElementById('notifBadge-' + type);
+  const bell = badge ? badge.closest('.notif-bell') : null;
+  if(!panel) return;
+
+  const items = notifCache[type] || [];
+  const unreadCount = items.filter(function(n){ return !n.is_read; }).length;
+
+  if(badge){
+    if(unreadCount > 0){
+      badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+      badge.style.display = 'flex';
+      if(bell) bell.classList.add('has-unread');
+    }else{
+      badge.style.display = 'none';
+      if(bell) bell.classList.remove('has-unread');
+    }
+  }
+
+  if(items.length === 0){
+    panel.innerHTML = '<div class="notif-empty">目前沒有通知</div>';
+    return;
+  }
+
+  const itemsHtml = items.map(function(n){
+    return '<div class="notif-item ' + (n.is_read ? 'read' : 'unread') + '" onclick="onNotifItemClick(\'' + n.id + '\',\'' + type + '\',\'' + n.case_id + '\')">' +
+      '<div class="notif-dot"></div>' +
+      '<div class="notif-item-body">' +
+        '<div class="notif-item-title">' + n.title + '</div>' +
+        (n.description ? '<div class="notif-item-desc">' + n.description + '</div>' : '') +
+        '<div class="notif-item-time">' + timeAgo(n.created_at) + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  const hasUnread = unreadCount > 0;
+  panel.innerHTML = itemsHtml +
+    (hasUnread ? '<div class="notif-panel-footer"><button class="notif-mark-all" onclick="event.stopPropagation(); markAllRead(\'' + type + '\')">全部標記已讀</button></div>' : '');
+}
+
+function closeAllNotifPanels(){
+  document.querySelectorAll('.notif-panel').forEach(function(p){
+    p.classList.remove('show');
+    const card = p.closest('.stack-card');
+    if(card) card.classList.remove('notif-open');
+  });
+}
+document.addEventListener('click', function(){ closeAllNotifPanels(); });
+
+function toggleNotif(type){
+  const panel = document.getElementById('notifPanel-' + type);
+  if(!panel) return;
+  const isOpen = panel.classList.contains('show');
+  closeAllNotifPanels();
+  if(!isOpen){
+    panel.classList.add('show');
+    const card = panel.closest('.stack-card');
+    if(card) card.classList.add('notif-open');
+  }
+}
+
+function markNotifRead(id, type){
+  const item = (notifCache[type] || []).find(function(n){ return n.id === id; });
+  if(!item || item.is_read) return;
+  item.is_read = true;
+  renderNotifPanel(type);
+  fetch(sbUrl('notifications', 'id=eq.' + id), {
+    method: 'PATCH',
+    headers: SUPABASE_HEADERS,
+    body: JSON.stringify({ is_read: true })
+  }).catch(function(err){ console.warn('標記已讀失敗：', err); });
+}
+
+function markAllRead(type){
+  const handler = CURRENT_DESIGNER;
+  const unreadIds = (notifCache[type] || []).filter(function(n){ return !n.is_read; }).map(function(n){ return n.id; });
+  if(unreadIds.length === 0) return;
+  unreadIds.forEach(function(id){
+    const item = notifCache[type].find(function(n){ return n.id === id; });
+    if(item) item.is_read = true;
+  });
+  renderNotifPanel(type);
+  fetch(sbUrl('notifications', 'handler=eq.' + encodeURIComponent(handler) + '&type=eq.' + type + '&is_read=eq.false'), {
+    method: 'PATCH',
+    headers: SUPABASE_HEADERS,
+    body: JSON.stringify({ is_read: true })
+  }).catch(function(err){ console.warn('全部標記已讀失敗：', err); });
+}
+
+function onNotifItemClick(id, type, caseId){
+  markNotifRead(id, type);
+  closeAllNotifPanels();
+  goToCaseCard(caseId);
+}
+
+function goToCaseCard(caseId){
+  let attempts = 0;
+  const tryFind = function(){
+    const el = document.getElementById('card-' + caseId);
+    if(el){
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('deep-link-highlight');
+      setTimeout(function(){ el.classList.remove('deep-link-highlight'); }, 2600);
+      return;
+    }
+    attempts++;
+    if(attempts < 6) setTimeout(tryFind, 250);
+  };
+  tryFind();
 }
 
 // ---- LINE 深連結：網址帶 ?case=<id> 時，自動捲動並標亮該案件卡片（只做一次）----
