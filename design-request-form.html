@@ -541,15 +541,46 @@
   .onboard-btn-skip:hover{background:#E2E2E6;}
   .onboard-btn-next{background:var(--ink);color:#fff;}
   .onboard-btn-next:hover{opacity:.88;}
+
+  /* ---- 申請單教學視窗專屬插圖元件 ---- */
+  .art-bg-5{position:absolute;inset:0;background:linear-gradient(135deg,#F3EEFF 0%,#E6DCFF 100%);}
+  .mini-field-label{font-size:9px;font-weight:700;color:var(--ink-soft);margin-bottom:4px;}
+  .mini-field{
+    background:#FAFAFB;border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+    font-size:10.5px;color:var(--ink);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .mini-field:last-child{margin-bottom:0;}
+  .mini-field-chevron{color:var(--ink-faint);font-size:9px;display:flex;align-items:center;}
+  .mini-link-row{display:flex;align-items:center;gap:6px;background:#FAFAFB;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px;}
+  .mini-link-row:last-child{margin-bottom:0;}
+  .mini-link-icon{color:var(--accent);flex:none;display:flex;}
+  .mini-link-text{font-size:9.5px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .mini-urgent-toggle{
+    display:flex;align-items:center;justify-content:space-between;
+    background:#FAFAFB;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;
+  }
+  .mini-urgent-label{font-size:10.5px;font-weight:700;display:flex;align-items:center;gap:6px;}
+  .mini-switch{width:30px;height:17px;border-radius:999px;background:#C4372B;position:relative;flex:none;}
+  .mini-switch::after{content:'';position:absolute;top:2px;right:2px;width:13px;height:13px;border-radius:50%;background:#fff;}
+  .mini-urgent-warn{font-size:9px;color:#B3324A;background:#FBEBEA;border-radius:6px;padding:6px 8px;line-height:1.5;}
+  .mini-submit-btn{
+    background:var(--ink);color:#fff;text-align:center;border-radius:10px;padding:11px 0;
+    font-size:11.5px;font-weight:800;box-shadow:0 10px 22px rgba(20,20,30,.18);
+  }
+  .mini-track-row{display:flex;align-items:center;gap:8px;margin-top:10px;justify-content:center;}
+  .mini-track-chip{
+    display:flex;align-items:center;gap:5px;background:#fff;border-radius:999px;
+    padding:6px 12px;box-shadow:0 4px 12px rgba(20,20,30,.1);font-size:10px;font-weight:700;color:var(--accent);
+  }
 </style>
 </head>
 <body>
 
-<div class="onboard-overlay" id="onboardOverlay">
+<div class="onboard-overlay" id="notifOnboardOverlay">
   <div class="onboard-card">
 
     <div class="onboard-art">
-      <div class="onboard-art-inner" id="artInner">
+      <div class="onboard-art-inner">
 
         <div class="art-slide active" data-slide="0">
           <div class="art-bg-1"></div>
@@ -616,21 +647,114 @@
     </div>
 
     <div class="onboard-body">
-      <div class="onboard-step-label" id="stepLabel">STEP 1 / 4</div>
-      <div class="onboard-title" id="stepTitle">全新功能上線</div>
-      <div class="onboard-desc" id="stepDesc">案件通知中心，讓你不用再一直手動查詢，案件有進度會直接提醒你。</div>
+      <div class="onboard-step-label" id="notifStepLabel">STEP 1 / 4</div>
+      <div class="onboard-title" id="notifStepTitle">全新功能上線</div>
+      <div class="onboard-desc" id="notifStepDesc">案件通知中心，讓你不用再一直手動查詢，案件有進度會直接提醒你。</div>
     </div>
 
-    <div class="onboard-dots" id="onboardDots"></div>
+    <div class="onboard-dots" id="notifOnboardDots"></div>
 
     <label class="onboard-remind">
-      <input type="checkbox" id="onboardDontRemind">
+      <input type="checkbox" id="notifOnboardDontRemind">
       下次不再提醒我
     </label>
 
     <div class="onboard-footer">
-      <button class="onboard-btn onboard-btn-skip" onclick="closeOnboard()">跳過</button>
-      <button class="onboard-btn onboard-btn-next" id="onboardNextBtn" onclick="onboardNextStep()">下一步</button>
+      <button class="onboard-btn onboard-btn-skip" onclick="closeNotifOnboard()">跳過</button>
+      <button class="onboard-btn onboard-btn-next" id="notifOnboardNextBtn" onclick="notifOnboardNextStep()">下一步</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="onboard-overlay" id="formOnboardOverlay">
+  <div class="onboard-card">
+
+    <div class="onboard-art">
+      <div class="onboard-art-inner">
+
+        <div class="art-slide active" data-slide="0">
+          <div class="art-bg-1"></div>
+          <div class="mini-mock" style="width:auto;padding:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 32px rgba(62,123,250,.22);">
+            <svg viewBox="0 0 24 24" width="46" height="46" fill="none" stroke="#3E7BFA" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="art-slide" data-slide="1">
+          <div class="art-bg-2"></div>
+          <div class="mini-mock">
+            <div class="mini-field-label">品牌</div>
+            <div class="mini-field">TCL <span class="mini-field-chevron"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg></span></div>
+            <div class="mini-field-label">需求日期</div>
+            <div class="mini-field">2026-09-25 <span class="mini-field-chevron">▾</span></div>
+          </div>
+        </div>
+
+        <div class="art-slide" data-slide="2">
+          <div class="art-bg-3"></div>
+          <div class="mini-mock">
+            <div class="mini-field-label">提供素材</div>
+            <div class="mini-link-row">
+              <span class="mini-link-icon"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></span>
+              <span class="mini-link-text">https://drive.google.com/...</span>
+            </div>
+            <div class="mini-field-label">案件所需資料</div>
+            <div class="mini-field" style="height:32px;"></div>
+          </div>
+        </div>
+
+        <div class="art-slide" data-slide="3">
+          <div class="art-bg-4"></div>
+          <div class="mini-mock">
+            <div class="mini-urgent-toggle">
+              <span class="mini-urgent-label">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#C4372B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><path d="M12 9v4M12 17h.01"></path></svg>
+                標記為急件
+              </span>
+              <span class="mini-switch"></span>
+            </div>
+            <div class="mini-urgent-warn">急件需要填寫原因，且會排在其他案件前面優先處理</div>
+          </div>
+        </div>
+
+        <div class="art-slide" data-slide="4">
+          <div class="art-bg-5"></div>
+          <div class="mini-mock" style="text-align:center;">
+            <div class="mini-submit-btn" style="display:flex;align-items:center;justify-content:center;gap:6px;">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              送出需求
+            </div>
+            <div class="mini-track-row">
+              <div class="mini-track-chip">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                查詢進度
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="onboard-body">
+      <div class="onboard-step-label" id="formStepLabel">STEP 1 / 5</div>
+      <div class="onboard-title" id="formStepTitle">歡迎使用設計需求單</div>
+      <div class="onboard-desc" id="formStepDesc">花不到一分鐘帶你認識怎麼填單，讓案件更順利地送到設計師手上。</div>
+    </div>
+
+    <div class="onboard-dots" id="formOnboardDots"></div>
+
+    <label class="onboard-remind">
+      <input type="checkbox" id="formOnboardDontRemind">
+      下次不再提醒我
+    </label>
+
+    <div class="onboard-footer">
+      <button class="onboard-btn onboard-btn-skip" onclick="closeFormOnboard()">跳過</button>
+      <button class="onboard-btn onboard-btn-next" id="formOnboardNextBtn" onclick="formOnboardNextStep()">下一步</button>
     </div>
 
   </div>
@@ -648,6 +772,14 @@
         <div class="subtitle">請填寫以下資訊送出設計需求</div>
       </div>
       <div class="header-actions-right">
+        <button type="button" class="price-ref-btn" onclick="openFormOnboard()">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <path d="M12 17h.01"></path>
+          </svg>
+          使用說明
+        </button>
         <button type="button" class="price-ref-btn" onclick="openPriceModal()">
           <svg viewBox="0 0 24 24" width="18" height="18">
             <circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
@@ -2411,65 +2543,159 @@ function submitFeedback(){
 }
 
 // ---- 案件通知中心公告視窗（步驟輪播）----
-const ONBOARD_STORAGE_KEY = 'itd_notif_onboard_dismissed';
-const ONBOARD_STEPS = [
+const NOTIF_ONBOARD_STORAGE_KEY = 'itd_notif_onboard_dismissed';
+const NOTIF_ONBOARD_STEPS = [
   { label: 'STEP 1 / 4', title: '全新功能上線', desc: '案件通知中心，讓你不用再一直手動查詢，案件有進度會直接提醒你。' },
   { label: 'STEP 2 / 4', title: '查詢姓名後就會看到', desc: '在需求查詢頁輸入你的姓名查詢，畫面上方會出現通知鈴鐺，有未讀通知會顯示紅色數字。' },
   { label: 'STEP 3 / 4', title: '四種通知類型', desc: '請校稿、退件、設計師回覆、內容更新——案件有任何需要你留意的變化，都會整理在這裡。' },
   { label: 'STEP 4 / 4', title: '點通知直接跳到案件', desc: '點開任一則通知，畫面會自動捲動並標亮對應的案件卡片，不用自己找。' },
 ];
-let onboardStep = 0;
+let notifOnboardStep = 0;
 
-function onboardRenderDots(){
-  const dotsEl = document.getElementById('onboardDots');
-  dotsEl.innerHTML = ONBOARD_STEPS.map(function(_, i){
-    return '<div class="onboard-dot' + (i === onboardStep ? ' active' : '') + '" onclick="onboardGoToStep(' + i + ')"></div>';
+function notifOnboardRenderDots(){
+  const dotsEl = document.getElementById('notifOnboardDots');
+  dotsEl.innerHTML = NOTIF_ONBOARD_STEPS.map(function(_, i){
+    return '<div class="onboard-dot' + (i === notifOnboardStep ? ' active' : '') + '" onclick="notifOnboardGoToStep(' + i + ')"></div>';
   }).join('');
 }
-function onboardRenderText(){
-  const s = ONBOARD_STEPS[onboardStep];
-  document.getElementById('stepLabel').textContent = s.label;
-  document.getElementById('stepTitle').textContent = s.title;
-  document.getElementById('stepDesc').textContent = s.desc;
+function notifOnboardRenderText(){
+  const s = NOTIF_ONBOARD_STEPS[notifOnboardStep];
+  document.getElementById('notifStepLabel').textContent = s.label;
+  document.getElementById('notifStepTitle').textContent = s.title;
+  document.getElementById('notifStepDesc').textContent = s.desc;
 }
-function onboardRenderSlides(){
-  document.querySelectorAll('.art-slide').forEach(function(el){
+function notifOnboardRenderSlides(){
+  document.querySelectorAll('#notifOnboardOverlay .art-slide').forEach(function(el){
     const idx = parseInt(el.getAttribute('data-slide'), 10);
     el.classList.remove('active', 'prev');
-    if(idx === onboardStep) el.classList.add('active');
-    else if(idx < onboardStep) el.classList.add('prev');
+    if(idx === notifOnboardStep) el.classList.add('active');
+    else if(idx < notifOnboardStep) el.classList.add('prev');
   });
 }
-function onboardRenderFooter(){
-  document.getElementById('onboardNextBtn').textContent = (onboardStep === ONBOARD_STEPS.length - 1) ? '開始使用' : '下一步';
+function notifOnboardRenderFooter(){
+  document.getElementById('notifOnboardNextBtn').textContent = (notifOnboardStep === NOTIF_ONBOARD_STEPS.length - 1) ? '開始使用' : '下一步';
 }
-function onboardGoToStep(i){
-  onboardStep = i;
-  onboardRenderDots();
-  onboardRenderText();
-  onboardRenderSlides();
-  onboardRenderFooter();
+function notifOnboardGoToStep(i){
+  notifOnboardStep = i;
+  notifOnboardRenderDots();
+  notifOnboardRenderText();
+  notifOnboardRenderSlides();
+  notifOnboardRenderFooter();
 }
-function onboardNextStep(){
-  if(onboardStep === ONBOARD_STEPS.length - 1){
-    closeOnboard();
+function notifOnboardNextStep(){
+  if(notifOnboardStep === NOTIF_ONBOARD_STEPS.length - 1){
+    closeNotifOnboard();
     return;
   }
-  onboardGoToStep(onboardStep + 1);
+  notifOnboardGoToStep(notifOnboardStep + 1);
 }
-function closeOnboard(){
-  document.getElementById('onboardOverlay').classList.remove('show');
-  if(document.getElementById('onboardDontRemind').checked){
-    try{ localStorage.setItem(ONBOARD_STORAGE_KEY, '1'); }catch(e){ /* 瀏覽器不支援或被擋掉就算了，不影響其他功能 */ }
+function openNotifOnboard(){
+  notifOnboardStep = 0;
+  notifOnboardRenderDots();
+  notifOnboardRenderText();
+  notifOnboardRenderSlides();
+  notifOnboardRenderFooter();
+  document.getElementById('notifOnboardOverlay').classList.add('show');
+}
+function closeNotifOnboard(){
+  document.getElementById('notifOnboardOverlay').classList.remove('show');
+  if(document.getElementById('notifOnboardDontRemind').checked){
+    try{ localStorage.setItem(NOTIF_ONBOARD_STORAGE_KEY, '1'); }catch(e){ /* 瀏覽器不支援或被擋掉就算了，不影響其他功能 */ }
   }
 }
+
+// ---- 如何使用設計需求單 公告視窗（步驟輪播）----
+const FORM_ONBOARD_STORAGE_KEY = 'itd_form_onboard_dismissed';
+const FORM_ONBOARD_STEPS = [
+  { label: 'STEP 1 / 5', title: '歡迎使用設計需求單', desc: '花不到一分鐘帶你認識怎麼填單，讓案件更順利地送到設計師手上。' },
+  { label: 'STEP 2 / 5', title: '填寫基本資訊', desc: '選擇品牌、需求類型，並設定需求日期——非急件至少需要保留一天前置作業時間。' },
+  { label: 'STEP 3 / 5', title: '提供素材與需求細節', desc: '貼上雲端連結或參考資料，並依案件類型填寫所需資訊，設計師才能準確掌握需求。' },
+  { label: 'STEP 4 / 5', title: '真的很急才勾急件', desc: '急件會優先處理、且不受「隔天不可選」限制，但務必填寫清楚的急件原因。' },
+  { label: 'STEP 5 / 5', title: '送出後怎麼追蹤', desc: '送出後可以到「需求查詢」頁面輸入姓名查詢進度，案件有變化也會透過通知中心提醒你。' },
+];
+let formOnboardStep = 0;
+
+function formOnboardRenderDots(){
+  const dotsEl = document.getElementById('formOnboardDots');
+  dotsEl.innerHTML = FORM_ONBOARD_STEPS.map(function(_, i){
+    return '<div class="onboard-dot' + (i === formOnboardStep ? ' active' : '') + '" onclick="formOnboardGoToStep(' + i + ')"></div>';
+  }).join('');
+}
+function formOnboardRenderText(){
+  const s = FORM_ONBOARD_STEPS[formOnboardStep];
+  document.getElementById('formStepLabel').textContent = s.label;
+  document.getElementById('formStepTitle').textContent = s.title;
+  document.getElementById('formStepDesc').textContent = s.desc;
+}
+function formOnboardRenderSlides(){
+  document.querySelectorAll('#formOnboardOverlay .art-slide').forEach(function(el){
+    const idx = parseInt(el.getAttribute('data-slide'), 10);
+    el.classList.remove('active', 'prev');
+    if(idx === formOnboardStep) el.classList.add('active');
+    else if(idx < formOnboardStep) el.classList.add('prev');
+  });
+}
+function formOnboardRenderFooter(){
+  document.getElementById('formOnboardNextBtn').textContent = (formOnboardStep === FORM_ONBOARD_STEPS.length - 1) ? '開始填單' : '下一步';
+}
+function formOnboardGoToStep(i){
+  formOnboardStep = i;
+  formOnboardRenderDots();
+  formOnboardRenderText();
+  formOnboardRenderSlides();
+  formOnboardRenderFooter();
+}
+function formOnboardNextStep(){
+  if(formOnboardStep === FORM_ONBOARD_STEPS.length - 1){
+    closeFormOnboard();
+    return;
+  }
+  formOnboardGoToStep(formOnboardStep + 1);
+}
+function openFormOnboard(){
+  formOnboardStep = 0;
+  formOnboardRenderDots();
+  formOnboardRenderText();
+  formOnboardRenderSlides();
+  formOnboardRenderFooter();
+  // 手動點「使用說明」重新打開時，清掉自動流程標記，關閉後不會連動跳出通知視窗
+  document.getElementById('formOnboardOverlay').removeAttribute('data-auto-flow');
+  document.getElementById('formOnboardOverlay').classList.add('show');
+}
+function closeFormOnboard(){
+  const overlay = document.getElementById('formOnboardOverlay');
+  const wasAutoFlow = overlay.getAttribute('data-auto-flow') === '1';
+  overlay.classList.remove('show');
+  overlay.removeAttribute('data-auto-flow');
+  if(document.getElementById('formOnboardDontRemind').checked){
+    try{ localStorage.setItem(FORM_ONBOARD_STORAGE_KEY, '1'); }catch(e){ /* 瀏覽器不支援或被擋掉就算了，不影響其他功能 */ }
+  }
+  // 排隊機制：只有「頁面載入時自動跳出」這次關閉，才會接著判斷通知中心公告要不要顯示；
+  // 使用者自己點「使用說明」重看，關閉後不會連動跳出另一個視窗
+  if(wasAutoFlow) maybeShowNotifOnboardAfterForm();
+}
+
+// ---- 兩個公告視窗依序顯示，不會同時彈出 ----
+function maybeShowNotifOnboardAfterForm(){
+  let notifDismissed = false;
+  try{ notifDismissed = localStorage.getItem(NOTIF_ONBOARD_STORAGE_KEY) === '1'; }catch(e){}
+  if(!notifDismissed) openNotifOnboard();
+}
 (function(){
-  let dismissed = false;
-  try{ dismissed = localStorage.getItem(ONBOARD_STORAGE_KEY) === '1'; }catch(e){ /* 讀不到就當作沒關過，正常顯示 */ }
-  if(!dismissed){
-    onboardRenderDots();
-    onboardRenderFooter();
-    document.getElementById('onboardOverlay').classList.add('show');
+  let formDismissed = false;
+  try{ formDismissed = localStorage.getItem(FORM_ONBOARD_STORAGE_KEY) === '1'; }catch(e){ /* 讀不到就當作沒關過，正常顯示 */ }
+
+  if(!formDismissed){
+    formOnboardStep = 0;
+    formOnboardRenderDots();
+    formOnboardRenderText();
+    formOnboardRenderSlides();
+    formOnboardRenderFooter();
+    const overlay = document.getElementById('formOnboardOverlay');
+    overlay.setAttribute('data-auto-flow', '1');
+    overlay.classList.add('show');
+  }else{
+    maybeShowNotifOnboardAfterForm();
   }
 })();
 </script>
