@@ -1339,14 +1339,23 @@ function loadRequesterNotifications(name){
   currentNotifPerson = name;
   document.getElementById('notifSummaryName').textContent = name;
   document.getElementById('notifSummaryRow').classList.add('show');
+  const scrollInit = document.getElementById('notifScroll');
+  if(scrollInit) scrollInit.innerHTML = '<div class="notif-empty">載入中...</div>';
 
   fetch(sbUrl('requester_notifications', 'req_person=eq.' + encodeURIComponent(name) + '&order=created_at.desc&limit=30'), { headers: SUPABASE_HEADERS })
-    .then(function(r){ return r.json(); })
+    .then(function(r){
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
     .then(function(rows){
-      reqNotifCache = rows || [];
+      reqNotifCache = Array.isArray(rows) ? rows : [];
       renderReqNotifPanel();
     })
-    .catch(function(err){ console.warn('通知讀取失敗：', err); });
+    .catch(function(err){
+      console.warn('通知讀取失敗：', err);
+      const scroll = document.getElementById('notifScroll');
+      if(scroll) scroll.innerHTML = '<div class="notif-empty">通知讀取失敗，請稍後再試</div>';
+    });
 }
 
 function renderReqNotifPanel(){
