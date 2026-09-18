@@ -1406,7 +1406,11 @@ document.addEventListener('click', function(){
 
 function toggleReqNotif(){
   const panel = document.getElementById('notifPanel');
+  const willOpen = !panel.classList.contains('show');
   panel.classList.toggle('show');
+  if(willOpen && currentNotifPerson){
+    loadRequesterNotifications(currentNotifPerson);
+  }
 }
 
 function markReqNotifRead(id){
