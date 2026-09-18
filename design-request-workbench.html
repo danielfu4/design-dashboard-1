@@ -238,28 +238,50 @@
     line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.2);
   }
   .notif-panel{
-    position:absolute;top:calc(100% + 8px);right:0;width:300px;z-index:30;
+    position:absolute;top:calc(100% + 8px);right:0;width:320px;z-index:30;
     background:var(--card);border-radius:14px;box-shadow:0 12px 32px rgba(20,20,30,.18);
     padding:8px;opacity:0;visibility:hidden;transform:translateY(-6px);
     transition:opacity .18s ease, transform .18s ease, visibility .18s ease;
   }
   .notif-panel.show{opacity:1;visibility:visible;transform:translateY(0);}
+  .notif-empty{padding:24px 12px;text-align:center;font-size:12.5px;color:var(--ink-faint);}
+
+  .notif-scroll-wrap{position:relative;}
+  .notif-scroll{max-height:308px;overflow-y:auto;scrollbar-width:none;}
+  .notif-scroll::-webkit-scrollbar{display:none;}
+  .notif-scroll-track{position:absolute;top:0;right:1px;bottom:0;width:5px;pointer-events:none;}
+  .notif-scroll-thumb{position:absolute;right:0;width:5px;border-radius:999px;background:var(--ink-faint);opacity:0;transition:opacity .3s ease;}
+  .notif-scroll-thumb.show{opacity:1;}
+
   .notif-item{
-    display:flex;gap:10px;padding:10px 10px;border-radius:10px;cursor:pointer;
-    margin-bottom:4px;transition:background-color .12s ease;
+    display:flex;gap:10px;padding:11px 10px;border-radius:10px;cursor:pointer;
+    margin-bottom:4px;background:transparent;
+    transition:background-color .15s ease, box-shadow .15s ease;
   }
   .notif-item:last-child{margin-bottom:0;}
-  .notif-item:hover{background:var(--hover-bg);}
-  .notif-item.unread{background:var(--hover-bg);}
+  .notif-item:hover{background:var(--card);box-shadow:0 1px 3px rgba(20,20,30,.1);}
+  html[data-theme="dark"] .notif-item:hover{background:var(--hover-bg);box-shadow:none;}
+  .notif-item.read .notif-item-title,
+  .notif-item.read .notif-item-desc,
+  .notif-item.read .notif-item-time{opacity:.4;}
   .notif-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;margin-top:6px;}
   .notif-item.read .notif-dot{background:transparent;}
   .notif-item-body{flex:1;min-width:0;}
   .notif-item-title{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:2px;}
   .notif-item-desc{font-size:12px;color:var(--ink-soft);line-height:1.4;}
   .notif-item-time{font-size:10.5px;color:var(--ink-faint);margin-top:3px;}
-  .notif-empty{padding:24px 12px;text-align:center;font-size:12.5px;color:var(--ink-faint);}
-  .notif-panel-footer{border-top:1px solid var(--line);margin-top:4px;padding:8px 10px 2px;display:flex;justify-content:flex-end;}
+
+  .notif-panel-footer{border-top:1px solid var(--line);margin-top:4px;padding:10px 10px 2px;display:flex;align-items:center;justify-content:flex-end;position:relative;}
   .notif-mark-all{border:none;background:none;color:var(--accent);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+
+  .notif-resize-handle{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:36px;height:16px;display:flex;align-items:center;justify-content:center;
+    cursor:ns-resize;touch-action:none;
+  }
+  .notif-resize-handle::before{content:'';width:32px;height:4px;border-radius:999px;background:var(--line);transition:background-color .15s ease;}
+  .notif-resize-handle:hover::before,
+  .notif-resize-handle.dragging::before{background:var(--ink-faint);}
   .case-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
   .case-name{font-size:16px;font-weight:800;}
   .case-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
@@ -1180,7 +1202,16 @@ function renderStatusGroup(status, groupCases, expanded){
         '</svg>' +
         '<span class="notif-badge" id="notifBadge-' + notifType + '" style="display:none;">0</span>' +
       '</button>' +
-      '<div class="notif-panel" id="notifPanel-' + notifType + '" onclick="event.stopPropagation();"></div>' +
+      '<div class="notif-panel" id="notifPanel-' + notifType + '" onclick="event.stopPropagation();">' +
+        '<div class="notif-scroll-wrap">' +
+          '<div class="notif-scroll" id="notifScroll-' + notifType + '"></div>' +
+          '<div class="notif-scroll-track"><div class="notif-scroll-thumb" id="notifScrollThumb-' + notifType + '"></div></div>' +
+        '</div>' +
+        '<div class="notif-panel-footer">' +
+          '<div class="notif-resize-handle" id="notifResizeHandle-' + notifType + '"></div>' +
+          '<button class="notif-mark-all" onclick="markAllRead(\'' + notifType + '\')">全部標記已讀</button>' +
+        '</div>' +
+      '</div>' +
     '</div>'
   ) : '';
 
@@ -1241,16 +1272,122 @@ function loadNotifications(){
       NOTIF_TYPES.forEach(function(type){
         notifCache[type] = (rows || []).filter(function(r){ return r.type === type; });
         renderNotifPanel(type);
+        setupNotifScroll(type);
       });
     })
     .catch(function(err){ console.warn('通知讀取失敗：', err); });
 }
 
+// ---- 通知清單自訂捲軸 + 上下淡出遮罩 + 拖曳把手調整高度（每種通知類型各自獨立一份）----
+window.__notifThumbUpdaters = window.__notifThumbUpdaters || {};
+let notifDragJustEnded = false;
+
+function setupNotifScroll(type){
+  const scrollEl = document.getElementById('notifScroll-' + type);
+  const thumb = document.getElementById('notifScrollThumb-' + type);
+  const track = thumb ? thumb.parentElement : null;
+  if(!scrollEl || !thumb || !track) return;
+
+  let hideTimer = null;
+
+  function updateThumb(){
+    const trackHeight = track.clientHeight;
+    const contentHeight = scrollEl.scrollHeight;
+    const visibleHeight = scrollEl.clientHeight;
+
+    if(contentHeight <= visibleHeight + 1){
+      thumb.style.height = '0px';
+      scrollEl.style.maskImage = 'none';
+      scrollEl.style.webkitMaskImage = 'none';
+      return;
+    }
+    const thumbHeight = Math.max(24, (visibleHeight / contentHeight) * trackHeight);
+    const maxThumbTop = trackHeight - thumbHeight;
+    const scrollRatio = scrollEl.scrollTop / (contentHeight - visibleHeight);
+    thumb.style.height = thumbHeight + 'px';
+    thumb.style.top = (scrollRatio * maxThumbTop) + 'px';
+
+    const atTop = scrollEl.scrollTop <= 2;
+    const atBottom = scrollEl.scrollTop + visibleHeight >= contentHeight - 2;
+    const fade = 22;
+    let mask;
+    if(atTop && atBottom){
+      mask = 'none';
+    }else if(atTop){
+      mask = 'linear-gradient(to bottom, black calc(100% - ' + fade + 'px), transparent 100%)';
+    }else if(atBottom){
+      mask = 'linear-gradient(to bottom, transparent 0, black ' + fade + 'px, black 100%)';
+    }else{
+      mask = 'linear-gradient(to bottom, transparent 0, black ' + fade + 'px, black calc(100% - ' + fade + 'px), transparent 100%)';
+    }
+    scrollEl.style.maskImage = mask;
+    scrollEl.style.webkitMaskImage = mask;
+  }
+  window.__notifThumbUpdaters[type] = updateThumb;
+
+  function showThumb(){
+    thumb.classList.add('show');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(function(){ thumb.classList.remove('show'); }, 700);
+  }
+
+  // 避免重複render後疊加監聽器：每次重新設定前先移除舊的（用 dataset 標記過的 clone 手法太複雜，改用一次性 flag）
+  if(scrollEl.__notifScrollBound) return;
+  scrollEl.__notifScrollBound = true;
+
+  scrollEl.addEventListener('scroll', function(){ updateThumb(); showThumb(); });
+  new ResizeObserver(updateThumb).observe(scrollEl);
+  updateThumb();
+
+  const handle = document.getElementById('notifResizeHandle-' + type);
+  if(handle && !handle.__notifHandleBound){
+    handle.__notifHandleBound = true;
+    const MIN_H = 150, MAX_H = 480;
+    let startY = 0, startH = 0;
+
+    function onMove(clientY){
+      const delta = clientY - startY;
+      const newH = Math.min(MAX_H, Math.max(MIN_H, startH + delta));
+      scrollEl.style.maxHeight = newH + 'px';
+      updateThumb();
+    }
+    function endDrag(){
+      handle.classList.remove('dragging');
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', endDrag);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', endDrag);
+      notifDragJustEnded = true;
+      setTimeout(function(){ notifDragJustEnded = false; }, 50);
+    }
+    function onMouseMove(e){ onMove(e.clientY); }
+    function onTouchMove(e){ if(e.touches[0]) onMove(e.touches[0].clientY); e.preventDefault(); }
+
+    function startDrag(clientY){
+      startY = clientY;
+      startH = scrollEl.getBoundingClientRect().height;
+      handle.classList.add('dragging');
+    }
+    handle.addEventListener('mousedown', function(e){
+      e.preventDefault();
+      startDrag(e.clientY);
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', endDrag);
+    });
+    handle.addEventListener('touchstart', function(e){
+      if(!e.touches[0]) return;
+      startDrag(e.touches[0].clientY);
+      document.addEventListener('touchmove', onTouchMove, { passive:false });
+      document.addEventListener('touchend', endDrag);
+    }, { passive:true });
+  }
+}
+
 function renderNotifPanel(type){
-  const panel = document.getElementById('notifPanel-' + type);
+  const scroll = document.getElementById('notifScroll-' + type);
   const badge = document.getElementById('notifBadge-' + type);
   const bell = badge ? badge.closest('.notif-bell') : null;
-  if(!panel) return;
+  if(!scroll) return;
 
   const items = notifCache[type] || [];
   const unreadCount = items.filter(function(n){ return !n.is_read; }).length;
@@ -1267,24 +1404,21 @@ function renderNotifPanel(type){
   }
 
   if(items.length === 0){
-    panel.innerHTML = '<div class="notif-empty">目前沒有通知</div>';
-    return;
+    scroll.innerHTML = '<div class="notif-empty">目前沒有通知</div>';
+  }else{
+    scroll.innerHTML = items.map(function(n){
+      return '<div class="notif-item ' + (n.is_read ? 'read' : 'unread') + '" onclick="onNotifItemClick(\'' + n.id + '\',\'' + type + '\',\'' + n.case_id + '\')">' +
+        '<div class="notif-dot"></div>' +
+        '<div class="notif-item-body">' +
+          '<div class="notif-item-title">' + n.title + '</div>' +
+          (n.description ? '<div class="notif-item-desc">' + n.description + '</div>' : '') +
+          '<div class="notif-item-time">' + timeAgo(n.created_at) + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
   }
 
-  const itemsHtml = items.map(function(n){
-    return '<div class="notif-item ' + (n.is_read ? 'read' : 'unread') + '" onclick="onNotifItemClick(\'' + n.id + '\',\'' + type + '\',\'' + n.case_id + '\')">' +
-      '<div class="notif-dot"></div>' +
-      '<div class="notif-item-body">' +
-        '<div class="notif-item-title">' + n.title + '</div>' +
-        (n.description ? '<div class="notif-item-desc">' + n.description + '</div>' : '') +
-        '<div class="notif-item-time">' + timeAgo(n.created_at) + '</div>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-
-  const hasUnread = unreadCount > 0;
-  panel.innerHTML = itemsHtml +
-    (hasUnread ? '<div class="notif-panel-footer"><button class="notif-mark-all" onclick="event.stopPropagation(); markAllRead(\'' + type + '\')">全部標記已讀</button></div>' : '');
+  if(window.__notifThumbUpdaters && window.__notifThumbUpdaters[type]) window.__notifThumbUpdaters[type]();
 }
 
 function closeAllNotifPanels(){
@@ -1294,7 +1428,10 @@ function closeAllNotifPanels(){
     if(card) card.classList.remove('notif-open');
   });
 }
-document.addEventListener('click', function(){ closeAllNotifPanels(); });
+document.addEventListener('click', function(){
+  if(notifDragJustEnded) return;
+  closeAllNotifPanels();
+});
 
 function toggleNotif(type){
   const panel = document.getElementById('notifPanel-' + type);
@@ -1347,9 +1484,16 @@ function goToCaseCard(caseId){
   const tryFind = function(){
     const el = document.getElementById('card-' + caseId);
     if(el){
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.add('deep-link-highlight');
-      setTimeout(function(){ el.classList.remove('deep-link-highlight'); }, 2600);
+      // 案件卡片預設所在的群組可能是收合狀態，捲過去也看不到，要先展開
+      const group = el.closest('.status-group');
+      if(group && !group.classList.contains('expanded')){
+        group.classList.add('expanded');
+      }
+      setTimeout(function(){
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('deep-link-highlight');
+        setTimeout(function(){ el.classList.remove('deep-link-highlight'); }, 2600);
+      }, 60);
       return;
     }
     attempts++;
