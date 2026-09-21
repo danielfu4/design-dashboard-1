@@ -1648,7 +1648,15 @@ function tomorrowDateStr(){
   return toDateStr(t.getFullYear(), t.getMonth(), t.getDate());
 }
 
+function todayDateStr(){
+  const t = new Date();
+  return toDateStr(t.getFullYear(), t.getMonth(), t.getDate());
+}
+
 function isDateBlocked(dateStr){
+  if(dateStr === todayDateStr()){
+    return true; // 當日一律不可選，急件也不行
+  }
   const handler = currentHandler();
   const lockMap = window.__lockedByDesigner || {};
   if(handler && lockMap[handler] && lockMap[handler].hasOwnProperty(dateStr)){
