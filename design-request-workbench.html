@@ -1759,6 +1759,8 @@ function saveCase(id){
   const deliveryEl = document.getElementById('delivery-' + id);
   const hoursEl = document.getElementById('hours-' + id);
   const feeEl = document.getElementById('fee-' + id);
+  const historyEl = document.getElementById('historyInput-' + id);
+  const historyMsg = document.getElementById('historyMsg-' + id);
   const msg = document.getElementById('saveMsg-' + id);
   const btn = document.getElementById('saveBtn-' + id);
   const btnText = document.getElementById('saveBtnText-' + id);
@@ -1768,18 +1770,26 @@ function saveCase(id){
   btn.disabled = true;
   btnText.textContent = '儲存中...';
 
+  const historyContent = historyEl ? historyEl.value.trim() : '';
+
   return designerAction('saveCase', {
     id: id,
     status: status,
     reject_reason: (status === '退件' && rejectEl) ? rejectEl.value : '',
     delivery_link: deliveryEl ? deliveryEl.value : '',
     hours: (hoursEl && hoursEl.value) ? parseFloat(hoursEl.value) : null,
-    fee: (feeEl && feeEl.value) ? parseFloat(feeEl.value) : null
+    fee: (feeEl && feeEl.value) ? parseFloat(feeEl.value) : null,
+    history_content: historyContent
   })
   .then(function(result){
     if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
     btnText.textContent = '儲存';
     btn.classList.add('success-state');
+    if(historyContent && historyEl){
+      historyEl.value = '';
+      if(historyMsg) historyMsg.textContent = '';
+      loadCases();
+    }
     setTimeout(function(){
       btn.classList.remove('success-state');
       btn.disabled = false;
