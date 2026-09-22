@@ -298,6 +298,8 @@
   .cal-day.blocked{color:var(--ink-faint);background:#F6F6F7;text-decoration:line-through;cursor:not-allowed;}
   .cal-day.manually-locked{color:#B3324A;background:#FBEBEA;}
   .cal-day.blocked:hover{background:#F6F6F7;}
+  .cal-day.holiday{text-decoration:none;}
+  .cal-day.holiday .cal-day-num{color:#E5484D;opacity:.55;}
   .cal-day.selected{background:var(--accent);color:#fff;font-weight:700;}
   .cal-day.today{box-shadow:inset 0 0 0 1.5px var(--accent);}
   .cal-day-num{transition:opacity .2s ease;}
@@ -2084,6 +2086,36 @@ function tomorrowDateStr(){
   t.setDate(t.getDate() + 1);
   return toDateStr(t.getFullYear(), t.getMonth(), t.getDate());
 }
+function todayDateStr(){
+  const t = new Date();
+  return toDateStr(t.getFullYear(), t.getMonth(), t.getDate());
+}
+
+// ---- 國定假日／補班日（資料來源：人事行政總處辦公日曆表，存在 holidays 資料表）----
+window.__holidays = window.__holidays || {};
+function loadHolidays(){
+  return fetch(sbUrl('holidays','select=date,name,is_workday'),{headers:SUPABASE_HEADERS})
+    .then(function(res){ return res.ok ? res.json() : []; })
+    .then(function(rows){
+      const map = {};
+      (rows || []).forEach(function(r){ if(r.date) map[r.date] = { name: r.name || '', isWorkday: !!r.is_workday }; });
+      window.__holidays = map;
+    })
+    .catch(function(){ /* 讀不到就只擋週末 */ });
+}
+// 回傳這天不能選的休假原因（國定假日／週末），可以選回傳 null；補班日可以選
+function holidayReasonFor(dateStr){
+  const hol = window.__holidays[dateStr];
+  if(hol && hol.isWorkday) return null;
+  if(hol) return '國定假日：' + hol.name;
+  const dow = new Date(dateStr + 'T00:00:00').getDay();
+  if(dow === 0 || dow === 6) return '週末不開放選擇';
+  return null;
+}
+// 當日、國定假日、週末：兩個日曆共用的基本封鎖規則，急件也不能跳過
+function isBaseBlocked(dateStr){
+  return dateStr === todayDateStr() || holidayReasonFor(dateStr) !== null;
+}
 function normalizeDateStr(str){
   if(!str) return null;
   const m = String(str).match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
@@ -2139,9 +2171,12 @@ function loadCopyDateCounts(){
     renderCopyCalendar();
   })
   .catch(function(){ window.__copyLockedByDesigner={}; renderCopyCalendar(); });
+
+  loadHolidays().then(renderCopyCalendar);
 }
 
 function copyIsDateBlocked(dateStr){
+  if(isBaseBlocked(dateStr)) return true;       // 當日、國定假日、週末，急件也不行
   const handler = copyCurrentHandler();
   const lockMap = window.__copyLockedByDesigner || {};
   if(handler && lockMap[handler] && lockMap[handler].hasOwnProperty(dateStr)){
@@ -2149,6 +2184,7 @@ function copyIsDateBlocked(dateStr){
   }
   const isUrgent = document.getElementById('copyUrgent').checked;
   if(isUrgent) return false;
+  if(dateStr === tomorrowDateStr()) return true; // 非急件隔天不可選（跟申請表一致）
   const g = dateCounts[handler] || {};
   return (g[dateStr] || 0) >= DAILY_LIMIT;
 }
@@ -2215,9 +2251,13 @@ function renderCopyCalendar(){
     let cls = 'cal-day';
     if(blocked) cls += ' blocked';
     if(isLocked) cls += ' manually-locked';
+    const holidayReason = holidayReasonFor(dateStr);
+    if(holidayReason !== null) cls += ' holiday';
     if(dateStr === todayStr) cls += ' today';
     if(dateStr === selected) cls += ' selected';
-    const titleAttr = isLocked ? ' title="設計師已封鎖此日期' + (lockReason ? '：' + lockReason : '') + '"' : '';
+    const titleAttr = isLocked
+      ? ' title="設計師已封鎖此日期' + (lockReason ? '：' + lockReason : '') + '"'
+      : (holidayReason !== null ? ' title="' + holidayReason + '"' : '');
     html += '<div class="' + cls + '"' + titleAttr + ' onclick="' + (blocked ? '' : ("selectCopyDate('" + dateStr + "')")) + '">' +
       '<span class="cal-day-num">' + d + '</span>' +
       '<span class="cal-day-count">' + count + '</span>' +
@@ -2450,9 +2490,12 @@ function loadEditDateCounts(){
     renderEditCalendar();
   })
   .catch(function(){ editLockedDates = {}; renderEditCalendar(); });
+
+  loadHolidays().then(renderEditCalendar);
 }
 
 function editIsDateBlocked(dateStr){
+  if(isBaseBlocked(dateStr)) return true;       // 當日、國定假日、週末
   const lockMap = editLockedDates[currentEditHandler] || {};
   if(lockMap.hasOwnProperty(dateStr)) return true;
   if(dateStr === tomorrowDateStr()) return true; // 隔天不可選，至少要留一天以上的前置作業時間
@@ -2498,9 +2541,13 @@ function renderEditCalendar(){
     let cls = 'cal-day';
     if(blocked) cls += ' blocked';
     if(isLocked) cls += ' manually-locked';
+    const holidayReason = holidayReasonFor(dateStr);
+    if(holidayReason !== null) cls += ' holiday';
     if(dateStr === todayStr) cls += ' today';
     if(dateStr === selected) cls += ' selected';
-    const titleAttr = isLocked ? ' title="設計師已封鎖此日期' + (lockReason ? '：' + lockReason : '') + '"' : '';
+    const titleAttr = isLocked
+      ? ' title="設計師已封鎖此日期' + (lockReason ? '：' + lockReason : '') + '"'
+      : (holidayReason !== null ? ' title="' + holidayReason + '"' : '');
     html += '<div class="' + cls + '"' + titleAttr + ' onclick="' + (blocked ? '' : ("selectEditDate('" + dateStr + "')")) + '">' +
       '<span class="cal-day-num">' + d + '</span>' +
       '<span class="cal-day-count">' + count + '</span>' +
