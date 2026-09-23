@@ -148,11 +148,15 @@
   }
 
   .req-card{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:20px 22px;margin-bottom:14px;}
-  .req-card.deep-link-highlight{animation:deepLinkPulse2 2.6s ease;}
+  /* 通知跳轉高亮：柔和光暈 + 向外擴散的脈衝 */
+  .req-card.deep-link-highlight{animation:deepLinkPulse2 2.8s cubic-bezier(.25,.6,.35,1);}
   @keyframes deepLinkPulse2{
-    0%{box-shadow:0 0 0 3px #3E7BFA, var(--shadow);}
-    70%{box-shadow:0 0 0 3px #3E7BFA, var(--shadow);}
-    100%{box-shadow:var(--shadow);}
+    0%   {box-shadow:0 0 0 0 rgba(62,123,250,.45), 0 0 0 0 rgba(62,123,250,.28), var(--shadow);}
+    22%  {box-shadow:0 0 0 6px rgba(62,123,250,.28), 0 0 22px 6px rgba(62,123,250,.22), var(--shadow);}
+    48%  {box-shadow:0 0 0 14px rgba(62,123,250,0), 0 0 22px 6px rgba(62,123,250,.2), var(--shadow);}
+    62%  {box-shadow:0 0 0 0 rgba(62,123,250,.38), 0 0 22px 6px rgba(62,123,250,.2), var(--shadow);}
+    85%  {box-shadow:0 0 0 12px rgba(62,123,250,0), 0 0 18px 4px rgba(62,123,250,.12), var(--shadow);}
+    100% {box-shadow:0 0 0 0 rgba(62,123,250,0), 0 0 0 0 rgba(62,123,250,0), var(--shadow);}
   }
   .req-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
   .req-name{font-size:16px;font-weight:800;}
