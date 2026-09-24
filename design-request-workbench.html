@@ -199,7 +199,8 @@
     pointer-events:none;opacity:0;transition:opacity .45s ease;z-index:0;
   }
   .glass-shell.open .case-card::before{opacity:1;}
-  .glass-shell .case-card > *{position:relative;z-index:1;}
+  .glass-shell .case-card > *:not(.case-toggle-btn){position:relative;z-index:1;}
+  .glass-shell .case-card > .case-toggle-btn{z-index:2;}
 
   html[data-theme="dark"] .glass-shell::before{
     background:rgba(255,255,255,.06);
