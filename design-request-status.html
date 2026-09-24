@@ -148,15 +148,17 @@
   }
 
   .req-card{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:20px 22px;margin-bottom:14px;}
-  /* 通知跳轉高亮：柔和光暈 + 向外擴散的脈衝 */
-  .req-card.deep-link-highlight{animation:deepLinkPulse2 2.8s cubic-bezier(.25,.6,.35,1);}
-  @keyframes deepLinkPulse2{
-    0%   {box-shadow:0 0 0 0 rgba(62,123,250,.45), 0 0 0 0 rgba(62,123,250,.28), var(--shadow);}
-    22%  {box-shadow:0 0 0 6px rgba(62,123,250,.28), 0 0 22px 6px rgba(62,123,250,.22), var(--shadow);}
-    48%  {box-shadow:0 0 0 14px rgba(62,123,250,0), 0 0 22px 6px rgba(62,123,250,.2), var(--shadow);}
-    62%  {box-shadow:0 0 0 0 rgba(62,123,250,.38), 0 0 22px 6px rgba(62,123,250,.2), var(--shadow);}
-    85%  {box-shadow:0 0 0 12px rgba(62,123,250,0), 0 0 18px 4px rgba(62,123,250,.12), var(--shadow);}
-    100% {box-shadow:0 0 0 0 rgba(62,123,250,0), 0 0 0 0 rgba(62,123,250,0), var(--shadow);}
+  /* 通知跳轉高亮：柔和光暈原地呼吸（獨立偽元素圖層，只動 opacity，交給 GPU，不會卡）
+     參數：強度 .32、範圍 14px、時間 2.3s */
+  .req-card{position:relative;}
+  .req-card::after{
+    content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    opacity:0;will-change:opacity;
+    box-shadow:0 0 0 5px rgba(62,123,250,.12), 0 0 14px 10px rgba(62,123,250,.32);
+  }
+  .req-card.deep-link-highlight::after{animation:deepLinkGlow2 2.3s cubic-bezier(.4,0,.3,1) forwards;}
+  @keyframes deepLinkGlow2{
+    0%{opacity:0;} 14%{opacity:1;} 42%{opacity:.45;} 62%{opacity:.95;} 100%{opacity:0;}
   }
   .req-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
   .req-name{font-size:16px;font-weight:800;}
@@ -1439,6 +1441,29 @@ function markAllReqNotifRead(){
   }).catch(function(err){ console.warn('全部標記已讀失敗：', err); });
 }
 
+// ---- 捲動停止後再播放高亮（避免捲動與動畫同時跑造成掉幀）----
+function playHighlightAfterScroll(el){
+  function play(){
+    el.classList.remove('deep-link-highlight');
+    void el.offsetWidth;                       // 強制重排，動畫才能重新觸發
+    el.classList.add('deep-link-highlight');
+    setTimeout(function(){ el.classList.remove('deep-link-highlight'); }, 2800);
+  }
+  if('onscrollend' in window){
+    const once = function(){ window.removeEventListener('scrollend', once); play(); };
+    window.addEventListener('scrollend', once);
+    setTimeout(function(){ window.removeEventListener('scrollend', once); }, 1200);
+  }else{
+    let timer = null;
+    const onScroll = function(){
+      clearTimeout(timer);
+      timer = setTimeout(function(){ window.removeEventListener('scroll', onScroll); play(); }, 110);
+    };
+    window.addEventListener('scroll', onScroll, { passive:true });
+    setTimeout(function(){ window.removeEventListener('scroll', onScroll); }, 1500);
+  }
+}
+
 function onReqNotifClick(id, caseId){
   markReqNotifRead(id);
   closeAllReqNotifPanels();
@@ -1447,8 +1472,7 @@ function onReqNotifClick(id, caseId){
     const el = document.getElementById('req-card-' + caseId);
     if(el){
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.add('deep-link-highlight');
-      setTimeout(function(){ el.classList.remove('deep-link-highlight'); }, 2600);
+      playHighlightAfterScroll(el);
       return;
     }
     attempts++;
@@ -1703,8 +1727,7 @@ function scrollToDeepLinkedReqCase(){
     if(el){
       __reqDeepLinkHandled = true;
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.add('deep-link-highlight');
-      setTimeout(function(){ el.classList.remove('deep-link-highlight'); }, 2600);
+      playHighlightAfterScroll(el);
       return;
     }
     attempts++;
