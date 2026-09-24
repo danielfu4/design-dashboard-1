@@ -188,7 +188,7 @@
     box-shadow:0 18px 40px rgba(40,50,90,.12), inset 0 1px 1px rgba(255,255,255,.7);
   }
   .glass-shell.open::before{opacity:1;}
-  .glass-shell .case-card{margin-bottom:0;transition:box-shadow .45s ease;}
+  .glass-shell .case-card{margin-bottom:0;padding-bottom:20px;transition:box-shadow .45s ease;}
   .glass-shell.open .case-card{
     box-shadow:0 6px 18px rgba(40,50,90,.1), inset 0 1px 0 rgba(255,255,255,1);
   }
@@ -398,14 +398,22 @@
   .reply-shown-block{background:#EAF1FF;}
 
   .case-detail{font-size:12.5px;color:var(--ink-soft);margin-top:12px;line-height:1.8;}
+  /* 展開鈕：卡片右下角的圓鈕（同 demo），展開時轉 90 度 */
   .case-toggle-btn{
-    display:flex;align-items:center;justify-content:center;gap:5px;width:100%;
-    margin-top:12px;padding:8px;border:none;border-top:1px solid var(--line);background:none;
-    font-family:inherit;font-size:12px;font-weight:700;color:var(--ink-soft);cursor:pointer;
+    position:absolute;right:14px;bottom:14px;
+    width:30px;height:30px;border-radius:50%;border:none;padding:0;cursor:pointer;
+    background:#fff;color:var(--ink);
+    box-shadow:0 1px 4px rgba(20,20,30,.12), 0 0 0 1px rgba(20,20,30,.05);
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .4s cubic-bezier(.3,1.4,.5,1), background-color .25s ease, color .25s ease;
   }
-  .case-toggle-btn:hover{color:var(--ink);}
-  .case-toggle-chevron{display:flex;transition:transform .2s ease;}
-  .case-toggle-chevron.open{transform:rotate(180deg);}
+  .case-toggle-btn:hover{background:#F6F6F8;color:var(--ink);}
+  .glass-shell.open .case-toggle-btn{
+    transform:rotate(90deg);background:var(--hover-bg);color:var(--ink-soft);box-shadow:none;
+  }
+  html[data-theme="dark"] .case-toggle-btn{background:rgba(255,255,255,.16);color:#fff;box-shadow:none;}
+  html[data-theme="dark"] .glass-shell.open .case-toggle-btn{background:rgba(255,255,255,.06);color:var(--ink-soft);}
+  .case-toggle-chevron{display:flex;}
   .case-body{
     overflow:hidden;max-height:0;opacity:0;transform:translateY(-8px);
     transition:max-height .4s ease, opacity .3s ease, transform .3s ease;
@@ -1658,7 +1666,7 @@ function renderCaseCard(m){
         urgentReasonLine +
       '</div>' +
       '<button type="button" class="case-toggle-btn" onclick="toggleCaseBody(\'' + m.id + '\')">' +
-        '<span class="case-toggle-chevron" id="caseToggleChevron-' + m.id + '"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>' +
+        '<span class="case-toggle-chevron" id="caseToggleChevron-' + m.id + '"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span>' +
       '</button>' +
     '</div>' +
       '<div class="case-body" id="caseBody-' + m.id + '">' +
