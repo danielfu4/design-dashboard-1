@@ -88,7 +88,7 @@
     .filter-field.search-field{min-width:0;}
 
     .case-card{padding:16px 16px;border-radius:12px;}
-    .glass-shell{border-radius:18px;padding:8px;margin:0 -8px;}
+    .glass-shell{border-radius:18px;padding:8px;margin:0 -8px 12px;}
     .stack-front{padding:0 16px;}
 
     /* 案件卡片頂部：標題跟徽章／評分星星／回覆按鈕改上下堆疊，避免跟標題擠在一起 */
@@ -173,7 +173,11 @@
   .case-card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:20px 22px;margin-bottom:14px;}
 
   /* ===== 展開時的玻璃質感外框 ===== */
-  .glass-shell{position:relative;border-radius:22px;padding:10px;margin:0 -10px;}
+  .glass-shell{position:relative;border-radius:22px;padding:10px;margin:0 -10px 14px;}
+  .glass-shell > .case-body{padding:0 12px;}
+  .glass-shell.open > .case-body{padding:4px 12px 6px;}
+  .case-toggle-btn:focus{outline:none;}
+  .case-toggle-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px;}
   .glass-shell::before{
     content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
     opacity:0;transition:opacity .45s ease;
@@ -1656,6 +1660,7 @@ function renderCaseCard(m){
       '<button type="button" class="case-toggle-btn" onclick="toggleCaseBody(\'' + m.id + '\')">' +
         '<span class="case-toggle-chevron" id="caseToggleChevron-' + m.id + '"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></span>' +
       '</button>' +
+    '</div>' +
       '<div class="case-body" id="caseBody-' + m.id + '">' +
         detailBlock +
         '<div class="edit-row">' +
@@ -1719,7 +1724,6 @@ function renderCaseCard(m){
           '<span class="history-msg" id="historyMsg-' + m.id + '"></span>' +
         '</div>' +
       '</div>' +
-    '</div>' +
     '</div>'
   );
 }
