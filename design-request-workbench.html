@@ -87,7 +87,8 @@
     .filter-field{width:100%;}
     .filter-field.search-field{min-width:0;}
 
-    .case-card{padding:16px 16px;border-radius:16px;}
+    .case-card{padding:16px 16px;border-radius:12px;}
+    .glass-shell{border-radius:18px;padding:8px;margin:0 -8px;}
     .stack-front{padding:0 16px;}
 
     /* 案件卡片頂部：標題跟徽章／評分星星／回覆按鈕改上下堆疊，避免跟標題擠在一起 */
@@ -169,7 +170,44 @@
 
   .state-msg{text-align:center;color:var(--ink-soft);font-size:13px;padding:40px 20px;}
 
-  .case-card{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:20px 22px;margin-bottom:14px;}
+  .case-card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);padding:20px 22px;margin-bottom:14px;}
+
+  /* ===== 展開時的玻璃質感外框 ===== */
+  .glass-shell{position:relative;border-radius:22px;padding:10px;margin:0 -10px;}
+  .glass-shell::before{
+    content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    opacity:0;transition:opacity .45s ease;
+    background:rgba(255,255,255,.28);
+    -webkit-backdrop-filter:blur(14px) saturate(160%);
+    backdrop-filter:blur(14px) saturate(160%);
+    border:1px solid rgba(255,255,255,.55);
+    box-shadow:0 18px 40px rgba(40,50,90,.12), inset 0 1px 1px rgba(255,255,255,.7);
+  }
+  .glass-shell.open::before{opacity:1;}
+  .glass-shell .case-card{margin-bottom:0;transition:box-shadow .45s ease;}
+  .glass-shell.open .case-card{
+    box-shadow:0 6px 18px rgba(40,50,90,.1), inset 0 1px 0 rgba(255,255,255,1);
+  }
+  /* 上緣高光：滿版沿圓角，只往下淡出，左右不會有直邊 */
+  .glass-shell .case-card::before{
+    content:'';position:absolute;inset:0;border-radius:inherit;
+    background:linear-gradient(180deg, rgba(255,255,255,.9) 0%, rgba(255,255,255,0) 36%);
+    pointer-events:none;opacity:0;transition:opacity .45s ease;z-index:0;
+  }
+  .glass-shell.open .case-card::before{opacity:1;}
+  .glass-shell .case-card > *{position:relative;z-index:1;}
+
+  html[data-theme="dark"] .glass-shell::before{
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.12);
+    box-shadow:0 18px 40px rgba(0,0,0,.45), inset 0 1px 1px rgba(255,255,255,.12);
+  }
+  html[data-theme="dark"] .glass-shell.open .case-card{
+    box-shadow:0 6px 18px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.14);
+  }
+  html[data-theme="dark"] .glass-shell .case-card::before{
+    background:linear-gradient(180deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,0) 36%);
+  }
   .case-card.urgent{box-shadow:0 0 0 1.5px #F3C5C0, 0 6px 16px rgba(20,20,30,.04);}
   /* 通知跳轉高亮：柔和光暈原地呼吸（獨立偽元素圖層，只動 opacity，交給 GPU，不會卡）
      參數：強度 .32、範圍 14px、時間 2.3s */
@@ -1593,6 +1631,7 @@ function renderCaseCard(m){
   const scoreDisplayHtml = hasRating ? scoreStarsHtml(score, {quality:m.quality, efficiency:m.efficiency, communication:m.communication, price:m.price}, m.overallFeedback) : '';
 
   return (
+    '<div class="glass-shell" id="shell-' + m.id + '">' +
     '<div class="case-card' + (isUrgent ? ' urgent' : '') + '" id="card-' + m.id + '">' +
       '<div class="case-top">' +
         '<div>' +
@@ -1680,6 +1719,7 @@ function renderCaseCard(m){
           '<span class="history-msg" id="historyMsg-' + m.id + '"></span>' +
         '</div>' +
       '</div>' +
+    '</div>' +
     '</div>'
   );
 }
@@ -1691,6 +1731,8 @@ function toggleCaseBody(id){
   const isOpen = body.classList.contains('open');
   body.classList.toggle('open', !isOpen);
   chevron.classList.toggle('open', !isOpen);
+  const shell = document.getElementById('shell-' + id);
+  if(shell) shell.classList.toggle('open', !isOpen);
 
   if(!isOpen){
     // 監聽 transition 結束後再捲，高度才準確
@@ -1727,6 +1769,9 @@ function collapseAllCases(){
   });
   document.querySelectorAll('.case-toggle-chevron.open').forEach(function(chevron){
     chevron.classList.remove('open');
+  });
+  document.querySelectorAll('.glass-shell.open').forEach(function(shell){
+    shell.classList.remove('open');
   });
 }
 
