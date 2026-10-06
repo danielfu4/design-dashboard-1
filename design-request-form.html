@@ -1337,7 +1337,7 @@ const BRAND_GROUPS = {
   S2: ['ACER','ANDES','ANKER','Breo','Doshisha','Epson','Govee','HUTT','Soundcore','群光選品','ITD部門相關','支援其他部門','其他'],
   S3: ['TCL','BALMUDA','LUPLUP','IRIS','WINIX','Majority','群光選品','ITD部門相關','支援其他部門','其他']
 };
-const GROUP_DESIGNERS = { S1: ['Nikki','Yuly'], S2: ['Nikki','Luna'], S3: ['Nikki','Daniel'] };
+const GROUP_DESIGNERS = { S1: ['Nikki','Yuly'], S2: ['Nikki','Luna'], S3: ['Daniel','Yuly'] };
 let currentGroup = 'S1';
 
 function populateBrands(group){
@@ -1684,29 +1684,51 @@ function todayDateStr(){
 // 日曆的反灰、送出前的最後把關、條件變動後的重新檢查，全部共用這一個判定，避免規則各寫一份而對不上。
 function dueDateBlockReason(dateStr){
   if(!dateStr) return null;
+  // 急件：跳過所有日期限制（當日、國定假日／週末、設計師手動封鎖、隔天、每日上限都不擋）。
+  // 日曆上這些日期仍然會保留原本的顏色提示，點下去也會跳出確認視窗，但不會禁止選取。
+  if(document.getElementById('isUrgent').checked) return null;
+
   if(dateStr === todayDateStr()){
-    return '當日不可選'; // 當日一律不可選，急件也不行
+    return '當日不可選';
   }
   const holiday = holidayReasonFor(dateStr);
   if(holiday !== null){
-    return holiday; // 國定假日、週末（補班日除外）一律不可選，急件也不行
+    return holiday; // 國定假日、週末（補班日除外）
   }
   const handler = currentHandler();
   const lockMap = window.__lockedByDesigner || {};
   if(handler && lockMap[handler] && lockMap[handler].hasOwnProperty(dateStr)){
     const why = lockMap[handler][dateStr] || '';
-    return '設計師已封鎖此日期' + (why ? '：' + why : ''); // 手動封鎖優先權最高，急件也不能跳過
+    return '設計師已封鎖此日期' + (why ? '：' + why : '');
   }
-  const isUrgent = document.getElementById('isUrgent').checked;
-  if(!isUrgent && dateStr === tomorrowDateStr()){
+  if(dateStr === tomorrowDateStr()){
     return '非急件不可選隔天，至少要留一天以上的前置作業時間';
   }
-  if(isUrgent) return null; // 急件可跳過每日上限、也可以選隔天（但跳不過上面的規則）
   const g = dateCounts[handler] || {};
   if((g[dateStr] || 0) >= DAILY_LIMIT){
     return (handler || '該設計師') + ' 當天案件已達上限（' + DAILY_LIMIT + ' 件）';
   }
   return null;
+}
+
+// 急件選到「本來會被擋住」的日期時，列出這天的特殊狀況，用在點選時的確認視窗。
+// 只是提醒，不會禁止選取。
+function urgentOverrideWarnings(dateStr){
+  const list = [];
+  if(dateStr === todayDateStr()) list.push('這天是今天（當日件）');
+  const holiday = holidayReasonFor(dateStr);
+  if(holiday !== null) list.push(holiday);
+  const handler = currentHandler();
+  const lockMap = window.__lockedByDesigner || {};
+  if(handler && lockMap[handler] && lockMap[handler].hasOwnProperty(dateStr)){
+    const why = lockMap[handler][dateStr] || '';
+    list.push((handler || '該設計師') + ' 已封鎖這一天' + (why ? '（' + why + '）' : '（未填原因）'));
+  }
+  const g = dateCounts[handler] || {};
+  if((g[dateStr] || 0) >= DAILY_LIMIT){
+    list.push((handler || '該設計師') + ' 這天已有 ' + g[dateStr] + ' 件，超過每日上限 ' + DAILY_LIMIT + ' 件');
+  }
+  return list;
 }
 
 function isDateBlocked(dateStr){
@@ -1810,10 +1832,19 @@ function renderCalendar(){
 function selectDate(dateStr){
   if(document.getElementById('isUrgent').checked){
     const handler = currentHandler();
+
+    // 急件可以跳過所有日期限制，但如果踩到當日／假日／設計師封鎖／超量，還是先問一次，避免誤點
+    const warnings = urgentOverrideWarnings(dateStr);
+    if(warnings.length > 0){
+      const ok = confirm('這天本來是不開放選擇的：\n\n・' + warnings.join('\n・') +
+        '\n\n急件可以不受這些限制，確定還是要選 ' + dateStr + ' 嗎？');
+      if(!ok) return;
+    }
+
     const map = window.__urgentByDesigner || {};
     const existing = (handler && map[handler] && map[handler][dateStr]) || 0;
     if(existing >= 1){
-      const ok = confirm((handler || '這位設計師') + ' 今天已經有 ' + existing + ' 件急件在處理，確定要再新增一件嗎？');
+      const ok = confirm((handler || '這位設計師') + ' 這天已經有 ' + existing + ' 件急件在處理，確定要再新增一件嗎？');
       if(!ok) return;
     }
   }
