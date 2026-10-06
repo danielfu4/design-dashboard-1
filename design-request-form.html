@@ -1372,6 +1372,7 @@ function toggleUrgent(checked){
     document.getElementById('urgentOtherText').required = false;
   }
   if(typeof renderCalendar === 'function' && document.getElementById('calGrid')) renderCalendar();
+  revalidateDueDate(); // 取消急件後，原本靠急件才選得到的日期（例如隔天、超過上限）要被清掉
   updateUrgentCounter();
 }
 
@@ -1528,11 +1529,7 @@ document.getElementById('groupSwitch').addEventListener('click', function(e){
   populateBrands(currentGroup);
   toggleDesignerPicker(currentGroup);
   renderCalendar();
-  const sel = document.getElementById('dueDate').value;
-  if(sel && isDateBlocked(sel)){
-    document.getElementById('dueDate').value = '';
-    document.getElementById('dueDateDisplay').value = '';
-  }
+  revalidateDueDate();
 });
 updateSegThumb();
 window.addEventListener('resize', updateSegThumb);
@@ -1549,7 +1546,11 @@ initCsel('reqType', [
   { value:'ITD部門相關', label:'ITD部門相關' }
 ], '請選擇設計類型', function(v){ toggleRequestType(v); });
 initCsel('caseType', [], '請選擇案件類型', function(v){ toggleCaseFields(v); });
-initCsel('assignDesigner', [], '請選擇設計師', null);
+initCsel('assignDesigner', [], '請選擇設計師', function(){
+  // 換設計師會改變「手動封鎖日期」跟「當天案件數」，日曆要重畫，已選的日期也要重新檢查
+  renderCalendar();
+  revalidateDueDate();
+});
 initCsel('urgentReasonCat', [
   { value:'客戶臨時要求', label:'客戶臨時要求' },
   { value:'活動時間提前或異動', label:'活動時間提前或異動' },
@@ -1627,6 +1628,7 @@ function loadDateCounts(){
       window.__urgentByDesigner = urgentByDesigner;
     }catch(err){}
     renderCalendar();
+    revalidateDueDate();
   });
 
   fetch(sbUrl('locked_dates','select=handler,date,reason'),{headers:SUPABASE_HEADERS})
@@ -1640,6 +1642,7 @@ function loadDateCounts(){
     });
     window.__lockedByDesigner = lockMap;
     renderCalendar();
+    revalidateDueDate();
   })
   .catch(function(){ window.__lockedByDesigner={}; renderCalendar(); });
 
@@ -1651,11 +1654,7 @@ function loadDateCounts(){
     (rows || []).forEach(function(r){ if(r.date) map[r.date] = { name: r.name || '', isWorkday: !!r.is_workday }; });
     window.__holidays = map;
     renderCalendar();
-    const sel = document.getElementById('dueDate').value;
-    if(sel && isDateBlocked(sel)){
-      document.getElementById('dueDate').value = '';
-      document.getElementById('dueDateDisplay').value = '';
-    }
+    revalidateDueDate();
   })
   .catch(function(){ window.__holidays = {}; });
 }
@@ -1681,25 +1680,54 @@ function todayDateStr(){
   return toDateStr(t.getFullYear(), t.getMonth(), t.getDate());
 }
 
-function isDateBlocked(dateStr){
+// 判定「這個需求日期為什麼不能選」，可以選的話回傳 null。
+// 日曆的反灰、送出前的最後把關、條件變動後的重新檢查，全部共用這一個判定，避免規則各寫一份而對不上。
+function dueDateBlockReason(dateStr){
+  if(!dateStr) return null;
   if(dateStr === todayDateStr()){
-    return true; // 當日一律不可選，急件也不行
+    return '當日不可選'; // 當日一律不可選，急件也不行
   }
-  if(holidayReasonFor(dateStr) !== null){
-    return true; // 國定假日、週末（補班日除外）一律不可選，急件也不行
+  const holiday = holidayReasonFor(dateStr);
+  if(holiday !== null){
+    return holiday; // 國定假日、週末（補班日除外）一律不可選，急件也不行
   }
   const handler = currentHandler();
   const lockMap = window.__lockedByDesigner || {};
   if(handler && lockMap[handler] && lockMap[handler].hasOwnProperty(dateStr)){
-    return true; // 設計師手動封鎖的日期，優先權最高，急件也不能跳過
+    const why = lockMap[handler][dateStr] || '';
+    return '設計師已封鎖此日期' + (why ? '：' + why : ''); // 手動封鎖優先權最高，急件也不能跳過
   }
   const isUrgent = document.getElementById('isUrgent').checked;
   if(!isUrgent && dateStr === tomorrowDateStr()){
-    return true; // 非急件：隔天不可選，至少要留一天以上的前置作業時間
+    return '非急件不可選隔天，至少要留一天以上的前置作業時間';
   }
-  if(isUrgent) return false; // 急件可跳過每日上限、也可以選隔天（但跳不過手動封鎖）
+  if(isUrgent) return null; // 急件可跳過每日上限、也可以選隔天（但跳不過上面的規則）
   const g = dateCounts[handler] || {};
-  return (g[dateStr] || 0) >= DAILY_LIMIT;
+  if((g[dateStr] || 0) >= DAILY_LIMIT){
+    return (handler || '該設計師') + ' 當天案件已達上限（' + DAILY_LIMIT + ' 件）';
+  }
+  return null;
+}
+
+function isDateBlocked(dateStr){
+  return dueDateBlockReason(dateStr) !== null;
+}
+
+// 只要會影響日期判定的條件變了（換組別、換設計師、切換急件、還原暫存、假日／封鎖／案件數載入完成），
+// 就要重新檢查「已經選好的需求日期」。
+// 不做這一步的話，使用者可以先選一個當下合法的日期，再回頭改條件，用這個順序繞過鎖定。
+function revalidateDueDate(){
+  const el = document.getElementById('dueDate');
+  const sel = el ? el.value : '';
+  if(!sel) return true;
+  const reason = dueDateBlockReason(sel);
+  if(reason === null) return true;
+  el.value = '';
+  const disp = document.getElementById('dueDateDisplay');
+  if(disp) disp.value = '';
+  if(typeof renderCalendar === 'function' && document.getElementById('calGrid')) renderCalendar();
+  showBanner('error', '原本選的需求日期 ' + sel + ' 不符合目前的條件（' + reason + '），已清除，請重新選擇需求日期');
+  return false;
 }
 
 function lockedReasonFor(dateStr){
@@ -2157,6 +2185,10 @@ function handleSubmit(e){
     return false;
   }
 
+  // 最後把關：不管前面是用什麼順序填的，送出這一刻一定要再確認需求日期本身合法
+  // （例如表單開著過夜，原本選的日期已經變成「當日」）
+  if(!revalidateDueDate()) return false;
+
   const payload = buildPayload();
 
   if(payload.isUrgent === 'Y'){
@@ -2511,6 +2543,8 @@ function restoreDraftData(d){
     }
   }
 
+  // 暫存可能是前幾天存的，帶回來的日期有可能已經變成當日／假日／被封鎖，要重新檢查
+  revalidateDueDate();
   updateUrgentCounter();
 }
 
