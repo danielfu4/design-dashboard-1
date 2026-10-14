@@ -1614,26 +1614,45 @@ function parseWorkRow(r){
   };
 }
 
+// ---- 分頁讀取：Supabase 單次最多回 1000 筆，不分頁的話資料會被靜默截斷 ----
+// 關鍵在於要分辨「這一頁本來就讀完了」跟「這一頁讀失敗」。
+// 把失敗當成讀完，就會拿到不完整的資料，而且畫面上完全看不出異狀。
+// 這裡用 Prefer: count=exact 取得真正的總筆數，讀到數量對上才算完成。
 function fetchAllRows(table, query){
-  // Supabase 預設 max_rows=1000，用 Range header 分頁讀取全部
-  const pageSize = 1000;
-  const baseUrl = sbUrl(table, query + '&limit=' + pageSize);
+  const PAGE = 1000;
+  const MAX_PAGES = 200; // 安全閥，避免任何意外造成無限迴圈
 
-  function fetchPage(offset){
-    return fetch(baseUrl + '&offset=' + offset, {
-      headers: Object.assign({}, SUPABASE_HEADERS, { 'Range-Unit':'items', 'Range': offset + '-' + (offset + pageSize - 1) })
-    }).then(function(res){ return res.ok ? res.json() : []; });
+  function fetchPage(offset, attempt){
+    const url = sbUrl(table, query + '&limit=' + PAGE + '&offset=' + offset);
+    return fetch(url, { headers: Object.assign({}, SUPABASE_HEADERS, { 'Prefer':'count=exact' }) })
+      .then(function(res){
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        // Content-Range 格式："0-999/3421"，斜線後面是符合條件的總筆數
+        const cr = (res.headers && res.headers.get ? res.headers.get('content-range') : '') || '';
+        const totalRaw = parseInt((cr.split('/')[1] || ''), 10);
+        return res.json().then(function(rows){
+          if(!Array.isArray(rows)) throw new Error('回傳格式異常');
+          return { rows: rows, total: isNaN(totalRaw) ? null : totalRaw };
+        });
+      })
+      .catch(function(err){
+        if(attempt < 2) return fetchPage(offset, attempt + 1); // 失敗重試一次再放棄
+        throw new Error('讀取 ' + table + ' 第 ' + (Math.floor(offset / PAGE) + 1) + ' 頁失敗：' + (err && err.message ? err.message : '未知錯誤'));
+      });
   }
 
-  function loop(offset, acc){
-    return fetchPage(offset).then(function(rows){
-      const merged = acc.concat(rows);
-      if(rows.length < pageSize) return merged;  // 最後一頁
-      return loop(offset + pageSize, merged);
+  function loop(offset, acc, page){
+    if(page >= MAX_PAGES) return Promise.resolve(acc);
+    return fetchPage(offset, 1).then(function(r){
+      const merged = acc.concat(r.rows);
+      if(r.rows.length === 0) return merged;
+      // 知道總筆數就讀到滿為止；拿不到 Content-Range 時退回「不滿一頁就是讀完」
+      if(r.total !== null ? merged.length >= r.total : r.rows.length < PAGE) return merged;
+      return loop(offset + r.rows.length, merged, page + 1);
     });
   }
 
-  return loop(0, []);
+  return loop(0, [], 0);
 }
 
 function loadAll(manual){

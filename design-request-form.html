@@ -83,6 +83,7 @@
 
   .date-field{position:relative;}
   .date-picker-input{cursor:pointer;background:#FAFAFB;}
+  .date-picker-input.is-loading{cursor:progress;opacity:.6;}
 
   .csel{position:relative;}
   .csel-trigger{
@@ -1495,20 +1496,23 @@ function updateUrgentCounter(){
   if(!name){ el.textContent = ''; return; }
   el.textContent = '查詢中...';
 
-  loadAllTabRows().then(function(rows){
-    try{
+  // 只撈「這個人的急件」，不再把整張表讀回來算。
+  // 月份比對仍然在前端用 cleanDueDate 做，因為早期匯入的 fill_date 有完整時間戳格式，
+  // 直接用資料庫的字串比對會漏掉那些資料。
+  const q = 'select=fill_date&req_person=eq.' + encodeURIComponent(name) + '&is_urgent=eq.Y';
+  fetch(sbUrl('cases', q), { headers: SUPABASE_HEADERS })
+    .then(function(res){ if(!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+    .then(function(rows){
       const now = new Date();
       const ymPrefix = now.getFullYear() + '-' + pad2(now.getMonth()+1);
       let count = 0;
-      rows.forEach(function(r){
-        const person = (r.req_person || '').trim();
-        const urgent = r.is_urgent || '';
+      (rows || []).forEach(function(r){
         const fill = cleanDueDate(r.fill_date || '');
-        if(person === name && urgent === 'Y' && fill && fill.indexOf(ymPrefix) === 0) count++;
+        if(fill && fill.indexOf(ymPrefix) === 0) count++;
       });
       el.textContent = '本月已標急件 ' + count + ' 次';
-    }catch(err){ el.textContent = ''; }
-  });
+    })
+    .catch(function(){ el.textContent = ''; });
 }
 
 function updateSegThumb(){
@@ -1568,10 +1572,51 @@ const DAILY_LIMIT = 5;
 
 function loadTabRows(){ return Promise.resolve([]); }
 
+// ---- 分頁讀取：Supabase 單次最多回 1000 筆，不分頁的話資料會被靜默截斷 ----
+// 關鍵在於要分辨「這一頁本來就讀完了」跟「這一頁讀失敗」。
+// 把失敗當成讀完，就會拿到不完整的資料，而且畫面上完全看不出異狀。
+// 這裡用 Prefer: count=exact 取得真正的總筆數，讀到數量對上才算完成。
+function fetchAllRows(table, query){
+  const PAGE = 1000;
+  const MAX_PAGES = 200; // 安全閥，避免任何意外造成無限迴圈
+
+  function fetchPage(offset, attempt){
+    const url = sbUrl(table, query + '&limit=' + PAGE + '&offset=' + offset);
+    return fetch(url, { headers: Object.assign({}, SUPABASE_HEADERS, { 'Prefer':'count=exact' }) })
+      .then(function(res){
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        // Content-Range 格式："0-999/3421"，斜線後面是符合條件的總筆數
+        const cr = (res.headers && res.headers.get ? res.headers.get('content-range') : '') || '';
+        const totalRaw = parseInt((cr.split('/')[1] || ''), 10);
+        return res.json().then(function(rows){
+          if(!Array.isArray(rows)) throw new Error('回傳格式異常');
+          return { rows: rows, total: isNaN(totalRaw) ? null : totalRaw };
+        });
+      })
+      .catch(function(err){
+        if(attempt < 2) return fetchPage(offset, attempt + 1); // 失敗重試一次再放棄
+        throw new Error('讀取 ' + table + ' 第 ' + (Math.floor(offset / PAGE) + 1) + ' 頁失敗：' + (err && err.message ? err.message : '未知錯誤'));
+      });
+  }
+
+  function loop(offset, acc, page){
+    if(page >= MAX_PAGES) return Promise.resolve(acc);
+    return fetchPage(offset, 1).then(function(r){
+      const merged = acc.concat(r.rows);
+      if(r.rows.length === 0) return merged;
+      // 知道總筆數就讀到滿為止；拿不到 Content-Range 時退回「不滿一頁就是讀完」
+      if(r.total !== null ? merged.length >= r.total : r.rows.length < PAGE) return merged;
+      return loop(offset + r.rows.length, merged, page + 1);
+    });
+  }
+
+  return loop(0, [], 0);
+}
+
+// 讀取案件（只拿算日曆跟急件統計會用到的欄位）。
+// order 是分頁的必要條件：沒有固定排序的話，第一頁跟第二頁可能重複或漏掉同一筆。
 function loadAllTabRows(){
-  return fetch(sbUrl('cases','select=due_date,fill_date,handler,status,is_urgent,req_person&limit=1000'),{headers:SUPABASE_HEADERS})
-    .then(function(res){ return res.ok ? res.json() : []; })
-    .catch(function(){ return []; });
+  return fetchAllRows('cases','select=due_date,fill_date,handler,status,is_urgent,req_person&order=created_at.asc');
 }
 
 const LOCK_TAB_NAME = 'locked_dates';
@@ -1606,7 +1651,39 @@ function cleanDueDate(val){
   return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate());
 }
 
+// 日曆要等三份資料（案件數／封鎖日／國定假日）都到齊才準。
+// 分頁之後載入時間會變長，這段期間先不讓使用者選日期，
+// 否則會發生「剛選好的日期，兩秒後資料到了被判定不合法而清掉」。
+let dateDataReady = false;
+let dateLoadPending = 3;
+let dateLoadFailed = false;
+
+function markDateDataLoaded(failed){
+  if(failed) dateLoadFailed = true;
+  dateLoadPending--;
+  if(dateLoadPending > 0) return;
+
+  dateDataReady = true;
+  const disp = document.getElementById('dueDateDisplay');
+  if(disp){
+    disp.classList.remove('is-loading');
+    disp.placeholder = '請選擇日期';
+  }
+  renderCalendar();
+  revalidateDueDate();
+
+  if(dateLoadFailed){
+    showBanner('error', '日期資料讀取不完整，日曆上的案件數與鎖定日期可能不正確，請重新整理頁面後再填寫');
+  }
+}
+
 function loadDateCounts(){
+  const disp = document.getElementById('dueDateDisplay');
+  if(disp){
+    disp.classList.add('is-loading');
+    disp.placeholder = '日期資料載入中...';
+  }
+
   loadAllTabRows().then(function(rows){
     try{
       const counts = {};
@@ -1628,11 +1705,16 @@ function loadDateCounts(){
       window.__urgentByDesigner = urgentByDesigner;
     }catch(err){}
     renderCalendar();
-    revalidateDueDate();
+    markDateDataLoaded(false);
+  })
+  .catch(function(){
+    dateCounts = {};
+    window.__urgentByDesigner = {};
+    markDateDataLoaded(true);
   });
 
   fetch(sbUrl('locked_dates','select=handler,date,reason'),{headers:SUPABASE_HEADERS})
-  .then(function(res){ return res.ok ? res.json() : []; })
+  .then(function(res){ if(!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
   .then(function(rows){
     const lockMap = {};
     rows.forEach(function(r){
@@ -1642,21 +1724,21 @@ function loadDateCounts(){
     });
     window.__lockedByDesigner = lockMap;
     renderCalendar();
-    revalidateDueDate();
+    markDateDataLoaded(false);
   })
-  .catch(function(){ window.__lockedByDesigner={}; renderCalendar(); });
+  .catch(function(){ window.__lockedByDesigner={}; renderCalendar(); markDateDataLoaded(true); });
 
   // 國定假日／補班日（資料來源：行政院人事行政總處辦公日曆表，存在 holidays 資料表）
   fetch(sbUrl('holidays','select=date,name,is_workday'),{headers:SUPABASE_HEADERS})
-  .then(function(res){ return res.ok ? res.json() : []; })
+  .then(function(res){ if(!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
   .then(function(rows){
     const map = {};
     (rows || []).forEach(function(r){ if(r.date) map[r.date] = { name: r.name || '', isWorkday: !!r.is_workday }; });
     window.__holidays = map;
     renderCalendar();
-    revalidateDueDate();
+    markDateDataLoaded(false);
   })
-  .catch(function(){ window.__holidays = {}; });
+  .catch(function(){ window.__holidays = {}; renderCalendar(); markDateDataLoaded(true); });
 }
 
 // 回傳這天不能選的「休假」原因（國定假日／週末），可以選的話回傳 null
@@ -1762,6 +1844,7 @@ function lockedReasonFor(dateStr){
 }
 
 function toggleCalendar(){
+  if(!dateDataReady) return; // 資料還沒到齊，先不開放選擇
   const popup = document.getElementById('calendarPopup');
   popup.classList.toggle('show');
   if(popup.classList.contains('show')) renderCalendar();

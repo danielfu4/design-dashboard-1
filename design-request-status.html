@@ -1169,10 +1169,51 @@ function formatDateStr(val){
 
 function loadTabRows(){ return Promise.resolve([]); }  // shim — not used directly anymore
 
+// ---- 分頁讀取：Supabase 單次最多回 1000 筆，不分頁的話資料會被靜默截斷 ----
+// 關鍵在於要分辨「這一頁本來就讀完了」跟「這一頁讀失敗」。
+// 把失敗當成讀完，就會拿到不完整的資料，而且畫面上完全看不出異狀。
+// 這裡用 Prefer: count=exact 取得真正的總筆數，讀到數量對上才算完成。
+function fetchAllRows(table, query){
+  const PAGE = 1000;
+  const MAX_PAGES = 200; // 安全閥，避免任何意外造成無限迴圈
+
+  function fetchPage(offset, attempt){
+    const url = sbUrl(table, query + '&limit=' + PAGE + '&offset=' + offset);
+    return fetch(url, { headers: Object.assign({}, SUPABASE_HEADERS, { 'Prefer':'count=exact' }) })
+      .then(function(res){
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        // Content-Range 格式："0-999/3421"，斜線後面是符合條件的總筆數
+        const cr = (res.headers && res.headers.get ? res.headers.get('content-range') : '') || '';
+        const totalRaw = parseInt((cr.split('/')[1] || ''), 10);
+        return res.json().then(function(rows){
+          if(!Array.isArray(rows)) throw new Error('回傳格式異常');
+          return { rows: rows, total: isNaN(totalRaw) ? null : totalRaw };
+        });
+      })
+      .catch(function(err){
+        if(attempt < 2) return fetchPage(offset, attempt + 1); // 失敗重試一次再放棄
+        throw new Error('讀取 ' + table + ' 第 ' + (Math.floor(offset / PAGE) + 1) + ' 頁失敗：' + (err && err.message ? err.message : '未知錯誤'));
+      });
+  }
+
+  function loop(offset, acc, page){
+    if(page >= MAX_PAGES) return Promise.resolve(acc);
+    return fetchPage(offset, 1).then(function(r){
+      const merged = acc.concat(r.rows);
+      if(r.rows.length === 0) return merged;
+      // 知道總筆數就讀到滿為止；拿不到 Content-Range 時退回「不滿一頁就是讀完」
+      if(r.total !== null ? merged.length >= r.total : r.rows.length < PAGE) return merged;
+      return loop(offset + r.rows.length, merged, page + 1);
+    });
+  }
+
+  return loop(0, [], 0);
+}
+
+// 算日曆案件數用，只需要這三個欄位（原本是 select=* 撈 35 個欄位回來）。
+// order 是分頁的必要條件：沒有固定排序，頁與頁之間會重複或漏資料。
 function loadAllTabRows(){
-  return fetch(sbUrl('cases','select=*&limit=5000&order=created_at.desc'),{headers:SUPABASE_HEADERS})
-    .then(function(res){ return res.ok ? res.json() : []; })
-    .catch(function(){ return []; });
+  return fetchAllRows('cases','select=due_date,handler,status&order=created_at.asc');
 }
 
 function cellText(c){
@@ -1310,10 +1351,27 @@ function doSearch(e){
     document.getElementById('notifSummaryRow').classList.remove('show');
   }
 
-  fetch(sbUrl('cases', query + '&limit=500&order=created_at.desc'),{headers:SUPABASE_HEADERS})
-  .then(function(res){ return res.ok ? res.json() : []; })
-  .then(function(rows){
-    renderResults(rows, raw);
+  // 這裡刻意保留 500 筆上限：結果每一筆都會畫成一張卡片，
+  // 全部撈回來反而會讓頁面卡住。改成問出總筆數，被截斷時明確告訴使用者。
+  const SEARCH_LIMIT = 500;
+  fetch(sbUrl('cases', query + '&limit=' + SEARCH_LIMIT + '&order=created_at.desc'),
+        {headers: Object.assign({}, SUPABASE_HEADERS, { 'Prefer':'count=exact' })})
+  .then(function(res){
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const cr = res.headers.get('content-range') || '';
+    const t = parseInt((cr.split('/')[1] || ''), 10);
+    return res.json().then(function(rows){ return { rows: rows, total: isNaN(t) ? null : t }; });
+  })
+  .then(function(r){
+    renderResults(r.rows, raw);
+    if(r.total !== null && r.total > r.rows.length){
+      const note = document.createElement('div');
+      note.className = 'state-msg';
+      note.style.cssText = 'margin-bottom:12px;background:#FFF3E0;border:1px solid #FFE0B2;color:#8A5A00;border-radius:12px;padding:10px 14px;font-size:12.5px;line-height:1.6;';
+      note.textContent = '符合條件的共有 ' + r.total + ' 筆，目前顯示最近 ' + r.rows.length + ' 筆。要查更舊的紀錄請縮小查詢範圍。';
+      const results = document.getElementById('results');
+      results.insertBefore(note, results.firstChild);
+    }
   })
   .catch(function(err){
     results.innerHTML = '<div class="state-msg">資料讀取失敗：'+(err.message||'未知錯誤')+'</div>';
