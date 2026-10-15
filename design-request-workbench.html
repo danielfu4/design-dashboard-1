@@ -474,6 +474,7 @@
   .notify-btn.sent{background:#1F8A4C;}
 
   .csel{position:relative;}
+  .csel-trigger.is-locked{opacity:.55;cursor:not-allowed;}
   .csel-trigger{
     width:100%;display:flex;align-items:center;justify-content:space-between;
     border:1px solid var(--line);border-radius:10px;padding:9px 12px;
@@ -1685,6 +1686,9 @@ function renderCaseCard(m){
                 '<div class="csel-panel" id="csel_status-' + m.id + '_panel"></div>' +
               '</div>' +
               '<input type="hidden" id="status-' + m.id + '" value="' + (m.status || '待處理') + '">' +
+              // 載入當下的狀態，之後使用者再怎麼改下拉都不會動到它，
+              // 儲存時一起送出去跟資料庫比對，避免用舊畫面蓋掉別人改好的狀態
+              '<input type="hidden" id="statusLoaded-' + m.id + '" value="' + (m.status || '待處理') + '">' +
             '</div>' +
             '<div class="edit-field" id="rejectWrap-' + m.id + '" style="display:none;">' +
               '<label>退件原因</label>' +
@@ -1810,6 +1814,18 @@ function initCaseFieldVisibility(){
   const statusOptions = STATUS_OPTIONS.map(function(s){ return { value: s, label: s }; });
   (window.__cases || []).forEach(function(m){
     initCsel('status-' + m.id, statusOptions, m.status || '待處理', function(v, oldV){ onStatusChange(m.id, v, oldV); });
+
+    // 需求人員已經評分 = 案件已經結案，狀態就不該再被設計師改動
+    const rated = m.quality && m.efficiency && m.communication && m.price;
+    if(rated){
+      const trigger = document.querySelector('#csel_status-' + m.id + ' .csel-trigger');
+      if(trigger){
+        trigger.disabled = true;
+        trigger.classList.add('is-locked');
+        trigger.title = '需求人員已完成評分，案件已結案，狀態無法變更';
+      }
+    }
+
     toggleCaseFields(m.id);
   });
 }
@@ -1841,9 +1857,12 @@ function saveCase(id){
 
   const historyContent = historyEl ? historyEl.value.trim() : '';
 
+  const loadedEl = document.getElementById('statusLoaded-' + id);
+
   return designerAction('saveCase', {
     id: id,
     status: status,
+    expected_status: loadedEl ? loadedEl.value : '',
     reject_reason: (status === '退件' && rejectEl) ? rejectEl.value : '',
     delivery_link: deliveryEl ? deliveryEl.value : '',
     hours: (hoursEl && hoursEl.value) ? parseFloat(hoursEl.value) : null,
@@ -1852,6 +1871,20 @@ function saveCase(id){
   })
   .then(function(result){
     if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
+
+    // 把比對基準更新成伺服器實際寫入的狀態，否則連按兩次儲存會被誤判成「畫面過期」
+    if(loadedEl && result.data.saved_status) loadedEl.value = result.data.saved_status;
+
+    // 伺服器擋下了狀態變更（例如需求人員已經評分結案），要讓設計師知道並重新載入
+    if(result.data.notice){
+      msg.textContent = result.data.notice;
+      msg.className = 'save-msg error';
+      btnText.textContent = '儲存';
+      btn.disabled = false;
+      setTimeout(function(){ loadCases(); }, 2000);
+      return true;
+    }
+
     btnText.textContent = '儲存';
     btn.classList.add('success-state');
     if(historyContent && historyEl){
