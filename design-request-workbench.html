@@ -202,6 +202,11 @@
   .glass-shell.open .case-card::before{opacity:1;}
   .glass-shell .case-card > *:not(.case-toggle-btn){position:relative;z-index:1;}
   .glass-shell .case-card > .case-toggle-btn{z-index:2;}
+  /* 評分細項卡片浮出時，上半部要整組抬到箭頭之上，否則會被箭頭擋住 */
+  .glass-shell .case-card > .case-top.rating-open{z-index:3;}
+  @media (hover:hover) and (pointer:fine){
+    .glass-shell .case-card > .case-top:has(.score-stars-wrap:hover){z-index:3;}
+  }
 
   html[data-theme="dark"] .glass-shell::before{
     background:rgba(255,255,255,.06);
@@ -1792,17 +1797,43 @@ function toggleCaseBody(id){
 
 // 收合所有目前已展開的案件卡片（懸浮按鈕用）
 // ---- 評分星星：點擊切換顯示四項細分評分（手機／觸控用；桌機另外用 hover 顯示）----
+function closeAllRatingTooltips(){
+  document.querySelectorAll('.rating-tooltip.show').forEach(function(t){ t.classList.remove('show'); });
+  document.querySelectorAll('.case-top.rating-open').forEach(function(t){ t.classList.remove('rating-open'); });
+}
+
 document.addEventListener('click', function(e){
   const wrap = e.target.closest('.score-stars-wrap');
   if(wrap){
     e.stopPropagation();
     const tooltip = wrap.querySelector('.rating-tooltip');
     const isOpen = tooltip.classList.contains('show');
-    document.querySelectorAll('.rating-tooltip.show').forEach(function(t){ t.classList.remove('show'); });
-    if(!isOpen) tooltip.classList.add('show');
+    closeAllRatingTooltips();
+    if(!isOpen){
+      tooltip.classList.add('show');
+      // 連同上半部一起抬高，細項卡片才不會被右下角的箭頭蓋住
+      const top = wrap.closest('.case-top');
+      if(top) top.classList.add('rating-open');
+    }
   }else{
-    document.querySelectorAll('.rating-tooltip.show').forEach(function(t){ t.classList.remove('show'); });
+    closeAllRatingTooltips();
   }
+});
+
+// 桌機 hover：不支援 :has() 的瀏覽器用這段補上同樣的效果
+document.addEventListener('mouseover', function(e){
+  const wrap = e.target.closest ? e.target.closest('.score-stars-wrap') : null;
+  if(!wrap) return;
+  const top = wrap.closest('.case-top');
+  if(top) top.classList.add('rating-open');
+});
+document.addEventListener('mouseout', function(e){
+  const wrap = e.target.closest ? e.target.closest('.score-stars-wrap') : null;
+  if(!wrap) return;
+  const tooltip = wrap.querySelector('.rating-tooltip');
+  if(tooltip && tooltip.classList.contains('show')) return; // 點開鎖定中的不收
+  const top = wrap.closest('.case-top');
+  if(top) top.classList.remove('rating-open');
 });
 
 function collapseAllCases(){
