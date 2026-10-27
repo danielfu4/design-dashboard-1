@@ -916,13 +916,29 @@ function sbUrl(table, query){ return SUPABASE_URL + '/rest/v1/' + table + (query
 // 所有寫入動作都走這支 Edge Function，密碼驗證在伺服器端進行，
 // 前端不再保留密碼清單
 const DESIGNER_ACTION_URL = 'https://qvhfbgnglheepwdqybbr.supabase.co/functions/v1/designer-action';
-function designerAction(action, extra){
+// 短時間送太多請求時 Supabase 會回 429；連 CORS 預檢（OPTIONS）被擋都會讓瀏覽器
+// 直接報 "Failed to fetch"，看不到真正的狀態碼。這裡遇到 429 就退讓一下再重試。
+function designerAction(action, extra, attempt){
+  attempt = attempt || 1;
   return fetch(DESIGNER_ACTION_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(Object.assign({ action: action, password: verifiedPassword, handler: CURRENT_DESIGNER }, extra || {}))
   }).then(function(res){
+    if(res.status === 429 && attempt < 4){
+      const waitMs = 600 * Math.pow(2, attempt - 1); // 600ms → 1.2s → 2.4s
+      return new Promise(function(r){ setTimeout(r, waitMs); })
+        .then(function(){ return designerAction(action, extra, attempt + 1); });
+    }
     return res.json().then(function(data){ return { ok: res.ok, data: data }; });
+  }).catch(function(err){
+    // Failed to fetch（含預檢被擋）也退讓重試，真的不行才往外丟
+    if(attempt < 4){
+      const waitMs = 600 * Math.pow(2, attempt - 1);
+      return new Promise(function(r){ setTimeout(r, waitMs); })
+        .then(function(){ return designerAction(action, extra, attempt + 1); });
+    }
+    throw err;
   });
 }
 const STATUS_OPTIONS = ['待處理','進行中','請校稿','停案','已完成','退件'];
@@ -1689,6 +1705,8 @@ function renderCaseCard(m){
               // 載入當下的狀態，之後使用者再怎麼改下拉都不會動到它，
               // 儲存時一起送出去跟資料庫比對，避免用舊畫面蓋掉別人改好的狀態
               '<input type="hidden" id="statusLoaded-' + m.id + '" value="' + (m.status || '待處理') + '">' +
+              // 載入當下的完整欄位值，一鍵儲存時用來判斷這張卡片有沒有真的被改過
+              '<input type="hidden" id="snapshot-' + m.id + '" value="' + caseSnapshotOf(m).replace(/"/g,'&quot;') + '">' +
             '</div>' +
             '<div class="edit-field" id="rejectWrap-' + m.id + '" style="display:none;">' +
               '<label>退件原因</label>' +
@@ -1838,6 +1856,31 @@ function onStatusChange(id, newValue, oldValue){
   }
 }
 
+// 把會送出的欄位組成一個字串當快照，用來比對有沒有變動
+// 內容要跟 saveCase 真正會送出的欄位一致，否則會誤判成「有改過」。
+// 退件原因只有狀態是「退件」時才會送，所以快照也要比照辦理。
+function caseSnapshotOf(m){
+  const status = m.status || '待處理';
+  return [status, status === '退件' ? (m.rejectReason || '') : '',
+          m.deliveryLink || '', m.hours || '', m.fee || ''].join('\u0001');
+}
+
+function currentSnapshotOf(id){
+  const v = function(elId){ const el = document.getElementById(elId); return el ? el.value : ''; };
+  const status = v('status-' + id);
+  return [status, status === '退件' ? v('reject-' + id) : '', v('delivery-' + id),
+          v('hours-' + id), v('fee-' + id)].join('\u0001');
+}
+
+// 這張卡片有沒有被改過？有填設計歷程也算有要存的東西
+function isCaseDirty(id){
+  const snapEl = document.getElementById('snapshot-' + id);
+  const historyEl = document.getElementById('historyInput-' + id);
+  if(historyEl && historyEl.value.trim()) return true;
+  if(!snapEl) return true; // 沒有快照就保守處理，照存
+  return snapEl.value !== currentSnapshotOf(id);
+}
+
 function saveCase(id){
   const status = document.getElementById('status-' + id).value;
   const rejectEl = document.getElementById('reject-' + id);
@@ -1874,6 +1917,10 @@ function saveCase(id){
 
     // 把比對基準更新成伺服器實際寫入的狀態，否則連按兩次儲存會被誤判成「畫面過期」
     if(loadedEl && result.data.saved_status) loadedEl.value = result.data.saved_status;
+
+    // 更新快照，這張卡片就不再算「有改過」，下次一鍵儲存不會重複送
+    const snapEl = document.getElementById('snapshot-' + id);
+    if(snapEl) snapEl.value = currentSnapshotOf(id);
 
     // 伺服器擋下了狀態變更（例如需求人員已經評分結案），要讓設計師知道並重新載入
     if(result.data.notice){
@@ -1917,16 +1964,52 @@ function saveAllCases(){
     return;
   }
 
+  // 只送真的被改過的案件。原本不分青紅皂白全部送出，115 筆就是 115 個請求。
+  const dirtyIds = cases.map(function(m){ return m.id; }).filter(isCaseDirty);
+  if(dirtyIds.length === 0){
+    msg.textContent = '沒有變更需要儲存';
+    msg.className = 'save-all-msg';
+    return;
+  }
+
   btn.disabled = true;
-  msg.textContent = '儲存中（共 ' + cases.length + ' 筆）...';
+  msg.textContent = '儲存中（共 ' + dirtyIds.length + ' 筆）...';
   msg.className = 'save-all-msg';
 
-  Promise.all(cases.map(function(m){ return saveCase(m.id); })).then(function(results){
+  // 一次最多同時送這麼多個請求。原本是全部一起送，案件一多就會瞬間打出
+  // 上百個請求（含 CORS 預檢），被 Supabase 擋成 429，瀏覽器就報 Failed to fetch。
+  const MAX_PARALLEL = 4;
+
+  function runWithLimit(ids){
+    const results = [];
+    let next = 0;
+    let done = 0;
+
+    return new Promise(function(resolve){
+      function startOne(){
+        if(next >= ids.length) return;
+        const myIndex = next++;
+        saveCase(ids[myIndex])
+          .then(function(r){ results[myIndex] = r === true; })
+          .catch(function(){ results[myIndex] = false; })
+          .then(function(){
+            done++;
+            msg.textContent = '儲存中（' + done + ' / ' + ids.length + '）...';
+            if(done === ids.length) resolve(results);
+            else startOne();
+          });
+      }
+      const initial = Math.min(MAX_PARALLEL, ids.length);
+      for(let i = 0; i < initial; i++) startOne();
+    });
+  }
+
+  runWithLimit(dirtyIds).then(function(results){
     btn.disabled = false;
     const successCount = results.filter(function(r){ return r === true; }).length;
     const failCount = results.length - successCount;
     if(failCount === 0){
-      msg.textContent = '✓ 全部 ' + successCount + ' 筆已儲存';
+      msg.textContent = '✓ 已儲存 ' + successCount + ' 筆';
       msg.className = 'save-all-msg success';
     }else{
       msg.textContent = '完成 ' + successCount + ' 筆，' + failCount + ' 筆失敗（詳見各卡片訊息）';
