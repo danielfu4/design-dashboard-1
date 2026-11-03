@@ -1367,6 +1367,31 @@ function currentHandler(){
 }
 
 function toggleUrgent(checked){
+  const chk = document.getElementById('isUrgent');
+
+  // 取消急件時，原本「只有急件才選得到」的日期（隔天、假日、封鎖日、超過上限）
+  // 會變成不合法。直接清掉的話，使用者只是手滑點一下勾選框就白填了，
+  // 而且畫面只會跳一行紅字，看起來像是自己填錯。所以這裡先問一次。
+  if(!checked){
+    const sel = document.getElementById('dueDate').value;
+    if(sel){
+      const reason = dueDateBlockReason(sel); // 此刻勾選框已經是「沒勾」的狀態
+      if(reason !== null){
+        const ok = confirm('取消急件後，原本選的需求日期 ' + sel + ' 就不符合規則了：\n\n・' + reason +
+                           '\n\n按「確定」取消急件並清除日期，按「取消」維持急件、保留這個日期。');
+        if(!ok){
+          // 使用者選擇保留 → 把勾選狀態與相關欄位擺回「急件」
+          chk.checked = true;
+          document.getElementById('urgentDetailWrap').style.display = 'block';
+          document.getElementById('urgentReasonCat').required = true;
+          if(typeof renderCalendar === 'function' && document.getElementById('calGrid')) renderCalendar();
+          updateUrgentCounter();
+          return;
+        }
+      }
+    }
+  }
+
   document.getElementById('urgentDetailWrap').style.display = checked ? 'block' : 'none';
   document.getElementById('urgentReasonCat').required = checked;
   if(!checked){
@@ -1374,7 +1399,7 @@ function toggleUrgent(checked){
     document.getElementById('urgentOtherText').required = false;
   }
   if(typeof renderCalendar === 'function' && document.getElementById('calGrid')) renderCalendar();
-  revalidateDueDate(); // 取消急件後，原本靠急件才選得到的日期（例如隔天、超過上限）要被清掉
+  revalidateDueDate(); // 確認要取消急件了，才把選不得的日期清掉
   updateUrgentCounter();
 }
 
