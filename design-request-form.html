@@ -1366,13 +1366,15 @@ function currentHandler(){
   return designers.length > 1 ? document.getElementById('assignDesigner').value : designers[0];
 }
 
-function toggleUrgent(checked){
+// silent = true 代表是程式自己在清表單（例如送出成功後），不是使用者手動取消勾選，
+// 這種時候不要跳確認視窗問「要不要保留日期」—— 整張表單本來就要清掉了。
+function toggleUrgent(checked, silent){
   const chk = document.getElementById('isUrgent');
 
   // 取消急件時，原本「只有急件才選得到」的日期（隔天、假日、封鎖日、超過上限）
   // 會變成不合法。直接清掉的話，使用者只是手滑點一下勾選框就白填了，
   // 而且畫面只會跳一行紅字，看起來像是自己填錯。所以這裡先問一次。
-  if(!checked){
+  if(!checked && !silent){
     const sel = document.getElementById('dueDate').value;
     if(sel){
       const reason = dueDateBlockReason(sel); // 此刻勾選框已經是「沒勾」的狀態
@@ -2021,6 +2023,7 @@ function initFillDate(){
   document.getElementById('fillDate').value = dateStr;
   document.getElementById('fillDateDisplay').value = dateStr;
   fillCalendarDate = new Date();
+  fillDateManuallySet = false; // 補單旗標跟著歸零，下一筆才不會沿用上一筆手動選的日期
 }
 initFillDate();
 
@@ -2438,6 +2441,10 @@ function doActualSubmit(payload){
     }).catch(function(){});
     showBanner('success','✓ 需求已送出，已存進資料庫。　<a href="design-request-status.html" style="color:#1F8A4C;font-weight:800;">查看我的需求狀態 →</a>');
     document.getElementById('requestForm').reset();
+    // form.reset() 只會還原 HTML 上的 value 屬性，用 JS 設定過的 hidden 欄位不會被清掉，
+    // 所以需求日期要自己清。沒清的話，接下來的 toggleUrgent 會以為使用者想保留日期而跳出確認視窗。
+    document.getElementById('dueDate').value = '';
+    document.getElementById('dueDateDisplay').value = '';
     initFillDate();
     toggleRequestType('');
     toggleOtherBrand('');
@@ -2445,7 +2452,7 @@ function doActualSubmit(payload){
     cselReset('reqType');
     cselReset('urgentReasonCat');
     toggleDesignerPicker(currentGroup);
-    toggleUrgent(false);
+    toggleUrgent(false, true); // silent：清表單不需要問使用者
     document.getElementById('urgentCounter').textContent = '';
     calendarDate = new Date();
     loadDateCounts();
