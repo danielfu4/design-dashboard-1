@@ -1538,25 +1538,43 @@ function onNotifItemClick(id, caseId){
 
 // ---- 捲動停止後再播放高亮（避免捲動與動畫同時跑造成掉幀）----
 function playHighlightAfterScroll(el){
+  let played = false;
+  let guardTimer = null, idleTimer = null, debounceTimer = null;
+
+  function cleanup(){
+    window.removeEventListener('scrollend', onScrollEnd);
+    window.removeEventListener('scroll', onScroll);
+    clearTimeout(guardTimer); clearTimeout(idleTimer); clearTimeout(debounceTimer);
+  }
+
   function play(){
+    if(played) return;                         // 幾個觸發來源共用，只播一次
+    played = true;
+    cleanup();
     el.classList.remove('deep-link-highlight');
     void el.offsetWidth;                       // 強制重排，動畫才能重新觸發
     el.classList.add('deep-link-highlight');
     setTimeout(function(){ el.classList.remove('deep-link-highlight'); }, 2800);
   }
-  if('onscrollend' in window){
-    const once = function(){ window.removeEventListener('scrollend', once); play(); };
-    window.addEventListener('scrollend', once);
-    setTimeout(function(){ window.removeEventListener('scrollend', once); }, 1200);
-  }else{
-    let timer = null;
-    const onScroll = function(){
-      clearTimeout(timer);
-      timer = setTimeout(function(){ window.removeEventListener('scroll', onScroll); play(); }, 110);
-    };
-    window.addEventListener('scroll', onScroll, { passive:true });
-    setTimeout(function(){ window.removeEventListener('scroll', onScroll); }, 1500);
+
+  function onScrollEnd(){ play(); }
+  function onScroll(){
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(play, 120);     // 捲動停下來一段時間就當作結束
   }
+
+  const startY = window.scrollY;
+  window.addEventListener('scrollend', onScrollEnd);
+  window.addEventListener('scroll', onScroll, { passive:true });
+
+  // 卡片本來就在畫面上時不會產生任何捲動事件，這種情況直接播
+  idleTimer = setTimeout(function(){
+    if(window.scrollY === startY) play();
+  }, 200);
+
+  // 最後保險：捲動距離很長（超過數千像素）時瀏覽器要捲好幾秒，
+  // 或 scrollend 根本沒送出來。時間到一律把高亮播出來，絕不默默取消。
+  guardTimer = setTimeout(play, 5000);
 }
 
 function goToCaseCard(caseId){
@@ -1566,13 +1584,19 @@ function goToCaseCard(caseId){
     if(el){
       // 案件卡片預設所在的群組可能是收合狀態，捲過去也看不到，要先展開
       const group = el.closest('.status-group');
+      let justExpanded = false;
       if(group && !group.classList.contains('expanded')){
         group.classList.add('expanded');
+        justExpanded = true;
       }
+      // 展開是 0.38 秒的動畫，動畫跑完之前整頁高度都還在長。
+      // 太早呼叫 scrollIntoView 會用「還沒長完」的版面去算位置，
+      // 愈下面的卡片誤差愈大，最後就會停在錯的地方。
+      const delay = justExpanded ? 440 : 60;
       setTimeout(function(){
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         playHighlightAfterScroll(el);
-      }, 60);
+      }, delay);
       return;
     }
     attempts++;
