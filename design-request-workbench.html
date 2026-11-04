@@ -480,6 +480,18 @@
 
   .csel{position:relative;}
   .csel-trigger.is-locked{opacity:.55;cursor:not-allowed;}
+
+  /* 跳轉案件時的提示（例如「已清除搜尋條件」） */
+  .wb-toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(16px);
+    max-width:min(520px, calc(100vw - 32px));
+    background:#17181C;color:#fff;font-size:13px;font-weight:600;line-height:1.6;
+    padding:12px 18px;border-radius:12px;box-shadow:0 12px 28px rgba(20,20,30,.3);
+    opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;
+    z-index:400;text-align:center;
+  }
+  .wb-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .wb-toast.warn{background:#B3261E;}
   .csel-trigger{
     width:100%;display:flex;align-items:center;justify-content:space-between;
     border:1px solid var(--line);border-radius:10px;padding:9px 12px;
@@ -712,6 +724,8 @@
   <div id="caseList">
     <div class="state-msg">讀取中...</div>
   </div>
+
+  <div class="wb-toast" id="wbToast"></div>
 
 </div>
 
@@ -1530,10 +1544,24 @@ function markAllRead(){
   }).catch(function(err){ console.warn('全部標記已讀失敗：', err); });
 }
 
+let wbToastTimer = null;
+function showToast(msg, kind){
+  const el = document.getElementById('wbToast');
+  if(!el) return;
+  el.textContent = msg;
+  el.className = 'wb-toast show' + (kind === 'warn' ? ' warn' : '');
+  clearTimeout(wbToastTimer);
+  wbToastTimer = setTimeout(function(){ el.classList.remove('show'); }, kind === 'warn' ? 5000 : 3200);
+}
+
+// 跳轉成功才把通知標成已讀。
+// 先標已讀再跳的話，萬一跳不過去（案件被篩選藏起來、或已改派給別人），
+// 通知已經消失、案件也沒看到，等於整則通知憑空不見。
 function onNotifItemClick(id, caseId){
-  markNotifRead(id);
   closeAllNotifPanels();
-  goToCaseCard(caseId);
+  goToCaseCard(caseId, function(ok){
+    if(ok) markNotifRead(id);
+  });
 }
 
 // ---- 捲動停止後再播放高亮（避免捲動與動畫同時跑造成掉幀）----
@@ -1577,30 +1605,71 @@ function playHighlightAfterScroll(el){
   guardTimer = setTimeout(play, 5000);
 }
 
-function goToCaseCard(caseId){
+// 跳到指定案件卡片。done(ok) 會回報最後有沒有真的跳到。
+// 卡片可能不在畫面上，原因有三種，要分開處理，不能一律沉默：
+//   1. 就在畫面上           → 直接跳
+//   2. 被搜尋／狀態篩選藏起來 → 清掉篩選再跳，並明講清掉了什麼
+//   3. 根本不在這位設計師的清單裡（改派、刪除、或還沒載入完）→ 說明原因
+function goToCaseCard(caseId, done){
+  done = done || function(){};
+
+  function jumpTo(el){
+    const group = el.closest('.status-group');
+    let justExpanded = false;
+    if(group && !group.classList.contains('expanded')){
+      group.classList.add('expanded');
+      justExpanded = true;
+    }
+    // 展開是 0.38 秒的動畫，動畫跑完之前整頁高度都還在長。
+    // 太早呼叫 scrollIntoView 會用「還沒長完」的版面去算位置，
+    // 愈下面的卡片誤差愈大，最後就會停在錯的地方。
+    const delay = justExpanded ? 440 : 60;
+    setTimeout(function(){
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      playHighlightAfterScroll(el);
+    }, delay);
+    done(true);
+  }
+
+  // 情況 2：清掉會把這張卡片藏起來的篩選條件，然後重新渲染
+  function clearFiltersAndRetry(){
+    const searchEl = document.getElementById('searchInput');
+    const statusEl = document.getElementById('statusFilter');
+    const cleared = [];
+    if(searchEl && searchEl.value.trim()){ cleared.push('搜尋條件'); searchEl.value = ''; }
+    if(statusEl && statusEl.value !== 'all'){ cleared.push('狀態篩選'); statusEl.value = 'all'; }
+    if(cleared.length === 0) return false;
+
+    applyFilterAndRender();
+    const el = document.getElementById('card-' + caseId);
+    if(!el) return false;
+
+    const known = (window.__allCases || []).filter(function(m){ return m.id === caseId; })[0];
+    const name = known && known.reqName ? '「' + known.reqName + '」' : '這筆案件';
+    showToast('已清除' + cleared.join('與') + '，以顯示' + name);
+    jumpTo(el);
+    return true;
+  }
+
   let attempts = 0;
   const tryFind = function(){
     const el = document.getElementById('card-' + caseId);
-    if(el){
-      // 案件卡片預設所在的群組可能是收合狀態，捲過去也看不到，要先展開
-      const group = el.closest('.status-group');
-      let justExpanded = false;
-      if(group && !group.classList.contains('expanded')){
-        group.classList.add('expanded');
-        justExpanded = true;
-      }
-      // 展開是 0.38 秒的動畫，動畫跑完之前整頁高度都還在長。
-      // 太早呼叫 scrollIntoView 會用「還沒長完」的版面去算位置，
-      // 愈下面的卡片誤差愈大，最後就會停在錯的地方。
-      const delay = justExpanded ? 440 : 60;
-      setTimeout(function(){
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        playHighlightAfterScroll(el);
-      }, delay);
+    if(el){ jumpTo(el); return; }
+
+    // 已經載入、而且這筆案件確實屬於這位設計師 → 代表是被篩選藏起來的
+    const inAll = (window.__allCases || []).some(function(m){ return m.id === caseId; });
+    if(inAll){
+      if(clearFiltersAndRetry()) return;
+      showToast('找不到這筆案件的卡片，請重新整理頁面再試一次', 'warn');
+      done(false);
       return;
     }
+
+    // 還沒載入完就再等一下；真的等不到才回報找不到
     attempts++;
-    if(attempts < 6) setTimeout(tryFind, 250);
+    if(attempts < 6){ setTimeout(tryFind, 250); return; }
+    showToast('找不到這筆案件，可能已經改派給其他設計師或已被刪除。通知會保留在清單中。', 'warn');
+    done(false);
   };
   tryFind();
 }
