@@ -398,6 +398,35 @@
     background:#EAF1FF;padding:5px 10px;border-radius:999px;white-space:nowrap;
   }
   .supplement-block{background:#EAF1FF;}
+
+  /* ===== 補充紀錄時間軸 ===== */
+  .sup-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+  .sup-head-t{font-size:11.5px;font-weight:700;color:var(--ink-soft);}
+  .sup-head-t b{color:var(--accent);}
+  .sup-mark-read{border:none;background:none;color:var(--accent);font-family:inherit;
+                 font-size:11.5px;font-weight:700;cursor:pointer;padding:0;flex:none;}
+  .sup-mark-read:hover{text-decoration:underline;}
+
+  .sup-tl{position:relative;padding-left:20px;}
+  .sup-tl::before{content:'';position:absolute;left:5px;top:8px;bottom:8px;width:2px;
+                  background:rgba(20,20,30,.1);border-radius:2px;}
+  .sup-item{position:relative;margin-bottom:10px;}
+  .sup-item:last-child{margin-bottom:0;}
+  .sup-item::before{
+    content:'';position:absolute;left:-19px;top:11px;width:10px;height:10px;border-radius:50%;
+    background:var(--ink-faint);box-shadow:0 0 0 3px #EAF1FF;
+  }
+  .sup-item.unread::before{background:var(--accent);}
+  .sup-card{background:rgba(255,255,255,.75);border-radius:12px;padding:11px 14px;}
+  .sup-item.unread .sup-card{background:#fff;box-shadow:inset 0 0 0 1px #C7D9FF;}
+  html[data-theme="dark"] .sup-card{background:rgba(255,255,255,.06);}
+  html[data-theme="dark"] .sup-item.unread .sup-card{background:rgba(62,123,250,.12);box-shadow:inset 0 0 0 1px rgba(62,123,250,.4);}
+  html[data-theme="dark"] .sup-item::before{box-shadow:0 0 0 3px var(--card);}
+  .sup-meta{display:flex;align-items:center;gap:7px;margin-bottom:5px;flex-wrap:wrap;}
+  .sup-time{font-size:11px;color:var(--ink-soft);font-weight:700;}
+  .sup-abs{font-size:10.5px;color:var(--ink-faint);}
+  .sup-new{font-size:10px;font-weight:800;color:#fff;background:var(--accent);border-radius:999px;padding:2px 7px;}
+  .sup-body{font-size:13.5px;line-height:1.7;white-space:pre-wrap;}
   .badge-group{display:flex;align-items:center;gap:6px;flex:none;flex-wrap:wrap;justify-content:flex-end;}
   .case-top-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
   .score-stars{display:flex;gap:2px;}
@@ -1129,6 +1158,109 @@ const SCORE_STAR_PATH = 'M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 1
 
 // 把文字裡的網址找出來，解碼成可讀文字（修正網址裡的中文被編碼成 %E4%B8%80 這種亂碼的問題），
 // 同時做成可點擊的連結；網址以外的文字原樣保留
+function escapeHtml(text){
+  return String(text == null ? '' : text)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// ===== 補充紀錄 =====
+// 補充在資料庫裡是一整段文字，每則以 [YYYY-MM-DD HH:MM] 開頭、用空行隔開。
+// 這裡拆成一則一則，才能做時間軸和未讀標記。
+function parseSupplements(text){
+  if(!text) return [];
+  const re = /\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\]/g;
+  const out = [];
+  let match, lastIdx = -1, lastTime = null;
+  while((match = re.exec(text)) !== null){
+    if(lastTime !== null) out.push({ time:lastTime, body:text.slice(lastIdx, match.index).trim() });
+    lastTime = match[1];
+    lastIdx = match.index + match[0].length;
+  }
+  if(lastTime !== null) out.push({ time:lastTime, body:text.slice(lastIdx).trim() });
+  if(out.length === 0) out.push({ time:'', body:String(text).trim() });  // 早期沒有時間戳的資料
+  return out;
+}
+
+function supRelTime(ts){
+  if(!ts) return '';
+  const d = new Date(ts.replace(' ', 'T') + '+08:00');
+  if(isNaN(d.getTime())) return ts;
+  const now = new Date();
+  const hm = ts.slice(11);
+  const yd = new Date(now); yd.setDate(yd.getDate() - 1);
+  if(d.toDateString() === now.toDateString()) return '今天 ' + hm;
+  if(d.toDateString() === yd.toDateString()) return '昨天 ' + hm;
+  return ts.slice(5, 10).replace('-', '/') + ' ' + hm;
+}
+
+// 已讀狀態存在這台裝置上（每位設計師一份）。
+// 不放資料庫是因為要多一張表＋同步，而這裡就算換裝置重新顯示未讀，代價也只是多看一眼。
+function supReadKey(){ return 'itd_sup_read_' + (CURRENT_DESIGNER || ''); }
+function supReadMap(){
+  try{ return JSON.parse(localStorage.getItem(supReadKey()) || '{}'); }catch(e){ return {}; }
+}
+function supLastSeen(caseId){ return supReadMap()[caseId] || ''; }
+function supMarkRead(caseId, latestTime){
+  try{
+    const map = supReadMap();
+    map[caseId] = latestTime || '';
+    localStorage.setItem(supReadKey(), JSON.stringify(map));
+  }catch(e){}
+}
+
+function noteSupplementsSeen(caseId){
+  const wrap = document.getElementById('supWrap-' + caseId);
+  if(!wrap) return;
+  supMarkRead(caseId, wrap.dataset.latest || '');
+}
+
+function markSupplementsRead(caseId){
+  const wrap = document.getElementById('supWrap-' + caseId);
+  if(!wrap) return;
+  const latest = wrap.dataset.latest || '';
+  if(!latest) return;
+  if(supLastSeen(caseId) === latest) return;   // 已經是已讀了，不用重畫
+  supMarkRead(caseId, latest);
+  wrap.querySelectorAll('.sup-item.unread').forEach(function(el){ el.classList.remove('unread'); });
+  wrap.querySelectorAll('.sup-new').forEach(function(el){ el.remove(); });
+  const head = wrap.querySelector('.sup-head-t');
+  if(head) head.innerHTML = head.innerHTML.replace(/ · <b>.*?<\/b>/, '');
+  const btn = wrap.querySelector('.sup-mark-read');
+  if(btn) btn.remove();
+}
+
+function renderSupplementTimeline(caseId, raw){
+  const items = parseSupplements(raw);
+  if(items.length === 0) return '';
+  const lastSeen = supLastSeen(caseId);
+  const latest = items.reduce(function(a, it){ return it.time > a ? it.time : a; }, '');
+  const unreadCount = items.filter(function(it){ return it.time && it.time > lastSeen; }).length;
+
+  const head = '<div class="sup-head">' +
+      '<div class="sup-head-t">補充紀錄 ' + items.length + ' 則' +
+        (unreadCount ? ' · <b>' + unreadCount + ' 則未讀</b>' : '') + '</div>' +
+      (unreadCount ? '<button type="button" class="sup-mark-read" onclick="event.stopPropagation();markSupplementsRead(\'' + caseId + '\')">全部標為已讀</button>' : '') +
+    '</div>';
+
+  const body = '<div class="sup-tl">' + items.map(function(it){
+    const unread = it.time && it.time > lastSeen;
+    return '<div class="sup-item' + (unread ? ' unread' : '') + '">' +
+      '<div class="sup-card">' +
+        (it.time ? '<div class="sup-meta">' +
+          '<span class="sup-time">' + supRelTime(it.time) + '</span>' +
+          // 只有「今天／昨天」才補上實際日期，其餘本身就看得到日期，不重複顯示
+          (/^(今天|昨天)/.test(supRelTime(it.time)) ? '<span class="sup-abs">' + it.time.slice(5, 10).replace('-', '/') + '</span>' : '') +
+          (unread ? '<span class="sup-new">新增</span>' : '') +
+        '</div>' : '') +
+        '<div class="sup-body">' + linkifyText(escapeHtml(it.body)) + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('') + '</div>';
+
+  return '<div id="supWrap-' + caseId + '" data-latest="' + latest + '">' + head + body + '</div>';
+}
+
 function linkifyText(text){
   if(!text) return '';
   return String(text).replace(/(https?:\/\/[^\s<>"]+)/g, function(url){
@@ -1902,7 +2034,7 @@ function renderCaseCard(m){
     detailBlock += '<div class="detail-block"><div class="label">備註</div>' + linkifyText(m.notes) + '</div>';
   }
   if(m.supplement){
-    detailBlock += '<div class="detail-block supplement-block"><div class="label">補充紀錄</div>' + m.supplement + '</div>';
+    detailBlock += '<div class="detail-block supplement-block">' + renderSupplementTimeline(m.id, m.supplement) + '</div>';
   }
   if(m.ratingReason){
     detailBlock += '<div class="detail-block rating-reason-block"><div class="label">需求人評分原因</div>' + m.ratingReason + '</div>';
@@ -2043,6 +2175,8 @@ function toggleCaseBody(id){
   chevron.classList.toggle('open', !isOpen);
   const shell = document.getElementById('shell-' + id);
   if(shell) shell.classList.toggle('open', !isOpen);
+
+  if(!isOpen) noteSupplementsSeen(id);
 
   if(!isOpen){
     // 監聽 transition 結束後再捲，高度才準確
