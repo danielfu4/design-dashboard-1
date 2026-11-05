@@ -357,8 +357,8 @@
     transition:background-color .15s ease, box-shadow .15s ease;
   }
   .notif-item:last-child{margin-bottom:0;}
-  .notif-item:hover{background:var(--card);box-shadow:0 1px 3px rgba(20,20,30,.1);}
-  html[data-theme="dark"] .notif-item:hover{background:var(--hover-bg);box-shadow:none;}
+  /* 面板底色本身就是 --card（白），hover 再給白色等於沒變化，要用灰的 --hover-bg */
+  .notif-item:hover{background:var(--hover-bg);}
   .notif-item.read .notif-item-title,
   .notif-item.read .notif-item-desc,
   .notif-item.read .notif-item-time{opacity:.4;}
@@ -1444,6 +1444,15 @@ function renderNotifPanel(){
     bell.classList.remove('has-unread');
   }
 
+  // 內容跟畫面上的一模一樣就不要重畫。
+  // 重畫會換掉整批 DOM，正在跑的進場動畫會被從中途砍斷。
+  const sig = notifCache.map(function(n){ return n.id + ':' + (n.is_read ? 1 : 0); }).join('|');
+  if(scroll.dataset.sig === sig && scroll.querySelector('.notif-item')){
+    if(window.__notifThumbUpdater) window.__notifThumbUpdater();
+    return;
+  }
+  scroll.dataset.sig = sig;
+
   if(notifCache.length === 0){
     scroll.innerHTML = '<div class="notif-empty">目前沒有通知</div>';
   }else{
@@ -1463,7 +1472,13 @@ function renderNotifPanel(){
   }
   if(window.__notifThumbUpdater) window.__notifThumbUpdater();
   // 內容是非同步抓回來的，重新渲染後要重算一次延遲
-  if(document.getElementById('notifPanel').classList.contains('stagger')) applyNotifStagger();
+  const np = document.getElementById('notifPanel');
+  if(notifStaggerPending){
+    playNotifStagger();
+    if(np.classList.contains('show')) document.getElementById('notifScroll').scrollTop = 0;
+  }else{
+    np.classList.remove('stagger'); // 已經播過，重新抓回來的內容直接顯示就好
+  }
 }
 
 // ---- 自訂捲軸 + 上下淡出遮罩 + 拖曳把手調整高度 ----
@@ -1569,12 +1584,15 @@ function toggleNotif(){
   const panel = document.getElementById('notifPanel');
   const willOpen = !panel.classList.contains('show');
   if(willOpen){
-    panel.classList.add('stagger');
-    applyNotifStagger();
+    notifStaggerPending = true;
+    const sc = document.getElementById('notifScroll');
+    if(sc) sc.scrollTop = 0;   // 每次開啟都回到最上面，不要停在上次捲到的位置
+    playNotifStagger();
     panel.classList.add('show');
-    loadNotifications();   // 每次打開都重新抓最新通知
+    loadNotifications();       // 每次打開都重新抓最新通知
   }else{
     panel.classList.remove('show','stagger');
+    notifStaggerPending = false;
   }
 }
 
@@ -1583,6 +1601,21 @@ function toggleNotif(){
 // 簡寫覆蓋規則，delay 會被歸零。
 const NOTIF_STAGGER_MS = 100;   // 每則之間的間隔
 const NOTIF_ICON_LAG_MS = 60;   // 圖示比整列晚一點起跑，層次比較清楚
+// 一次開啟只播一次進場動畫。
+// 開啟時面板裡還是上一次的舊內容，抓回新資料後會整個重畫；
+// 如果重畫後又播一次，使用者就會看到同一段動畫跑兩遍。
+let notifStaggerPending = false;
+
+function playNotifStagger(){
+  const panel = document.getElementById('notifPanel');
+  if(!panel || !notifStaggerPending) return;
+  const rows = panel.querySelectorAll('.notif-item');
+  if(rows.length === 0) return;      // 還沒有內容，等抓回來那次再播
+  panel.classList.add('stagger');
+  applyNotifStagger();
+  notifStaggerPending = false;       // 這次開啟已經播過了
+}
+
 function applyNotifStagger(){
   const panel = document.getElementById('notifPanel');
   if(!panel) return;
