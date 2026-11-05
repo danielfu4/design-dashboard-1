@@ -1220,7 +1220,8 @@ function markSupplementsRead(caseId){
   if(!wrap) return;
   const latest = wrap.dataset.latest || '';
   if(!latest) return;
-  if(supLastSeen(caseId) === latest) return;   // 已經是已讀了，不用重畫
+  // 注意：展開卡片時 noteSupplementsSeen() 已經把已讀時間寫進去了，
+  // 所以這裡不能用「已經是已讀就 return」當捷徑，否則按鈕會完全沒反應。
   supMarkRead(caseId, latest);
   wrap.querySelectorAll('.sup-item.unread').forEach(function(el){ el.classList.remove('unread'); });
   wrap.querySelectorAll('.sup-new').forEach(function(el){ el.remove(); });
