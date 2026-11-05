@@ -11,6 +11,7 @@
   :root{
     --bg:#F1F1F3; --card:#FFFFFF;
     --shadow:0 1px 2px rgba(20,20,30,.05), 0 6px 16px rgba(20,20,30,.04);
+    --ease-ui:cubic-bezier(.215,.61,.355,1);
     --ink:#17181C; --ink-soft:#8A8A93; --ink-faint:#C2C2C8; --line:#ECECEE;
     --accent:#3E7BFA;
     --input-bg:#FAFAFB; --hover-bg:#F1F1F3;
@@ -296,13 +297,27 @@
     border-radius:999px;display:flex;align-items:center;justify-content:center;
     line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.2);
   }
+  /* 面板從鈴鐺的位置縮放長出來（transform-origin 在右上角），
+     透明度只花 100ms、比縮放快，所以內容先浮現、框再長定。 */
   .notif-panel{
     position:absolute;top:calc(100% + 8px);right:0;width:320px;z-index:30;
     background:var(--card);border-radius:14px;box-shadow:0 12px 32px rgba(20,20,30,.18);
-    padding:8px;opacity:0;visibility:hidden;transform:translateY(-6px);
-    transition:opacity .18s ease, transform .18s ease, visibility .18s ease;
+    padding:8px;opacity:0;visibility:hidden;
+    transform:scale(.9);transform-origin:top right;
+    transition:opacity .1s var(--ease-ui), transform .22s var(--ease-ui), visibility .22s var(--ease-ui);
   }
-  .notif-panel.show{opacity:1;visibility:visible;transform:translateY(0);}
+  .notif-panel.show{opacity:1;visibility:visible;transform:scale(1);}
+
+  /* 通知逐一錯開進場：每則從左側 8px 滑入、4px 模糊化開。
+     延遲由 JS 逐項寫進 style.animationDelay，不用 calc(var())。
+     只有開啟時錯開，關閉時整塊一起收掉。 */
+  .notif-panel.stagger .notif-item{
+    animation:notifRowIn .37s var(--ease-ui) backwards;
+  }
+  @keyframes notifRowIn{
+    from{opacity:0;transform:translateX(-8px);filter:blur(4px);}
+    to{opacity:1;transform:translateX(0);filter:blur(0);}
+  }
   .notif-empty{padding:24px 12px;text-align:center;font-size:12.5px;color:var(--ink-faint);}
 
   .notif-scroll-wrap{position:relative;}
@@ -311,6 +326,30 @@
   .notif-scroll-track{position:absolute;top:0;right:1px;bottom:0;width:5px;pointer-events:none;}
   .notif-scroll-thumb{position:absolute;right:0;width:5px;border-radius:999px;background:var(--ink-faint);opacity:0;transition:opacity .3s ease;}
   .notif-scroll-thumb.show{opacity:1;}
+
+  /* 圖示線條自己畫出來：每條路徑 pathLength="1"，再動 stroke-dashoffset。
+     一定要 both —— 只用 backwards 的話畫完會退回 dashoffset:1，線條整個消失。 */
+  .notif-type-icon svg > *{
+    stroke-dasharray:1;stroke-dashoffset:1;
+    animation:notifDrawPath .55s var(--ease-ui) both;
+  }
+  @keyframes notifDrawPath{from{stroke-dashoffset:1;}to{stroke-dashoffset:0;}}
+
+  /* 滑到某一則通知上，該則的圖示做自己的小動作 */
+  .notif-item:hover .notif-type-icon.t-new_case svg{animation:notifSpin .4s var(--ease-ui) forwards;}
+  .notif-item:hover .notif-type-icon.t-supplement svg{animation:notifNudge .45s var(--ease-ui);}
+  .notif-item:hover .notif-type-icon.t-rating svg{animation:notifStarPop .5s cubic-bezier(.34,1.56,.64,1);}
+  @keyframes notifSpin{from{transform:rotate(0);}to{transform:rotate(90deg);}}
+  @keyframes notifNudge{0%{transform:translateY(0);}35%{transform:translateY(-3px);}70%{transform:translateY(1px);}100%{transform:translateY(0);}}
+  @keyframes notifStarPop{0%{transform:scale(1) rotate(0);}45%{transform:scale(1.25) rotate(-12deg);}100%{transform:scale(1) rotate(0);}}
+
+  @media (prefers-reduced-motion:reduce){
+    .notif-panel{transform:none;transition:opacity .15s linear, visibility .15s linear;}
+    .notif-panel.show{transform:none;}
+    .notif-panel.stagger .notif-item{animation:none;}
+    .notif-type-icon svg > *{animation:none;stroke-dashoffset:0;}
+    .notif-item:hover .notif-type-icon svg{animation:none;}
+  }
 
   .notif-item{
     display:flex;gap:10px;padding:11px 10px;border-radius:10px;cursor:pointer;
@@ -338,9 +377,14 @@
     width:36px;height:16px;display:flex;align-items:center;justify-content:center;
     cursor:ns-resize;touch-action:none;
   }
-  .notif-resize-handle::before{content:'';width:32px;height:4px;border-radius:999px;background:var(--line);transition:background-color .15s ease;}
+  /* 拉桿平常藏起來，滑鼠移到面板上、或正在拖曳時才浮現 */
+  .notif-resize-handle::before{
+    content:'';width:32px;height:4px;border-radius:999px;background:var(--line);
+    opacity:0;transition:opacity .2s ease, background-color .15s ease;
+  }
+  .notif-panel:hover .notif-resize-handle::before{opacity:1;}
   .notif-resize-handle:hover::before,
-  .notif-resize-handle.dragging::before{background:var(--ink-faint);}
+  .notif-resize-handle.dragging::before{background:var(--ink-faint);opacity:1;}
   .case-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;}
   .case-name{font-size:16px;font-weight:800;}
   .case-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
@@ -1344,9 +1388,11 @@ function toggleStatusGroup(groupId){
 // ---- 通知中心：新案件／案件補充／案件評分，合併在頁首單一鈴鐺 ----
 // 通知記錄的是「當時發生的事」，案件狀態之後會一直變動，所以不綁在狀態分類上
 const NOTIF_META = {
-  new_case:   { bg:'#EAF1FF', fg:'#3E7BFA', svg:'<path d="M12 5v14M5 12h14"></path>' },
-  supplement: { bg:'#FDF0E3', fg:'#E08E0B', svg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>' },
-  rating:     { bg:'#EAF7EF', fg:'#1F8A4C', svg:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>' }
+  // pathLength="1" 讓每條線的長度統一成 1，描繪動畫才不用管實際路徑多長。
+  // ＋號拆成兩條路徑，這樣兩筆會分別畫出來而不是一筆連起來。
+  new_case:   { bg:'#EAF1FF', fg:'#3E7BFA', svg:'<path pathLength="1" d="M12 5v14"></path><path pathLength="1" d="M5 12h14"></path>' },
+  supplement: { bg:'#FDF0E3', fg:'#E08E0B', svg:'<path pathLength="1" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>' },
+  rating:     { bg:'#EAF7EF', fg:'#1F8A4C', svg:'<polygon pathLength="1" points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>' }
 };
 let notifCache = [];
 
@@ -1401,10 +1447,10 @@ function renderNotifPanel(){
   if(notifCache.length === 0){
     scroll.innerHTML = '<div class="notif-empty">目前沒有通知</div>';
   }else{
-    scroll.innerHTML = notifCache.map(function(n){
+    scroll.innerHTML = notifCache.map(function(n, i){
       const meta = NOTIF_META[n.type] || NOTIF_META.new_case;
-      return '<div class="notif-item ' + (n.is_read ? 'read' : 'unread') + '" onclick="onNotifItemClick(\'' + n.id + '\',\'' + n.case_id + '\')">' +
-        '<div class="notif-type-icon" style="background:' + meta.bg + ';color:' + meta.fg + ';">' +
+      return '<div class="notif-item ' + (n.is_read ? 'read' : 'unread') + '" data-i="' + i + '" onclick="onNotifItemClick(\'' + n.id + '\',\'' + n.case_id + '\')">' +
+        '<div class="notif-type-icon t-' + (NOTIF_META[n.type] ? n.type : 'new_case') + '" style="background:' + meta.bg + ';color:' + meta.fg + ';">' +
           '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">' + meta.svg + '</svg>' +
         '</div>' +
         '<div class="notif-item-body">' +
@@ -1416,6 +1462,8 @@ function renderNotifPanel(){
     }).join('');
   }
   if(window.__notifThumbUpdater) window.__notifThumbUpdater();
+  // 內容是非同步抓回來的，重新渲染後要重算一次延遲
+  if(document.getElementById('notifPanel').classList.contains('stagger')) applyNotifStagger();
 }
 
 // ---- 自訂捲軸 + 上下淡出遮罩 + 拖曳把手調整高度 ----
@@ -1510,7 +1558,7 @@ function setupNotifScroll(){
 
 function closeAllNotifPanels(){
   const panel = document.getElementById('notifPanel');
-  if(panel) panel.classList.remove('show');
+  if(panel) panel.classList.remove('show','stagger'); // 關閉不錯開，整塊一起收掉
 }
 document.addEventListener('click', function(){
   if(notifDragJustEnded) return;
@@ -1520,8 +1568,36 @@ document.addEventListener('click', function(){
 function toggleNotif(){
   const panel = document.getElementById('notifPanel');
   const willOpen = !panel.classList.contains('show');
-  panel.classList.toggle('show');
-  if(willOpen) loadNotifications();   // 每次打開都重新抓最新通知
+  if(willOpen){
+    panel.classList.add('stagger');
+    applyNotifStagger();
+    panel.classList.add('show');
+    loadNotifications();   // 每次打開都重新抓最新通知
+  }else{
+    panel.classList.remove('show','stagger');
+  }
+}
+
+// 逐一算出每則通知的進場延遲，直接寫到元素上。
+// 不用 CSS 的 calc(var())：舊版 Safari 支援不一致，而且後面若有人用 animation
+// 簡寫覆蓋規則，delay 會被歸零。
+const NOTIF_STAGGER_MS = 100;   // 每則之間的間隔
+const NOTIF_ICON_LAG_MS = 60;   // 圖示比整列晚一點起跑，層次比較清楚
+function applyNotifStagger(){
+  const panel = document.getElementById('notifPanel');
+  if(!panel) return;
+  const rows = panel.querySelectorAll('.notif-item');
+  // 超過 10 則就收斂間隔，否則最後幾則要等太久
+  const step = rows.length > 10
+    ? NOTIF_STAGGER_MS * Math.sqrt(10 / rows.length)
+    : NOTIF_STAGGER_MS;
+  rows.forEach(function(row){
+    const d = (parseInt(row.dataset.i, 10) || 0) * step;
+    row.style.animationDelay = d.toFixed(1) + 'ms';
+    row.querySelectorAll('.notif-type-icon svg > *').forEach(function(p){
+      p.style.animationDelay = (d + NOTIF_ICON_LAG_MS).toFixed(1) + 'ms';
+    });
+  });
 }
 
 function markNotifRead(id){
