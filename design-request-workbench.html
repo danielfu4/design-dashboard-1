@@ -581,12 +581,17 @@
   .modal-overlay{
     display:none;position:fixed;inset:0;background:rgba(20,20,30,.5);z-index:300;
     align-items:center;justify-content:center;padding:20px;
+    opacity:0;transition:opacity .22s var(--ease-ui);
   }
   .modal-overlay.show{display:flex;}
+  .modal-overlay.in{opacity:1;}
   .modal-card{
     background:var(--card);border-radius:20px;box-shadow:0 20px 50px rgba(20,20,30,.3);
     padding:26px 26px 22px;max-width:400px;width:100%;max-height:86vh;overflow-y:auto;
+    transform:scale(.94) translateY(10px);opacity:0;
+    transition:transform .28s var(--ease-ui), opacity .2s var(--ease-ui);
   }
+  .modal-overlay.in .modal-card{transform:scale(1) translateY(0);opacity:1;}
   .modal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;}
   .modal-title{font-size:16px;font-weight:800;}
   .modal-sub{font-size:12px;color:var(--ink-soft);margin-top:3px;}
@@ -623,7 +628,19 @@
   .cal-header button:hover{background:#E7E7EA;}
   #lockCalMonthLabel{font-size:13.5px;font-weight:800;}
   .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:11px;color:var(--ink-soft);margin-bottom:4px;}
-  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;user-select:none;touch-action:none;}
+
+  /* 日曆格子進場：從中心往外擴散，延遲由 JS 依離中心的距離逐格寫入 */
+  .cal-grid.anim .cal-day:not(.empty){animation:calDayIn .56s var(--ease-ui) backwards;}
+  @keyframes calDayIn{
+    from{opacity:0;transform:scale(.33);filter:blur(6px);}
+    to{opacity:1;transform:scale(1);filter:blur(0);}
+  }
+  /* 換月：整個格線往按鈕的反方向滑進來 */
+  .cal-grid.slide-l{animation:calSlideL .28s var(--ease-ui);}
+  .cal-grid.slide-r{animation:calSlideR .28s var(--ease-ui);}
+  @keyframes calSlideL{from{opacity:0;transform:translateX(18px);}to{opacity:1;transform:translateX(0);}}
+  @keyframes calSlideR{from{opacity:0;transform:translateX(-18px);}to{opacity:1;transform:translateX(0);}}
   .cal-day{
     aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
     font-size:12px;border-radius:8px;cursor:pointer;color:var(--ink);position:relative;
@@ -633,8 +650,41 @@
   .cal-day.locked{background:#FBEBEA;color:#B3324A;text-decoration:line-through;}
   .cal-day.locked:hover{background:#F6D9D6;}
   .cal-day.today{box-shadow:inset 0 0 0 1.5px var(--accent);}
+  /* 框選中的日期 */
+  .cal-day.sel{background:#E3EDFF;box-shadow:inset 0 0 0 2px var(--accent);transform:scale(1.04);}
+  .cal-day.locked.sel{background:#F3DFE6;box-shadow:inset 0 0 0 2px var(--accent);}
+  html[data-theme="dark"] .cal-day.sel{background:#1E2A44;}
   .cal-day .case-count{font-size:9px;color:var(--ink-faint);margin-top:1px;}
   .cal-day.locked .case-count{color:#C4726A;}
+  /* 框選後滑出的批次動作列 */
+  .sel-bar{
+    max-height:0;opacity:0;overflow:hidden;padding-top:0;border-top:1px solid transparent;margin-top:14px;
+    transition:max-height .3s var(--ease-ui), opacity .25s var(--ease-ui), padding-top .3s var(--ease-ui);
+  }
+  .sel-bar.show{max-height:220px;opacity:1;padding-top:14px;border-top-color:var(--line);}
+  .sel-count{font-size:12.5px;font-weight:700;margin-bottom:10px;}
+  .sel-count span{color:var(--accent);}
+  .sel-count em{font-style:normal;color:#B3324A;}
+  .sel-reason{
+    width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;
+    font-family:inherit;font-size:13px;color:var(--ink);background:var(--input-bg);margin-bottom:10px;
+  }
+  .sel-reason:focus{outline:none;border-color:var(--accent);background:var(--card);}
+  .sel-actions{display:flex;gap:8px;}
+  .sel-actions button{flex:1;border:none;font-family:inherit;font-weight:700;font-size:13px;
+                      padding:10px;border-radius:10px;cursor:pointer;}
+  .sel-btn-lock{background:var(--btn-primary);color:var(--btn-primary-text);}
+  .sel-btn-unlock{background:#FBEBEA;color:#B3324A;}
+  .sel-btn-cancel{background:var(--hover-bg);color:var(--ink-soft);flex:0 0 72px;}
+  .sel-actions button:disabled{opacity:.35;cursor:not-allowed;}
+
+  @media (prefers-reduced-motion:reduce){
+    .modal-overlay,.modal-card{transition:opacity .15s linear;}
+    .modal-card,.modal-overlay.in .modal-card{transform:none;}
+    .cal-grid.anim .cal-day:not(.empty),.cal-grid.slide-l,.cal-grid.slide-r{animation:none;}
+    .sel-bar{transition:none;}
+  }
+
   .lock-legend{display:flex;gap:16px;margin-top:12px;font-size:11px;color:var(--ink-soft);}
   .lock-dot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:5px;}
   .lock-dot.locked{background:#FBEBEA;box-shadow:inset 0 0 0 1px #B3324A;}
@@ -778,7 +828,7 @@
     <div class="modal-head">
       <div>
         <div class="modal-title">設計師班表</div>
-        <div class="modal-sub">鎖起來的日期，填單人員在需求日期就無法選到（連急件也擋）</div>
+        <div class="modal-sub">鎖起來的日期，填單人員在需求日期就無法選到（連急件也擋）<br>按住拖曳可以一次選多天</div>
       </div>
       <button class="modal-close" onclick="closeLockModal()">✕</button>
     </div>
@@ -793,6 +843,17 @@
       <div class="lock-legend">
         <span><i class="lock-dot locked"></i>已封鎖</span>
         <span><i class="lock-dot has-case"></i>有案件</span>
+      </div>
+
+      <div class="sel-bar" id="lockSelBar">
+        <div class="sel-count" id="lockSelCount"></div>
+        <input type="text" class="sel-reason" id="lockSelReason" placeholder="封鎖原因（選填，不會給填單人員看到）">
+        <div class="sel-actions">
+          <button type="button" class="sel-btn-lock"   id="lockSelBtnLock"   onclick="applySelLock()">鎖定</button>
+          <button type="button" class="sel-btn-unlock" id="lockSelBtnUnlock" onclick="applySelUnlock()">解除</button>
+          <button type="button" class="sel-btn-cancel" onclick="clearLockSel()">取消</button>
+        </div>
+        <div class="modal-msg" id="lockSelMsg"></div>
       </div>
     </div>
   </div>
@@ -2266,12 +2327,18 @@ function normalizeDateStr(str){
 }
 
 function openLockModal(){
-  document.getElementById('lockModalOverlay').classList.add('show');
+  const ov = document.getElementById('lockModalOverlay');
+  ov.classList.add('show');
+  clearLockSel();
   loadLockedDates();
+  void ov.offsetWidth;        // 強制重排，transition 才會從頭跑
+  ov.classList.add('in');
 }
 
 function closeLockModal(){
-  document.getElementById('lockModalOverlay').classList.remove('show');
+  const ov = document.getElementById('lockModalOverlay');
+  ov.classList.remove('in');
+  setTimeout(function(){ ov.classList.remove('show'); clearLockSel(); }, 240); // 等淡出跑完再收起
 }
 
 function loadLockedDates(){
@@ -2291,8 +2358,9 @@ function loadLockedDates(){
 }
 
 function changeLockMonth(delta){
+  clearLockSel();   // 換月清掉選取，避免選了 5 天翻到下個月才按鎖定，鎖到上個月那幾天
   lockCalendarDate.setMonth(lockCalendarDate.getMonth() + delta);
-  renderLockCalendar();
+  renderLockCalendar(delta);
 }
 
 function caseCountsByDate(){
@@ -2305,7 +2373,7 @@ function caseCountsByDate(){
   return counts;
 }
 
-function renderLockCalendar(){
+function renderLockCalendar(slideDir){
   const y = lockCalendarDate.getFullYear();
   const m = lockCalendarDate.getMonth();
   document.getElementById('lockCalMonthLabel').textContent = y + ' 年 ' + (m+1) + ' 月';
@@ -2325,12 +2393,175 @@ function renderLockCalendar(){
     let cls = 'cal-day';
     if(isLocked) cls += ' locked';
     if(dateStr === todayStr) cls += ' today';
-    html += '<div class="' + cls + '" onclick="onLockDayClick(\'' + dateStr + '\')">' +
+    if(lockSelected.has(dateStr)) cls += ' sel';
+    html += '<div class="' + cls + '" data-date="' + dateStr + '">' +
       '<span>' + d + '</span>' +
       (count > 0 ? '<span class="case-count">' + count + '件</span>' : '') +
     '</div>';
   }
-  document.getElementById('lockCalGrid').innerHTML = html;
+  const grid = document.getElementById('lockCalGrid');
+  grid.className = 'cal-grid';
+  grid.innerHTML = html;
+  if(slideDir){ void grid.offsetWidth; grid.classList.add(slideDir < 0 ? 'slide-r' : 'slide-l'); }
+  applyCalDayDelays();
+  updateLockSelBar();
+}
+
+// 從中心往外擴散：延遲 = 離格線中心的距離 × 56ms
+function applyCalDayDelays(){
+  const grid = document.getElementById('lockCalGrid');
+  if(!grid) return;
+  [...grid.querySelectorAll('.cal-day')].forEach(function(cell, i){
+    const row = Math.floor(i / 7), col = i % 7;
+    const ring = Math.round(Math.hypot(row - 2.5, col - 3));
+    cell.style.animationDelay = (ring * 56) + 'ms';
+  });
+  grid.classList.add('anim');
+}
+
+// ================= 框選多日 =================
+// 設計原則：不加模式切換、不用修飾鍵。按下去沒移動＝單擊（維持原本行為），
+// 移動過才算框選，這樣舊的使用習慣完全不會被破壞，觸控也能用。
+let lockSelected = new Set();
+let calDragging = false, calDragStart = null, calDragMoved = false, calDragBase = null;
+
+function clearLockSel(){
+  lockSelected.clear();
+  paintLockSel();
+}
+
+function paintLockSel(){
+  const grid = document.getElementById('lockCalGrid');
+  if(!grid) return;
+  grid.querySelectorAll('.cal-day:not(.empty)').forEach(function(c){
+    c.classList.toggle('sel', lockSelected.has(c.dataset.date));
+  });
+  updateLockSelBar();
+}
+
+// 連續日期區間（不是矩形）：拖過週的邊界會接到下一週的星期日
+function calCellsInRange(a, b){
+  const grid = document.getElementById('lockCalGrid');
+  if(!grid) return [];
+  const all = [...grid.querySelectorAll('.cal-day:not(.empty)')].map(function(c){ return c.dataset.date; });
+  const ia = all.indexOf(a), ib = all.indexOf(b);
+  if(ia < 0 || ib < 0) return [];
+  return all.slice(Math.min(ia, ib), Math.max(ia, ib) + 1);
+}
+
+function updateLockSelBar(){
+  const bar = document.getElementById('lockSelBar');
+  if(!bar) return;
+  if(lockSelected.size === 0){ bar.classList.remove('show'); return; }
+  const arr = [...lockSelected];
+  const lockedCount = arr.filter(function(d){ return lockedDatesMap.hasOwnProperty(d); }).length;
+  const freeCount = arr.length - lockedCount;
+  document.getElementById('lockSelCount').innerHTML =
+    '已選 <span>' + arr.length + '</span> 天' +
+    (lockedCount ? '（其中 <em>' + lockedCount + '</em> 天已封鎖）' : '');
+  const bl = document.getElementById('lockSelBtnLock');
+  const bu = document.getElementById('lockSelBtnUnlock');
+  bl.textContent = freeCount ? '鎖定 ' + freeCount + ' 天' : '鎖定';
+  bu.textContent = lockedCount ? '解除 ' + lockedCount + ' 天' : '解除';
+  bl.disabled = freeCount === 0;
+  bu.disabled = lockedCount === 0;
+  bar.classList.add('show');
+}
+
+function calDayAt(x, y){
+  const el = document.elementFromPoint(x, y);
+  if(!el || !el.closest) return null;
+  const cell = el.closest('.cal-day');
+  if(!cell || cell.classList.contains('empty')) return null;
+  if(!cell.closest('#lockCalGrid')) return null;
+  return cell.dataset.date;
+}
+function onCalDown(x, y){
+  const ds = calDayAt(x, y);
+  if(!ds) return;
+  calDragging = true; calDragStart = ds; calDragMoved = false;
+  calDragBase = new Set(lockSelected);   // 拖曳是疊加在既有選取上
+}
+function onCalMove(x, y){
+  if(!calDragging) return;
+  const ds = calDayAt(x, y);
+  if(!ds) return;
+  if(ds !== calDragStart) calDragMoved = true;
+  if(!calDragMoved) return;
+  lockSelected = new Set(calDragBase);
+  calCellsInRange(calDragStart, ds).forEach(function(d){ lockSelected.add(d); });
+  paintLockSel();
+}
+function onCalUp(){
+  if(!calDragging) return;
+  const wasDrag = calDragMoved, start = calDragStart;
+  calDragging = false; calDragStart = null; calDragMoved = false;
+  if(wasDrag) return;                    // 框選完成，等使用者按動作鈕
+
+  if(lockSelected.size > 0){             // 已有選取 → 點擊是加入／移出
+    if(lockSelected.has(start)) lockSelected.delete(start); else lockSelected.add(start);
+    paintLockSel();
+    return;
+  }
+  onLockDayClick(start);                 // 沒有選取 → 維持原本的單日行為
+}
+
+(function bindCalDrag(){
+  const grid = document.getElementById('lockCalGrid');
+  if(!grid) return;
+  grid.addEventListener('mousedown', function(e){ e.preventDefault(); onCalDown(e.clientX, e.clientY); });
+  document.addEventListener('mousemove', function(e){ onCalMove(e.clientX, e.clientY); });
+  document.addEventListener('mouseup', onCalUp);
+  grid.addEventListener('touchstart', function(e){ const t = e.touches[0]; onCalDown(t.clientX, t.clientY); }, { passive:true });
+  grid.addEventListener('touchmove', function(e){ const t = e.touches[0]; onCalMove(t.clientX, t.clientY); e.preventDefault(); }, { passive:false });
+  document.addEventListener('touchend', onCalUp);
+})();
+
+// 批次鎖定／解除：整批一個請求送出去，不是一天一個
+function applySelLock(){
+  const dates = [...lockSelected].filter(function(d){ return !lockedDatesMap.hasOwnProperty(d); }).sort();
+  if(dates.length === 0) return;
+  const reason = document.getElementById('lockSelReason').value.trim();
+  const msg = document.getElementById('lockSelMsg');
+  msg.textContent = '處理中...'; msg.className = 'modal-msg';
+  document.getElementById('lockSelBtnLock').disabled = true;
+
+  designerAction('lockDates', { dates: dates, reason: reason })
+  .then(function(result){
+    if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
+    dates.forEach(function(d){ lockedDatesMap[d] = reason; });
+    document.getElementById('lockSelReason').value = '';
+    msg.textContent = '';
+    clearLockSel();
+    renderLockCalendar();
+  })
+  .catch(function(err){
+    document.getElementById('lockSelBtnLock').disabled = false;
+    msg.textContent = '封鎖失敗：' + (err && err.message ? err.message : '未知錯誤');
+    msg.className = 'modal-msg error';
+  });
+}
+
+function applySelUnlock(){
+  const dates = [...lockSelected].filter(function(d){ return lockedDatesMap.hasOwnProperty(d); }).sort();
+  if(dates.length === 0) return;
+  const msg = document.getElementById('lockSelMsg');
+  msg.textContent = '處理中...'; msg.className = 'modal-msg';
+  document.getElementById('lockSelBtnUnlock').disabled = true;
+
+  designerAction('unlockDates', { dates: dates })
+  .then(function(result){
+    if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
+    dates.forEach(function(d){ delete lockedDatesMap[d]; });
+    msg.textContent = '';
+    clearLockSel();
+    renderLockCalendar();
+  })
+  .catch(function(err){
+    document.getElementById('lockSelBtnUnlock').disabled = false;
+    msg.textContent = '解除失敗：' + (err && err.message ? err.message : '未知錯誤');
+    msg.className = 'modal-msg error';
+  });
 }
 
 function onLockDayClick(dateStr){
