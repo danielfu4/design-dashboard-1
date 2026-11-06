@@ -485,6 +485,69 @@
   }
   .feedback-block textarea:focus{outline:none;border-color:var(--accent);}
   .feedback-block .char-count{text-align:right;font-size:10.5px;color:var(--ink-faint);margin-top:4px;}
+  /* ===== 變更申請 ===== */
+  .chg-pending-note{margin-top:10px;background:#FFF4E6;color:#8A5513;border-radius:12px;
+                    padding:10px 13px;font-size:12.5px;font-weight:700;line-height:1.65;}
+  .chg-done-note{margin-top:10px;background:#E3F6EF;color:#0E6A4A;border-radius:12px;
+                 padding:10px 13px;font-size:12.5px;font-weight:700;line-height:1.65;}
+  .chg-reject-note{margin-top:10px;background:#FCECEC;color:#8E2F2F;border-radius:12px;
+                   padding:10px 13px;font-size:12.5px;font-weight:700;line-height:1.65;}
+  .chg-block{background:#FFFDF8;}
+  .chg-entry{border-radius:12px;padding:10px 13px;margin-bottom:9px;background:#fff;
+             box-shadow:inset 0 0 0 1px #F0E2CC;}
+  .chg-entry:last-child{margin-bottom:0;}
+  .chg-entry.done{box-shadow:inset 0 0 0 1px #BCE6D6;}
+  .chg-entry.no{box-shadow:inset 0 0 0 1px #F3CECE;}
+  .chg-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:7px;}
+  .chg-time{font-size:11px;color:#8A8A93;font-weight:700;}
+  .chg-pill{font-size:10px;font-weight:800;border-radius:999px;padding:2px 8px;}
+  .chg-pill.kind{background:#FFF4E6;color:#F08A24;}
+  .chg-pill.fix{background:#EFEFF2;color:#8A8A93;}
+  .chg-pill.wait{background:#FFF4E6;color:#F08A24;}
+  .chg-pill.ok{background:#E3F6EF;color:#17A673;}
+  .chg-pill.bad{background:#FCECEC;color:#B3324A;}
+  .chg-row{display:flex;gap:9px;align-items:flex-start;padding:5px 0;border-bottom:1px dashed #ECECEE;}
+  .chg-row:last-of-type{border-bottom:none;}
+  .chg-k{width:74px;flex:none;font-size:11.5px;font-weight:800;color:#8A8A93;padding-top:2px;}
+  .chg-v{flex:1;font-size:13px;line-height:1.6;word-break:break-word;white-space:pre-wrap;}
+  .chg-old{color:#C2C2C8;text-decoration:line-through;}
+  .chg-arrow{color:#C2C2C8;margin:0 5px;}
+  .chg-new{font-weight:700;}
+  .chg-why{font-size:12px;color:#8A8A93;line-height:1.65;margin-top:7px;
+           border-top:1px solid #ECECEE;padding-top:7px;white-space:pre-wrap;}
+  .cancel-chg-btn{border:none;background:#F3F4F7;color:#B3324A;font-family:inherit;
+                  font-weight:800;font-size:12.5px;padding:9px 14px;border-radius:11px;cursor:pointer;}
+  .cancel-chg-btn:hover{filter:brightness(.96);}
+
+  /* 視窗內的「補充說明／修改需求」切換 */
+  .seg-wrap{display:flex;background:#F3F4F7;border-radius:12px;padding:3px;margin-bottom:14px;}
+  .seg-btn{flex:1;text-align:center;font-size:12.5px;font-weight:800;padding:9px;border-radius:9px;
+           cursor:pointer;color:#8A8A93;border:none;background:none;font-family:inherit;
+           transition:background .18s,color .18s;}
+  .seg-btn.on{background:#fff;color:#17181C;box-shadow:0 1px 2px rgba(20,20,30,.06);}
+  .chg-field{margin-bottom:12px;}
+  .chg-field > label{display:block;font-size:11.5px;font-weight:800;color:#8A8A93;margin:0 0 5px;}
+  .chg-field .spec{color:#F08A24;}
+  /* 這些輸入框沒有 type 屬性，吃不到 .field-simple input[type="text"] 的樣式，所以自己寫一份 */
+  .chg-field input, .chg-field textarea, #chgReason{
+    width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;
+    font-family:inherit;font-size:13.5px;line-height:1.6;color:var(--ink);
+    background:#FAFAFB;box-sizing:border-box;display:block;
+  }
+  .chg-field textarea{min-height:70px;resize:vertical;}
+  .chg-field input:focus, .chg-field textarea:focus, #chgReason:focus{
+    outline:none;border-color:var(--accent);background:#fff;
+  }
+  .chg-field .edited{display:none;font-size:10.5px;font-weight:800;color:#F08A24;margin-top:4px;}
+  .chg-field.dirty .edited{display:block;}
+  .chg-field.dirty input, .chg-field.dirty textarea{border-color:#F0B36B !important;background:#FFFCF7 !important;}
+  .kind-row{display:flex;gap:8px;margin-bottom:14px;}
+  .kind-opt{flex:1;border:1px solid #ECECEE;border-radius:12px;padding:10px 12px;cursor:pointer;
+            background:#FAFAFB;transition:border-color .16s,background .16s;}
+  .kind-opt.on{border-color:#3E7BFA;background:#F2F6FF;}
+  .kind-opt .kt{font-size:12.5px;font-weight:800;color:#17181C;}
+  .kind-opt .kd{font-size:10.5px;color:#8A8A93;margin-top:2px;line-height:1.5;}
+
   .modal-submit{
     width:100%;margin-top:6px;border:none;background:var(--ink);color:#fff;font:inherit;font-weight:700;
     font-size:14px;padding:12px;border-radius:12px;cursor:pointer;
@@ -838,10 +901,37 @@
     </div>
     <div class="modal-body-wrap">
     <div class="modal-scroll">
-    <div class="field-simple">
-      <label>要補充的內容（例如：新增素材連結、補充文案、其他說明）</label>
-      <textarea id="supplementContent" placeholder="請輸入要補充的內容" style="min-height:120px;"></textarea>
+    <div class="seg-wrap" id="supSegWrap">
+      <button type="button" class="seg-btn on" id="segNote" onclick="setSupMode('note')">補充說明</button>
+      <button type="button" class="seg-btn" id="segChg" onclick="setSupMode('chg')">修改需求</button>
     </div>
+
+    <div id="supNoteBox">
+      <div class="field-simple">
+        <label>要補充的內容（例如：新增素材連結、補充文案、其他說明）</label>
+        <textarea id="supplementContent" placeholder="請輸入要補充的內容" style="min-height:120px;"></textarea>
+      </div>
+    </div>
+
+    <div id="supChgBox" style="display:none;">
+      <div id="chgFieldList"></div>
+      <div class="field-simple" style="margin-bottom:10px;">
+        <label>這次修改的性質</label>
+      </div>
+      <div class="kind-row">
+        <div class="kind-opt on" id="kindFix" onclick="setChgKind('fix')">
+          <div class="kt">更正</div><div class="kd">原本就填錯了</div>
+        </div>
+        <div class="kind-opt" id="kindChg" onclick="setChgKind('change')">
+          <div class="kt">變更</div><div class="kd">需求改了，可能影響工時</div>
+        </div>
+      </div>
+      <div class="field-simple">
+        <label>原因（選填，但建議填寫）</label>
+        <input id="chgReason" placeholder="例如：主視覺改用橫幅位，尺寸跟著變">
+      </div>
+    </div>
+
     <button class="modal-submit" id="supplementSubmitBtn" onclick="submitSupplement()">送出補充</button>
     <div class="modal-msg" id="supplementModalMsg"></div>
     </div>
@@ -1409,6 +1499,13 @@ function doSearch(e){
     const cr = res.headers.get('content-range') || '';
     const t = parseInt((cr.split('/')[1] || ''), 10);
     return res.json().then(function(rows){ return { rows: rows, total: isNaN(t) ? null : t }; });
+  })
+  .then(function(r){
+    // 先把這批案件的變更申請撈回來，卡片才畫得出待確認狀態；
+    // 撈失敗也照樣把卡片畫出來，不要整頁空白
+    return loadChangesFor(r.rows.map(function(x){ return x.id; }))
+      .catch(function(){})
+      .then(function(){ return r; });
   })
   .then(function(r){
     renderResults(r.rows, raw);
@@ -2021,8 +2118,28 @@ const hasRating = m.quality && m.efficiency && m.communication && m.price;
       ? '<button class="close-case-btn" onclick="openRateModalById(\'' + m.id + '\')">結案</button>'
       : '';
 
+    const pendingChg = m.id ? pendingChangeOf(m.id) : null;
+    const lastChg = m.id
+      ? changesOf(m.id).filter(function(c){ return c.status !== 'cancelled' && c.status !== 'pending'; }).slice(-1)[0]
+      : null;
+
+    let chgNoticeHtml = '';
+    if(pendingChg){
+      chgNoticeHtml = '<div class="chg-pending-note">已送出變更申請，等待 ' +
+        (m.handler || '設計師') + ' 確認。確認之前不能再提出新的修改。</div>';
+    }else if(lastChg && lastChg.status === 'rejected'){
+      chgNoticeHtml = '<div class="chg-reject-note">' + (lastChg.handler || m.handler || '設計師') +
+        ' 未接受上一次的變更申請：' + escapeHtmlStatus(lastChg.reject_reason || '（未填寫原因）') + '</div>';
+    }else if(lastChg){
+      chgNoticeHtml = '<div class="chg-done-note">' + (lastChg.handler || m.handler || '設計師') + ' 已' +
+        (lastChg.status === 'partial' ? '部分' : '') + '接受變更，需求內容已更新。</div>';
+    }
+
     const supplementBtnHtml = m.id
       ? '<button class="supplement-btn" onclick="openSupplementModalById(\'' + m.id + '\')">＋ 補充內容</button>'
+      : '';
+    const cancelChgBtnHtml = pendingChg
+      ? '<button class="cancel-chg-btn" onclick="cancelChangeRequest(\'' + m.id + '\')">撤回變更申請</button>'
       : '';
     const calIconSvg = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;">' +
       '<rect x="3" y="4" width="18" height="18" rx="2"></rect>' +
@@ -2033,8 +2150,8 @@ const hasRating = m.quality && m.efficiency && m.communication && m.price;
     const changeDateBtnHtml = (m.id && (m.status || '待處理').trim() === '待處理')
       ? '<button class="change-date-btn" onclick=\'openEditDateModal(' + JSON.stringify({id: m.id, reqName: m.reqName, dueDate: m.dueDate, handler: m.handler}) + ')\'>' + calIconSvg + ' 修改需求日期</button>'
       : '';
-    const actionRowHtml = (deliveryHtml || supplementBtnHtml || changeDateBtnHtml || copyBtnHtml || closeBtnHtml || fixBtnHtml)
-      ? '<div class="rate-row action-row"><div class="action-row-left">' + deliveryHtml + supplementBtnHtml + changeDateBtnHtml + copyBtnHtml + '</div>' + closeBtnHtml + fixBtnHtml + '</div>'
+    const actionRowHtml = (deliveryHtml || supplementBtnHtml || changeDateBtnHtml || copyBtnHtml || closeBtnHtml || fixBtnHtml || cancelChgBtnHtml)
+      ? '<div class="rate-row action-row"><div class="action-row-left">' + deliveryHtml + supplementBtnHtml + cancelChgBtnHtml + changeDateBtnHtml + copyBtnHtml + '</div>' + closeBtnHtml + fixBtnHtml + '</div>'
       : '';
 
     return (
@@ -2065,6 +2182,8 @@ const hasRating = m.quality && m.efficiency && m.communication && m.price;
           rejectHtml +
           caseDetailHtml +
           supplementHtml +
+          changeHistoryHtml(m.id) +
+          chgNoticeHtml +
           completedRatingRowHtml +
           actionRowHtml +
         '</div>' +
@@ -2146,8 +2265,129 @@ function updateFeedbackCharCount(){
   document.getElementById('feedbackCharCount').textContent = len + ' / 300';
 }
 
+// ============================================================
+// 變更申請
+// 案件進到「進行中／請校稿」之後，需求人員不能直接改欄位，
+// 只能提出申請，設計師按下接受欄位才會真的更新。
+// ============================================================
+
+// case_fields 是一大段「標籤：值」的純文字，值可能跨行。
+// 解析規則要跟 Edge Function 的 case_fields.ts 完全一致。
+function parseCaseFieldsJS(text){
+  const src = String(text || '');
+  const re = /^([^\n：]{1,20})：/gm;
+  const heads = [];
+  let m;
+  while((m = re.exec(src)) !== null){
+    heads.push({ label:m[1].trim(), vStart:m.index + m[0].length, hStart:m.index });
+  }
+  return heads.map(function(h, i){
+    const stop = i + 1 < heads.length ? heads[i + 1].hStart : src.length;
+    const value = src.slice(h.vStart, stop).replace(/\s+$/, '');
+    return { label:h.label, value:value };
+  });
+}
+
+// 可以申請修改的欄位。品牌、設計師、案件類型、需求日期不在內——
+// 那些改下去等於換人換排程，要走「複製並新增」或「修改需求日期」。
+const CHANGE_SPEC_LABELS = ['尺寸','數量','張數','規格'];
+function changeFieldsOf(m){
+  const out = [];
+  out.push({ key:'col:req_name',  label:'需求名稱', value:m.reqName   || '', multiline:false });
+  parseCaseFieldsJS(m.caseFields).forEach(function(e){
+    out.push({ key:'cf:' + e.label, label:e.label, value:e.value,
+               multiline: e.value.indexOf('\n') >= 0 || e.value.length > 28 });
+  });
+  out.push({ key:'col:materials', label:'提供素材', value:m.materials || '', multiline:true });
+  out.push({ key:'col:notes',     label:'備註',     value:m.notes     || '', multiline:true });
+  return out;
+}
+
+const CHANGEABLE_STATUS = ['進行中','請校稿'];
+function canRequestChange(m){
+  return CHANGEABLE_STATUS.indexOf((m.status || '').trim()) >= 0;
+}
+
+// 每個案件的變更申請紀錄，key 是 case_id
+let CHANGES_BY_CASE = {};
+function changesOf(id){ return CHANGES_BY_CASE[id] || []; }
+function pendingChangeOf(id){
+  return changesOf(id).filter(function(c){ return c.status === 'pending'; })[0] || null;
+}
+
+// 一次把這批案件的變更全部撈回來。
+// 刻意不做成「每張卡片查一次」：一次查詢 100 張卡就是 100 個請求，會被限流擋成 429。
+function loadChangesFor(ids){
+  CHANGES_BY_CASE = {};
+  const list = (ids || []).filter(Boolean);
+  if(list.length === 0) return Promise.resolve();
+  const CHUNK = 80;   // 網址太長會被伺服器拒絕，分批送
+  const jobs = [];
+  for(let i = 0; i < list.length; i += CHUNK){
+    const part = list.slice(i, i + CHUNK);
+    jobs.push(
+      fetch(sbUrl('case_changes','case_id=in.(' + part.join(',') + ')&order=created_at.asc'),
+            { headers: SUPABASE_HEADERS })
+      .then(function(res){ return res.ok ? res.json() : []; })
+      .catch(function(){ return []; })
+    );
+  }
+  return Promise.all(jobs).then(function(parts){
+    parts.forEach(function(rows){
+      (rows || []).forEach(function(r){
+        (CHANGES_BY_CASE[r.case_id] = CHANGES_BY_CASE[r.case_id] || []).push(r);
+      });
+    });
+  });
+}
+
+function chgFieldRows(fields, showApplied){
+  return (fields || []).map(function(f){
+    const notUsed = showApplied && !f.applied;
+    return '<div class="chg-row">' +
+      '<div class="chg-k">' + escapeHtmlStatus(f.label || f.key) + '</div>' +
+      '<div class="chg-v"><span class="chg-old">' + escapeHtmlStatus(f.old || '（空白）') + '</span>' +
+        '<span class="chg-arrow">→</span><span class="chg-new">' + escapeHtmlStatus(f.new || '（空白）') + '</span>' +
+        (notUsed ? ' <span class="chg-pill bad">未採用</span>' : '') +
+      '</div></div>';
+  }).join('');
+}
+
+function changeHistoryHtml(id){
+  const list = changesOf(id).filter(function(c){ return c.status !== 'cancelled'; });
+  if(list.length === 0) return '';
+  const body = list.map(function(c){
+    const cls = c.status === 'pending' ? '' : (c.status === 'rejected' ? ' no' : ' done');
+    const stat = c.status === 'pending' ? '<span class="chg-pill wait">待設計師確認</span>'
+               : c.status === 'rejected' ? '<span class="chg-pill bad">未接受</span>'
+               : '<span class="chg-pill ok">' + (c.status === 'partial' ? '部分接受' : '已接受') + '</span>';
+    return '<div class="chg-entry' + cls + '">' +
+      '<div class="chg-head">' +
+        '<span class="chg-time">' + formatDateStr(c.created_at) + '</span>' +
+        '<span class="chg-pill ' + (c.kind === 'change' ? 'kind' : 'fix') + '">' +
+          (c.kind === 'change' ? '變更' : '更正') + '</span>' +
+        stat +
+      '</div>' +
+      chgFieldRows(c.fields, c.status === 'partial' || c.status === 'accepted') +
+      (c.reason ? '<div class="chg-why">原因：' + escapeHtmlStatus(c.reason) + '</div>' : '') +
+      (c.status === 'rejected' && c.reject_reason
+        ? '<div class="chg-why">設計師說明：' + escapeHtmlStatus(c.reject_reason) + '</div>' : '') +
+    '</div>';
+  }).join('');
+  return '<div class="detail-block chg-block"><div class="label">需求變更紀錄</div>' + body + '</div>';
+}
+
+function escapeHtmlStatus(t){
+  return String(t == null ? '' : t)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 // ---- 補充內容 ----
 let currentSupplementId = null;
+let supMode = 'note';
+let chgKind = 'fix';
+let chgFieldsCache = [];
 
 // 需求人員名單（跟申請單同一份，全公司合併不分組，搜尋時用英文名比對，工號用來區分同名）
 
@@ -2590,8 +2830,29 @@ function openSupplementModalById(id){
   currentSupplementId = id;
   document.getElementById('supplementModalReqName').textContent = m.reqName;
   document.getElementById('supplementContent').value = '';
+  document.getElementById('chgReason').value = '';
   document.getElementById('supplementModalMsg').textContent = '';
   document.getElementById('supplementModalMsg').className = 'modal-msg';
+
+  // 只有進行中／請校稿才會出現「修改需求」；待處理有自己的流程，已完成就是新案子了
+  const allow = canRequestChange(m) && !pendingChangeOf(id);
+  document.getElementById('supSegWrap').style.display = allow ? '' : 'none';
+  chgFieldsCache = allow ? changeFieldsOf(m) : [];
+  document.getElementById('chgFieldList').innerHTML = chgFieldsCache.map(function(f, i){
+    const isSpec = CHANGE_SPEC_LABELS.indexOf(f.label) >= 0;
+    const v = escapeHtmlStatus(f.value);
+    return '<div class="chg-field" id="chgField-' + i + '">' +
+      '<label>' + escapeHtmlStatus(f.label) +
+        (isSpec ? ' <span class="spec">· 會影響報價</span>' : '') + '</label>' +
+      (f.multiline
+        ? '<textarea id="chgInput-' + i + '" style="min-height:70px;" oninput="markChgDirty(' + i + ')">' + v + '</textarea>'
+        : '<input id="chgInput-' + i + '" value="' + v + '" oninput="markChgDirty(' + i + ')">') +
+      '<div class="edited">已修改</div>' +
+    '</div>';
+  }).join('');
+
+  setSupMode('note');
+  setChgKind('fix');
   document.getElementById('supplementModalOverlay').classList.add('show');
 }
 
@@ -2599,7 +2860,50 @@ function closeSupplementModal(){
   document.getElementById('supplementModalOverlay').classList.remove('show');
 }
 
+function setSupMode(mode){
+  supMode = mode;
+  document.getElementById('segNote').classList.toggle('on', mode === 'note');
+  document.getElementById('segChg').classList.toggle('on', mode === 'chg');
+  document.getElementById('supNoteBox').style.display = mode === 'note' ? '' : 'none';
+  document.getElementById('supChgBox').style.display  = mode === 'chg'  ? '' : 'none';
+  document.querySelector('#supplementModalCard .modal-title').textContent =
+    mode === 'note' ? '補充內容' : '修改需求';
+  document.getElementById('supplementSubmitBtn').textContent =
+    mode === 'note' ? '送出補充' : '送出變更申請';
+  const msg = document.getElementById('supplementModalMsg');
+  msg.textContent = ''; msg.className = 'modal-msg';
+}
+
+function setChgKind(k){
+  chgKind = k;
+  document.getElementById('kindFix').classList.toggle('on', k === 'fix');
+  document.getElementById('kindChg').classList.toggle('on', k === 'change');
+}
+
+function markChgDirty(i){
+  const el = document.getElementById('chgInput-' + i);
+  if(!el) return;
+  document.getElementById('chgField-' + i)
+    .classList.toggle('dirty', el.value.trim() !== String(chgFieldsCache[i].value).trim());
+}
+
+// 撤回還沒被處理的變更申請
+function cancelChangeRequest(id){
+  if(!confirm('確定要撤回這筆變更申請嗎？')) return;
+  fetch(PUBLIC_ACTION_URL, {
+    method:'POST', headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ action:'cancelChangeRequest', id: id })
+  })
+  .then(function(res){ return res.json().then(function(d){ return { ok:res.ok, data:d }; }); })
+  .then(function(r){
+    if(!r.ok || r.data.status !== 'success') throw new Error(r.data.message || 'HTTP 錯誤');
+    doSearch();
+  })
+  .catch(function(err){ alert('撤回失敗：' + (err && err.message ? err.message : '未知錯誤')); });
+}
+
 function submitSupplement(){
+  if(supMode === 'chg') return submitChangeRequest();
   const content = document.getElementById('supplementContent').value.trim();
   const msg = document.getElementById('supplementModalMsg');
   if(!content){
@@ -2628,6 +2932,54 @@ function submitSupplement(){
   .catch(function(err){
     btn.disabled = false;
     msg.textContent = '送出失敗：'+(err&&err.message?err.message:'未知錯誤');
+    msg.className = 'modal-msg error';
+  });
+}
+
+function submitChangeRequest(){
+  const msg = document.getElementById('supplementModalMsg');
+  const btn = document.getElementById('supplementSubmitBtn');
+
+  // 只送有被動過的欄位，沒動的完全不碰
+  const changed = [];
+  chgFieldsCache.forEach(function(f, i){
+    const el = document.getElementById('chgInput-' + i);
+    if(!el) return;
+    const nv = el.value.trim();
+    if(nv !== String(f.value).trim()) changed.push({ key:f.key, label:f.label, old:f.value, new:nv });
+  });
+  if(changed.length === 0){
+    msg.textContent = '沒有任何欄位被修改';
+    msg.className = 'modal-msg error';
+    return;
+  }
+
+  btn.disabled = true;
+  msg.textContent = '送出中...';
+  msg.className = 'modal-msg';
+
+  fetch(PUBLIC_ACTION_URL, {
+    method:'POST', headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({
+      action:'submitChangeRequest',
+      id: currentSupplementId,
+      requester: document.getElementById('searchName').value.trim(),
+      kind: chgKind,
+      reason: document.getElementById('chgReason').value.trim(),
+      fields: changed
+    })
+  })
+  .then(function(res){ return res.json().then(function(d){ return { ok:res.ok, data:d }; }); })
+  .then(function(r){
+    btn.disabled = false;
+    if(!r.ok || r.data.status !== 'success') throw new Error(r.data.message || 'HTTP 錯誤');
+    msg.textContent = '✓ 已送出變更申請，設計師會收到通知';
+    msg.className = 'modal-msg success';
+    setTimeout(function(){ closeSupplementModal(); doSearch(); }, 900);
+  })
+  .catch(function(err){
+    btn.disabled = false;
+    msg.textContent = '送出失敗：' + (err && err.message ? err.message : '未知錯誤');
     msg.className = 'modal-msg error';
   });
 }

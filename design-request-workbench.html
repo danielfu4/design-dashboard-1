@@ -399,6 +399,49 @@
   }
   .supplement-block{background:#EAF1FF;}
 
+  /* ===== 變更申請 ===== */
+  .chg-wait-badge{font-size:11px;font-weight:800;color:#fff;background:#F08A24;
+                  border-radius:999px;padding:4px 10px;}
+  .chg-block{background:#FFFBF4;}
+  html[data-theme="dark"] .chg-block{background:rgba(240,138,36,.10);}
+  .chg-entry{border-radius:12px;padding:12px 14px;margin-bottom:10px;background:#fff;
+             box-shadow:inset 0 0 0 1px #F0DCC0;}
+  .chg-entry:last-child{margin-bottom:0;}
+  .chg-entry.done{box-shadow:inset 0 0 0 1px #BCE6D6;}
+  .chg-entry.no{box-shadow:inset 0 0 0 1px #F3CECE;}
+  html[data-theme="dark"] .chg-entry{background:rgba(255,255,255,.06);}
+  .chg-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:8px;}
+  .chg-time{font-size:11px;color:var(--ink-soft);font-weight:700;}
+  .chg-pill{font-size:10px;font-weight:800;border-radius:999px;padding:2px 8px;}
+  .chg-pill.kind{background:#FFF4E6;color:#F08A24;}
+  .chg-pill.fix{background:#EFEFF2;color:var(--ink-soft);}
+  .chg-pill.wait{background:#FFF4E6;color:#F08A24;}
+  .chg-pill.ok{background:#E3F6EF;color:#17A673;}
+  .chg-pill.bad{background:#FCECEC;color:#B3324A;}
+  .chg-who{font-size:13px;font-weight:700;margin-bottom:7px;}
+  .chg-row{display:flex;gap:9px;align-items:flex-start;padding:6px 0;
+           border-bottom:1px dashed rgba(20,20,30,.08);}
+  .chg-row:last-of-type{border-bottom:none;}
+  .chg-row input[type=checkbox]{margin-top:4px;width:15px;height:15px;flex:none;
+                                accent-color:#17A673;cursor:pointer;}
+  .chg-k{width:74px;flex:none;font-size:11.5px;font-weight:800;color:var(--ink-soft);padding-top:2px;}
+  .chg-v{flex:1;font-size:13px;line-height:1.6;word-break:break-word;white-space:pre-wrap;}
+  .chg-old{color:var(--ink-faint);text-decoration:line-through;}
+  .chg-arrow{color:var(--ink-faint);margin:0 5px;}
+  .chg-new{font-weight:700;}
+  .chg-why{font-size:12px;color:var(--ink-soft);line-height:1.65;margin-top:8px;
+           border-top:1px solid rgba(20,20,30,.08);padding-top:8px;white-space:pre-wrap;}
+  .chg-btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .chg-btn{border:none;font-family:inherit;font-weight:800;font-size:12px;
+           padding:8px 14px;border-radius:10px;cursor:pointer;
+           transition:transform .12s var(--ease-ui),filter .12s var(--ease-ui);}
+  .chg-btn:active{transform:scale(.97);}
+  .chg-btn:hover{filter:brightness(.96);}
+  .chg-btn:disabled{opacity:.5;cursor:not-allowed;}
+  .chg-btn.accept{background:#17A673;color:#fff;}
+  .chg-btn.reject{background:#F3F4F7;color:#B3324A;}
+  html[data-theme="dark"] .chg-btn.reject{background:rgba(255,255,255,.08);}
+
   /* ===== 補充紀錄時間軸 ===== */
   .sup-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
   .sup-head-t{font-size:11.5px;font-weight:700;color:var(--ink-soft);}
@@ -1164,6 +1207,130 @@ function escapeHtml(text){
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// ============================================================
+// 變更申請：需求人員在「進行中／請校稿」提出，設計師確認後欄位才真的更新
+// ============================================================
+let CHANGES_BY_CASE = {};
+function changesOf(id){ return CHANGES_BY_CASE[id] || []; }
+function pendingChangeOf(id){
+  return changesOf(id).filter(function(c){ return c.status === 'pending'; })[0] || null;
+}
+
+// 一次把目前這批案件的變更全部撈回來。
+// 不做成每張卡片各查一次——那在一百多張卡片時會變成一百多個請求，直接被限流擋掉。
+function loadCaseChanges(ids){
+  CHANGES_BY_CASE = {};
+  const list = (ids || []).filter(Boolean);
+  if(list.length === 0) return Promise.resolve();
+  const CHUNK = 80;    // 網址太長會被伺服器拒絕，分批送
+  const jobs = [];
+  for(let i = 0; i < list.length; i += CHUNK){
+    const part = list.slice(i, i + CHUNK);
+    jobs.push(
+      fetch(sbUrl('case_changes','case_id=in.(' + part.join(',') + ')&order=created_at.asc'),
+            { headers: SUPABASE_HEADERS })
+      .then(function(res){ return res.ok ? res.json() : []; })
+      .catch(function(){ return []; })
+    );
+  }
+  return Promise.all(jobs).then(function(parts){
+    parts.forEach(function(rows){
+      (rows || []).forEach(function(r){
+        (CHANGES_BY_CASE[r.case_id] = CHANGES_BY_CASE[r.case_id] || []).push(r);
+      });
+    });
+  });
+}
+
+function chgTime(ts){
+  if(!ts) return '';
+  const d = new Date(ts);
+  if(isNaN(d.getTime())) return String(ts);
+  const p = function(n){ return n < 10 ? '0' + n : '' + n; };
+  return (d.getMonth() + 1) + '/' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+function chgRowsHtml(c){
+  const editable = c.status === 'pending';
+  const showApplied = c.status === 'accepted' || c.status === 'partial';
+  return (c.fields || []).map(function(f, i){
+    const notUsed = showApplied && !f.applied;
+    return '<div class="chg-row">' +
+      (editable
+        ? '<input type="checkbox" checked data-chg="' + c.id + '" value="' + escapeHtml(f.key) + '">'
+        : '') +
+      '<div class="chg-k">' + escapeHtml(f.label || f.key) + '</div>' +
+      '<div class="chg-v"><span class="chg-old">' + escapeHtml(f.old || '（空白）') + '</span>' +
+        '<span class="chg-arrow">→</span><span class="chg-new">' + escapeHtml(f.new || '（空白）') + '</span>' +
+        (notUsed ? ' <span class="chg-pill bad">未採用</span>' : '') +
+      '</div></div>';
+  }).join('');
+}
+
+function changeBlockHtml(caseId){
+  const list = changesOf(caseId).filter(function(c){ return c.status !== 'cancelled'; });
+  if(list.length === 0) return '';
+  const body = list.map(function(c){
+    const cls = c.status === 'pending' ? '' : (c.status === 'rejected' ? ' no' : ' done');
+    const stat = c.status === 'pending' ? '<span class="chg-pill wait">待確認</span>'
+               : c.status === 'rejected' ? '<span class="chg-pill bad">未接受 · ' + chgTime(c.resolved_at) + '</span>'
+               : '<span class="chg-pill ok">' + (c.status === 'partial' ? '部分接受' : '已接受') +
+                 ' · ' + chgTime(c.resolved_at) + '</span>';
+    return '<div class="chg-entry' + cls + '" id="chgEntry-' + c.id + '">' +
+      '<div class="chg-head">' +
+        '<span class="chg-time">' + chgTime(c.created_at) + '</span>' +
+        '<span class="chg-pill ' + (c.kind === 'change' ? 'kind' : 'fix') + '">' +
+          (c.kind === 'change' ? '變更' : '更正') + '</span>' + stat +
+      '</div>' +
+      '<div class="chg-who">' + escapeHtml(c.requester || '需求人員') + ' 申請修改需求</div>' +
+      chgRowsHtml(c) +
+      (c.reason ? '<div class="chg-why">原因：' + escapeHtml(c.reason) + '</div>' : '') +
+      (c.status === 'rejected' && c.reject_reason
+        ? '<div class="chg-why">不接受的原因：' + escapeHtml(c.reject_reason) + '</div>' : '') +
+      (c.status === 'pending'
+        ? '<div class="chg-btns">' +
+            '<button type="button" class="chg-btn accept" onclick="event.stopPropagation();resolveChange(\'' + c.id + '\',true)">接受勾選的變更</button>' +
+            '<button type="button" class="chg-btn reject" onclick="event.stopPropagation();resolveChange(\'' + c.id + '\',false)">不接受</button>' +
+          '</div>'
+        : '') +
+    '</div>';
+  }).join('');
+  return '<div class="detail-block chg-block"><div class="label">需求變更申請</div>' + body + '</div>';
+}
+
+function resolveChange(changeId, accept){
+  const entry = document.getElementById('chgEntry-' + changeId);
+  if(!entry) return;
+  const payload = { change_id: changeId, accept: accept };
+
+  if(accept){
+    const keys = [].slice.call(entry.querySelectorAll('input[type=checkbox]'))
+      .filter(function(cb){ return cb.checked; })
+      .map(function(cb){ return cb.value; });
+    if(keys.length === 0){ showToast('至少要勾選一個欄位'); return; }
+    payload.accept_keys = keys;
+  }else{
+    const why = prompt('不接受的原因（需求人員會看到）：', '');
+    if(why === null) return;
+    if(!String(why).trim()){ showToast('不接受需要填原因'); return; }
+    payload.reject_reason = String(why).trim();
+  }
+
+  entry.querySelectorAll('.chg-btn').forEach(function(b){ b.disabled = true; });
+  designerAction('resolveChangeRequest', payload)
+    .then(function(r){
+      if(!r.ok || r.data.status !== 'success') throw new Error(r.data.message || 'HTTP 錯誤');
+      showToast(accept
+        ? (r.data.resolved === 'partial' ? '已接受部分變更，欄位已更新' : '已接受變更，欄位已更新')
+        : '已回覆不接受，需求人員會收到通知');
+      loadCases();
+    })
+    .catch(function(err){
+      entry.querySelectorAll('.chg-btn').forEach(function(b){ b.disabled = false; });
+      showToast('處理失敗：' + (err && err.message ? err.message : '未知錯誤'));
+    });
+}
+
 // ===== 補充紀錄 =====
 // 補充在資料庫裡是一整段文字，每則以 [YYYY-MM-DD HH:MM] 開頭、用空行隔開。
 // 這裡拆成一則一則，才能做時間軸和未讀標記。
@@ -1386,6 +1553,11 @@ function loadCases(){
     }
     window.__allCases = cases;
     applyFilterAndRender();
+    // 變更申請另外一次撈回來，撈完再重畫一次；
+    // 先畫案件是為了不讓卡片等這支查詢，撈失敗也只是少顯示變更，不影響本體
+    loadCaseChanges(cases.map(function(c){ return c.id; }))
+      .then(function(){ applyFilterAndRender(); })
+      .catch(function(){});
   })
   .catch(function(err){
     list.innerHTML = '<div class="state-msg">資料讀取失敗：' + err.message + '</div>';
@@ -1451,6 +1623,9 @@ function renderCases(response){
 
   window.__allCases = cases;
   applyFilterAndRender();
+  loadCaseChanges(cases.map(function(c){ return c.id; }))
+    .then(function(){ applyFilterAndRender(); })
+    .catch(function(){});
 }
 
 function parseDate(str){
@@ -2037,6 +2212,7 @@ function renderCaseCard(m){
   if(m.supplement){
     detailBlock += '<div class="detail-block supplement-block">' + renderSupplementTimeline(m.id, m.supplement) + '</div>';
   }
+  detailBlock += changeBlockHtml(m.id);
   if(m.ratingReason){
     detailBlock += '<div class="detail-block rating-reason-block"><div class="label">需求人評分原因</div>' + m.ratingReason + '</div>';
   }
@@ -2046,6 +2222,7 @@ function renderCaseCard(m){
 
   const hasNewSupplement = m.supplementTime && (!m.updatedAt || new Date(m.supplementTime) > new Date(m.updatedAt));
   const newSupplementBadge = hasNewSupplement ? '<span class="new-supplement-badge">有新補充</span>' : '';
+  const chgWaitBadge = pendingChangeOf(m.id) ? '<span class="chg-wait-badge">變更待確認</span>' : '';
 
   const hasRating = m.quality && m.efficiency && m.communication && m.price;
   const score = hasRating
@@ -2076,7 +2253,7 @@ function renderCaseCard(m){
           '</div>' +
         '</div>' +
         '<div class="case-top-right">' +
-          '<div class="badge-group"><span class="status-badge-static" style="background:' + si.bg + ';color:' + si.fg + ';font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;">' + si.label + '</span>' + newSupplementBadge + urgentBadge + replyBtnHtml + '</div>' +
+          '<div class="badge-group"><span class="status-badge-static" style="background:' + si.bg + ';color:' + si.fg + ';font-size:12px;font-weight:800;padding:5px 12px;border-radius:999px;">' + si.label + '</span>' + chgWaitBadge + newSupplementBadge + urgentBadge + replyBtnHtml + '</div>' +
           scoreDisplayHtml +
         '</div>' +
       '</div>' +
