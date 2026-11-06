@@ -1274,6 +1274,7 @@ function changeBlockHtml(caseId){
     const cls = c.status === 'pending' ? '' : (c.status === 'rejected' ? ' no' : ' done');
     const stat = c.status === 'pending' ? '<span class="chg-pill wait">待確認</span>'
                : c.status === 'rejected' ? '<span class="chg-pill bad">未接受 · ' + chgTime(c.resolved_at) + '</span>'
+               : c.direct                ? '<span class="chg-pill ok">已直接生效</span>'
                : '<span class="chg-pill ok">' + (c.status === 'partial' ? '部分接受' : '已接受') +
                  ' · ' + chgTime(c.resolved_at) + '</span>';
     return '<div class="chg-entry' + cls + '" id="chgEntry-' + c.id + '">' +
@@ -1282,7 +1283,8 @@ function changeBlockHtml(caseId){
         '<span class="chg-pill ' + (c.kind === 'change' ? 'kind' : 'fix') + '">' +
           (c.kind === 'change' ? '變更' : '更正') + '</span>' + stat +
       '</div>' +
-      '<div class="chg-who">' + escapeHtml(c.requester || '需求人員') + ' 申請修改需求</div>' +
+      '<div class="chg-who">' + escapeHtml(c.requester || '需求人員') +
+        (c.direct ? ' 自行修改了需求（當時還在待處理）' : ' 申請修改需求') + '</div>' +
       chgRowsHtml(c) +
       (c.reason ? '<div class="chg-why">原因：' + escapeHtml(c.reason) + '</div>' : '') +
       (c.status === 'rejected' && c.reject_reason

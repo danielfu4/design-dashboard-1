@@ -525,6 +525,9 @@
            cursor:pointer;color:#8A8A93;border:none;background:none;font-family:inherit;
            transition:background .18s,color .18s;}
   .seg-btn.on{background:#fff;color:#17181C;box-shadow:0 1px 2px rgba(20,20,30,.06);}
+  .chg-mode-hint{font-size:11.5px;line-height:1.65;font-weight:700;border-radius:10px;
+                 padding:9px 12px;margin-bottom:14px;background:#EAF1FF;color:#2A4E9E;}
+  .chg-mode-hint.wait{background:#FFF4E6;color:#8A5513;}
   .chg-field{margin-bottom:12px;}
   .chg-field > label{display:block;font-size:11.5px;font-weight:800;color:#8A8A93;margin:0 0 5px;}
   .chg-field .spec{color:#F08A24;}
@@ -914,6 +917,7 @@
     </div>
 
     <div id="supChgBox" style="display:none;">
+      <div class="chg-mode-hint" id="chgModeHint"></div>
       <div id="chgFieldList"></div>
       <div class="field-simple" style="margin-bottom:10px;">
         <label>這次修改的性質</label>
@@ -2130,6 +2134,9 @@ const hasRating = m.quality && m.efficiency && m.communication && m.price;
     }else if(lastChg && lastChg.status === 'rejected'){
       chgNoticeHtml = '<div class="chg-reject-note">' + (lastChg.handler || m.handler || '設計師') +
         ' 未接受上一次的變更申請：' + escapeHtmlStatus(lastChg.reject_reason || '（未填寫原因）') + '</div>';
+    }else if(lastChg && lastChg.direct){
+      chgNoticeHtml = '<div class="chg-done-note">需求內容已更新，已通知 ' +
+        (m.handler || '設計師') + '。</div>';
     }else if(lastChg){
       chgNoticeHtml = '<div class="chg-done-note">' + (lastChg.handler || m.handler || '設計師') + ' 已' +
         (lastChg.status === 'partial' ? '部分' : '') + '接受變更，需求內容已更新。</div>';
@@ -2303,9 +2310,16 @@ function changeFieldsOf(m){
   return out;
 }
 
-const CHANGEABLE_STATUS = ['進行中','請校稿'];
+// 待處理：設計師還沒開工，直接寫入（一樣留痕並通知設計師）
+// 進行中／請校稿：已經開工，要提出申請等設計師接受
+const DIRECT_EDIT_STATUS = ['待處理'];
+const REQUEST_CHANGE_STATUS = ['進行中','請校稿'];
+function isDirectEditCase(m){
+  return DIRECT_EDIT_STATUS.indexOf((m.status || '').trim()) >= 0;
+}
 function canRequestChange(m){
-  return CHANGEABLE_STATUS.indexOf((m.status || '').trim()) >= 0;
+  const st = (m.status || '').trim();
+  return DIRECT_EDIT_STATUS.indexOf(st) >= 0 || REQUEST_CHANGE_STATUS.indexOf(st) >= 0;
 }
 
 // 每個案件的變更申請紀錄，key 是 case_id
@@ -2360,6 +2374,7 @@ function changeHistoryHtml(id){
     const cls = c.status === 'pending' ? '' : (c.status === 'rejected' ? ' no' : ' done');
     const stat = c.status === 'pending' ? '<span class="chg-pill wait">待設計師確認</span>'
                : c.status === 'rejected' ? '<span class="chg-pill bad">未接受</span>'
+               : c.direct                ? '<span class="chg-pill ok">已修改</span>'
                : '<span class="chg-pill ok">' + (c.status === 'partial' ? '部分接受' : '已接受') + '</span>';
     return '<div class="chg-entry' + cls + '">' +
       '<div class="chg-head">' +
@@ -2387,6 +2402,7 @@ function escapeHtmlStatus(t){
 let currentSupplementId = null;
 let supMode = 'note';
 let chgKind = 'fix';
+let chgIsDirect = false;
 let chgFieldsCache = [];
 
 // 需求人員名單（跟申請單同一份，全公司合併不分組，搜尋時用英文名比對，工號用來區分同名）
@@ -2835,6 +2851,7 @@ function openSupplementModalById(id){
   document.getElementById('supplementModalMsg').className = 'modal-msg';
 
   // 只有進行中／請校稿才會出現「修改需求」；待處理有自己的流程，已完成就是新案子了
+  chgIsDirect = isDirectEditCase(m);
   const allow = canRequestChange(m) && !pendingChangeOf(id);
   document.getElementById('supSegWrap').style.display = allow ? '' : 'none';
   chgFieldsCache = allow ? changeFieldsOf(m) : [];
@@ -2869,7 +2886,14 @@ function setSupMode(mode){
   document.querySelector('#supplementModalCard .modal-title').textContent =
     mode === 'note' ? '補充內容' : '修改需求';
   document.getElementById('supplementSubmitBtn').textContent =
-    mode === 'note' ? '送出補充' : '送出變更申請';
+    mode === 'note' ? '送出補充' : (chgIsDirect ? '儲存修改' : '送出變更申請');
+  const hint = document.getElementById('chgModeHint');
+  if(hint){
+    hint.textContent = chgIsDirect
+      ? '這個案件還沒開始進行，修改會直接生效，並通知設計師。'
+      : '這個案件已經開始進行，修改需要設計師確認後才會生效。';
+    hint.className = 'chg-mode-hint' + (chgIsDirect ? '' : ' wait');
+  }
   const msg = document.getElementById('supplementModalMsg');
   msg.textContent = ''; msg.className = 'modal-msg';
 }
@@ -2973,7 +2997,9 @@ function submitChangeRequest(){
   .then(function(r){
     btn.disabled = false;
     if(!r.ok || r.data.status !== 'success') throw new Error(r.data.message || 'HTTP 錯誤');
-    msg.textContent = '✓ 已送出變更申請，設計師會收到通知';
+    msg.textContent = r.data.mode === 'direct'
+      ? '✓ 已更新需求內容，已通知設計師'
+      : '✓ 已送出變更申請，設計師會收到通知';
     msg.className = 'modal-msg success';
     setTimeout(function(){ closeSupplementModal(); doSearch(); }, 900);
   })
