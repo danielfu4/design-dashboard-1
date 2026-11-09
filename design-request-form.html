@@ -545,6 +545,52 @@
   .onboard-btn-next{background:var(--ink);color:#fff;}
   .onboard-btn-next:hover{opacity:.88;}
 
+  /* ---- 需求變更公告視窗專屬插圖元件 ---- */
+  /* 說明文字比另外兩個公告長，只放大這一個的高度，
+     四個步驟切換時卡片才不會忽高忽低（另外兩個維持原本的 44px）。 */
+  #changeOnboardOverlay .onboard-desc{min-height:66px;}
+
+  .chgo-diff-label{font-size:9px;font-weight:800;color:var(--ink-soft);margin-bottom:5px;}
+  .chgo-diff-row{display:flex;align-items:center;gap:7px;font-size:11px;}
+  .chgo-old{color:var(--ink-faint);text-decoration:line-through;}
+  .chgo-arrow{color:var(--ink-faint);}
+  .chgo-new{font-weight:800;}
+  .chgo-done{
+    margin-top:10px;display:inline-flex;align-items:center;gap:5px;
+    font-size:9px;font-weight:800;color:#17A673;background:#E3F6EF;
+    border-radius:999px;padding:4px 9px;
+  }
+
+  .chgo-case{
+    position:relative;z-index:1;background:#fff;border-radius:14px;
+    box-shadow:0 10px 24px rgba(20,20,30,.12);padding:12px 14px;width:230px;
+  }
+  .chgo-case-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+  .chgo-case-title{font-size:11px;font-weight:800;}
+  .chgo-wait{
+    font-size:8.5px;font-weight:800;color:#fff;background:#F08A24;
+    border-radius:999px;padding:3px 8px;flex:none;animation:chgoWaitPulse 1.8s ease infinite;
+  }
+  @keyframes chgoWaitPulse{
+    0%{box-shadow:0 0 0 0 rgba(240,138,36,.45);}
+    70%{box-shadow:0 0 0 7px rgba(240,138,36,0);}
+    100%{box-shadow:0 0 0 0 rgba(240,138,36,0);}
+  }
+  .chgo-ans{display:flex;gap:6px;margin-top:10px;}
+  .chgo-ans span{flex:1;text-align:center;font-size:9px;font-weight:800;border-radius:7px;padding:6px 0;}
+  .chgo-ans .yes{background:#17A673;color:#fff;}
+  .chgo-ans .no{background:#F3F4F7;color:#B3324A;}
+
+  .chgo-tl{position:relative;padding-left:16px;}
+  .chgo-tl::before{content:'';position:absolute;left:4px;top:6px;bottom:6px;width:2px;
+                   background:rgba(20,20,30,.1);border-radius:2px;}
+  .chgo-tl-item{position:relative;margin-bottom:9px;}
+  .chgo-tl-item:last-child{margin-bottom:0;}
+  .chgo-tl-item::before{content:'';position:absolute;left:-15px;top:4px;width:8px;height:8px;
+                        border-radius:50%;background:#17A673;box-shadow:0 0 0 2.5px #fff;}
+  .chgo-tl-t{font-size:8.5px;color:var(--ink-soft);font-weight:700;}
+  .chgo-tl-b{font-size:10px;font-weight:700;margin-top:1px;}
+
   /* ---- 申請單教學視窗專屬插圖元件 ---- */
   .art-bg-5{position:absolute;inset:0;background:linear-gradient(135deg,#F3EEFF 0%,#E6DCFF 100%);}
   .mini-field-label{font-size:9px;font-weight:700;color:var(--ink-soft);margin-bottom:4px;}
@@ -758,6 +804,97 @@
     <div class="onboard-footer">
       <button class="onboard-btn onboard-btn-skip" onclick="closeFormOnboard()">跳過</button>
       <button class="onboard-btn onboard-btn-next" id="formOnboardNextBtn" onclick="formOnboardNextStep()">下一步</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="onboard-overlay" id="changeOnboardOverlay">
+  <div class="onboard-card">
+
+    <div class="onboard-art">
+      <div class="onboard-art-inner">
+
+        <div class="art-slide active" data-slide="0">
+          <div class="art-bg-1"></div>
+          <div class="mini-mock" style="width:auto;padding:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 32px rgba(62,123,250,.22);">
+            <svg viewBox="0 0 24 24" width="46" height="46" fill="none" stroke="#3E7BFA" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="art-slide" data-slide="1">
+          <div class="art-bg-3"></div>
+          <div class="mini-mock">
+            <div class="chgo-diff-label">尺寸</div>
+            <div class="chgo-diff-row">
+              <span class="chgo-old">1200x628</span>
+              <span class="chgo-arrow">&#8594;</span>
+              <span class="chgo-new">970x250</span>
+            </div>
+            <div class="chgo-done">
+              <svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              已直接更新
+            </div>
+          </div>
+        </div>
+
+        <div class="art-slide" data-slide="2">
+          <div class="art-bg-2"></div>
+          <div class="chgo-case">
+            <div class="chgo-case-top">
+              <span class="chgo-case-title">雙11主視覺 Banner</span>
+              <span class="chgo-wait">變更待確認</span>
+            </div>
+            <div class="chgo-diff-row">
+              <span class="chgo-old">1 款</span>
+              <span class="chgo-arrow">&#8594;</span>
+              <span class="chgo-new">3 款</span>
+            </div>
+            <div class="chgo-ans">
+              <span class="yes">接受</span>
+              <span class="no">不接受</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="art-slide" data-slide="3">
+          <div class="art-bg-4"></div>
+          <div class="mini-mock">
+            <div class="chgo-tl">
+              <div class="chgo-tl-item">
+                <div class="chgo-tl-t">11/06 14:20 &#183; Effie</div>
+                <div class="chgo-tl-b">尺寸 1200x628 &#8594; 970x250</div>
+              </div>
+              <div class="chgo-tl-item">
+                <div class="chgo-tl-t">11/06 15:02 &#183; Daniel</div>
+                <div class="chgo-tl-b">已接受，欄位已更新</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="onboard-body">
+      <div class="onboard-step-label" id="changeStepLabel">STEP 1 / 4</div>
+      <div class="onboard-title" id="changeStepTitle">需求送出後也能修改了</div>
+      <div class="onboard-desc" id="changeStepDesc">以前填錯只能再寫一則補充，正確的內容藏在對話裡。現在可以直接改欄位，案件上看到的永遠是最新版本。</div>
+    </div>
+
+    <div class="onboard-dots" id="changeOnboardDots"></div>
+
+    <label class="onboard-remind">
+      <input type="checkbox" id="changeOnboardDontRemind">
+      下次不再提醒我
+    </label>
+
+    <div class="onboard-footer">
+      <button class="onboard-btn onboard-btn-skip" onclick="closeChangeOnboard()">跳過</button>
+      <button class="onboard-btn onboard-btn-next" id="changeOnboardNextBtn" onclick="changeOnboardNextStep()">下一步</button>
     </div>
 
   </div>
@@ -2824,10 +2961,15 @@ function openNotifOnboard(){
   document.getElementById('notifOnboardOverlay').classList.add('show');
 }
 function closeNotifOnboard(){
-  document.getElementById('notifOnboardOverlay').classList.remove('show');
+  const overlay = document.getElementById('notifOnboardOverlay');
+  overlay.classList.remove('show');
   if(document.getElementById('notifOnboardDontRemind').checked){
     try{ localStorage.setItem(NOTIF_ONBOARD_STORAGE_KEY, '1'); }catch(e){ /* 瀏覽器不支援或被擋掉就算了，不影響其他功能 */ }
   }
+  // 使用者自己點開來重看的話，關閉後不會再串下一個視窗
+  const wasAutoFlow = overlay.getAttribute('data-auto-flow') === '1';
+  overlay.removeAttribute('data-auto-flow');
+  if(wasAutoFlow) maybeShowChangeOnboard();
 }
 
 // ---- 如何使用設計需求單 公告視窗（步驟輪播）----
@@ -2901,11 +3043,91 @@ function closeFormOnboard(){
   if(wasAutoFlow) maybeShowNotifOnboardAfterForm();
 }
 
-// ---- 兩個公告視窗依序顯示，不會同時彈出 ----
+// ---- 需求變更公告視窗（步驟輪播）----
+const CHANGE_ONBOARD_STORAGE_KEY = 'itd_change_onboard_dismissed';
+const CHANGE_ONBOARD_STEPS = [
+  { label: 'STEP 1 / 4', title: '需求送出後也能修改了',
+    desc: '以前填錯只能再寫一則補充，正確的內容藏在對話裡。現在可以直接改欄位，案件上看到的永遠是最新版本。' },
+  { label: 'STEP 2 / 4', title: '還沒開工：改了馬上生效',
+    desc: '案件還在「待處理」時，到需求查詢頁按「＋ 補充內容」，切到「修改需求」就能直接改，儲存後立即更新，系統會順便通知設計師。' },
+  { label: 'STEP 3 / 4', title: '已經開工：送出變更申請',
+    desc: '案件進到「進行中」或「請校稿」後，修改會先送給設計師確認。他可以全部接受、只接受其中幾項，或說明為什麼不接受。' },
+  { label: 'STEP 4 / 4', title: '每一次修改都留得住',
+    desc: '誰在什麼時候把哪個欄位從什麼改成什麼，案件卡片上都查得到。改前的值不會消失，之後對工時或報價有疑問時才有依據。' },
+];
+let changeOnboardStep = 0;
+
+function changeOnboardRenderDots(){
+  const dotsEl = document.getElementById('changeOnboardDots');
+  dotsEl.innerHTML = CHANGE_ONBOARD_STEPS.map(function(_, i){
+    return '<div class="onboard-dot' + (i === changeOnboardStep ? ' active' : '') +
+           '" onclick="changeOnboardGoToStep(' + i + ')"></div>';
+  }).join('');
+}
+function changeOnboardRenderText(){
+  const s = CHANGE_ONBOARD_STEPS[changeOnboardStep];
+  document.getElementById('changeStepLabel').textContent = s.label;
+  document.getElementById('changeStepTitle').textContent = s.title;
+  document.getElementById('changeStepDesc').textContent = s.desc;
+}
+function changeOnboardRenderSlides(){
+  document.querySelectorAll('#changeOnboardOverlay .art-slide').forEach(function(el){
+    const idx = parseInt(el.getAttribute('data-slide'), 10);
+    el.classList.remove('active', 'prev');
+    if(idx === changeOnboardStep) el.classList.add('active');
+    else if(idx < changeOnboardStep) el.classList.add('prev');
+  });
+}
+function changeOnboardRenderFooter(){
+  document.getElementById('changeOnboardNextBtn').textContent =
+    (changeOnboardStep === CHANGE_ONBOARD_STEPS.length - 1) ? '我知道了' : '下一步';
+}
+function changeOnboardGoToStep(i){
+  changeOnboardStep = i;
+  changeOnboardRenderDots();
+  changeOnboardRenderText();
+  changeOnboardRenderSlides();
+  changeOnboardRenderFooter();
+}
+function changeOnboardNextStep(){
+  if(changeOnboardStep === CHANGE_ONBOARD_STEPS.length - 1){
+    closeChangeOnboard();
+    return;
+  }
+  changeOnboardGoToStep(changeOnboardStep + 1);
+}
+function openChangeOnboard(){
+  changeOnboardStep = 0;
+  document.getElementById('changeOnboardDontRemind').checked = false;
+  changeOnboardGoToStep(0);
+  document.getElementById('changeOnboardOverlay').classList.add('show');
+}
+function closeChangeOnboard(){
+  document.getElementById('changeOnboardOverlay').classList.remove('show');
+  if(document.getElementById('changeOnboardDontRemind').checked){
+    try{ localStorage.setItem(CHANGE_ONBOARD_STORAGE_KEY, '1'); }catch(e){ /* 瀏覽器不支援或被擋掉就算了，不影響其他功能 */ }
+  }
+}
+
+// ---- 三個公告視窗依序顯示，不會同時彈出 ----
+// 順序：使用說明 → 通知中心 → 需求變更。
+// 變更公告放最後，是因為新同事得先懂怎麼填單；
+// 已經關掉前兩個的人則會在進頁面時直接看到它。
+function maybeShowChangeOnboard(){
+  let dismissed = false;
+  try{ dismissed = localStorage.getItem(CHANGE_ONBOARD_STORAGE_KEY) === '1'; }catch(e){}
+  if(!dismissed) openChangeOnboard();
+}
 function maybeShowNotifOnboardAfterForm(){
   let notifDismissed = false;
   try{ notifDismissed = localStorage.getItem(NOTIF_ONBOARD_STORAGE_KEY) === '1'; }catch(e){}
-  if(!notifDismissed) openNotifOnboard();
+  if(notifDismissed){
+    maybeShowChangeOnboard();
+    return;
+  }
+  const overlay = document.getElementById('notifOnboardOverlay');
+  overlay.setAttribute('data-auto-flow', '1');
+  openNotifOnboard();
 }
 (function(){
   let formDismissed = false;
