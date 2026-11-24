@@ -2658,6 +2658,29 @@ function saveAllCases(){
   });
 }
 
+// ---- 彈窗開關 ----
+// .modal-overlay 預設 opacity:0，要再加上 .in 才會淡入。
+// 只加 show 的話視窗是「看不見但蓋滿整個螢幕」，使用者會以為點了沒反應。
+const __modalTimers = {};
+function openModalOverlay(id){
+  const ov = document.getElementById(id);
+  if(!ov) return;
+  clearTimeout(__modalTimers[id]);   // 取消上一次還沒跑完的收起，避免剛開就被關掉
+  ov.classList.add('show');
+  void ov.offsetWidth;               // 強制重排，transition 才會從頭跑
+  ov.classList.add('in');
+}
+function closeModalOverlay(id, after){
+  const ov = document.getElementById(id);
+  if(!ov) return;
+  ov.classList.remove('in');
+  clearTimeout(__modalTimers[id]);
+  __modalTimers[id] = setTimeout(function(){   // 等淡出跑完再收起
+    ov.classList.remove('show');
+    if(after) after();
+  }, 240);
+}
+
 // ---- 封鎖日期 ----
 let lockCalendarDate = new Date();
 let lockedDatesMap = {}; // { 'YYYY-MM-DD': reason }
@@ -2673,18 +2696,13 @@ function normalizeDateStr(str){
 }
 
 function openLockModal(){
-  const ov = document.getElementById('lockModalOverlay');
-  ov.classList.add('show');
+  openModalOverlay('lockModalOverlay');
   clearLockSel();
   loadLockedDates();
-  void ov.offsetWidth;        // 強制重排，transition 才會從頭跑
-  ov.classList.add('in');
 }
 
 function closeLockModal(){
-  const ov = document.getElementById('lockModalOverlay');
-  ov.classList.remove('in');
-  setTimeout(function(){ ov.classList.remove('show'); clearLockSel(); }, 240); // 等淡出跑完再收起
+  closeModalOverlay('lockModalOverlay', clearLockSel);
 }
 
 function loadLockedDates(){
@@ -2925,12 +2943,12 @@ function onLockDayClick(dateStr){
     document.getElementById('lockReasonDate').textContent = dateStr;
     document.getElementById('lockReasonInput').value = '';
     document.getElementById('lockModalMsg').textContent = '';
-    document.getElementById('lockReasonOverlay').classList.add('show');
+    openModalOverlay('lockReasonOverlay');
   }
 }
 
 function closeLockReasonModal(){
-  document.getElementById('lockReasonOverlay').classList.remove('show');
+  closeModalOverlay('lockReasonOverlay');
   pendingLockDate = null;
 }
 
@@ -2946,7 +2964,7 @@ function openPauseReasonModal(id, prevStatus){
   document.getElementById('pauseReasonInput').value = '';
   document.getElementById('pauseReasonModalMsg').textContent = '';
   document.getElementById('pauseReasonModalMsg').className = 'modal-msg';
-  document.getElementById('pauseReasonOverlay').classList.add('show');
+  openModalOverlay('pauseReasonOverlay');
   setTimeout(function(){ document.getElementById('pauseReasonInput').focus(); }, 100);
 }
 
@@ -2955,7 +2973,7 @@ function cancelPauseCase(){
     cselSetValueSilent('status-' + pendingPauseCaseId, pendingPausePrevStatus);
     toggleCaseFields(pendingPauseCaseId);
   }
-  document.getElementById('pauseReasonOverlay').classList.remove('show');
+  closeModalOverlay('pauseReasonOverlay');
   pendingPauseCaseId = null;
   pendingPausePrevStatus = null;
 }
@@ -2981,7 +2999,7 @@ function confirmPauseCase(){
   .then(function(result){
     btn.disabled = false;
     if(!result.ok || result.data.status !== 'success') throw new Error(result.data.message || 'HTTP 錯誤');
-    document.getElementById('pauseReasonOverlay').classList.remove('show');
+    closeModalOverlay('pauseReasonOverlay');
     pendingPauseCaseId = null;
     pendingPausePrevStatus = null;
     loadCases();
@@ -3033,11 +3051,11 @@ function openReplyModal(id, reqName){
   document.getElementById('replyText').value = (m && m.designerReply) || '';
   document.getElementById('replyModalMsg').textContent = '';
   document.getElementById('replyModalMsg').className = 'modal-msg';
-  document.getElementById('replyModalOverlay').classList.add('show');
+  openModalOverlay('replyModalOverlay');
 }
 
 function closeReplyModal(){
-  document.getElementById('replyModalOverlay').classList.remove('show');
+  closeModalOverlay('replyModalOverlay');
   currentReplyId = null;
 }
 
