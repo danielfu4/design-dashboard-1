@@ -2782,7 +2782,11 @@ function paintLockSel(){
   grid.querySelectorAll('.cal-day:not(.empty)').forEach(function(c){
     c.classList.toggle('sel', lockSelected.has(c.dataset.date));
   });
-  updateLockSelBar();
+  // 拖曳進行中不要展開選取列。選取列一出現，彈窗變高、又是垂直居中，
+  // 整張卡片會往上跑約 65px（超過一列格子的高度），游標底下的日期就換成
+  // 下一列那天，拖 3 天會變成選到 10 天，之後單擊也只會加減選取、
+  // 叫不出封鎖原因視窗。放開滑鼠後才更新，版面在拖曳期間保持不動。
+  if(!calDragging) updateLockSelBar();
 }
 
 // 連續日期區間（不是矩形）：拖過週的邊界會接到下一週的星期日
@@ -2842,6 +2846,7 @@ function onCalUp(){
   if(!calDragging) return;
   const wasDrag = calDragMoved, start = calDragStart;
   calDragging = false; calDragStart = null; calDragMoved = false;
+  updateLockSelBar();                    // 拖曳期間被擱著的選取列，放開後才展開
   if(wasDrag) return;                    // 框選完成，等使用者按動作鈕
 
   if(lockSelected.size > 0){             // 已有選取 → 點擊是加入／移出
