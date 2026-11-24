@@ -749,6 +749,15 @@
     font-size:12px;border-radius:8px;cursor:pointer;color:var(--ink);position:relative;
   }
   .cal-day:hover{background:var(--hover-bg);}
+  /* 休假日（國定假日與週末）整體壓淡，讓上班日一眼跳出來。
+     放在 .locked 之前，設計師自己封鎖的紅色才蓋得過去。 */
+  .cal-day.off{color:var(--ink-faint);background:#FAFAFB;}
+  .cal-day.off:hover{background:var(--hover-bg);}
+  html[data-theme="dark"] .cal-day.off{background:rgba(255,255,255,.03);}
+  .cal-mark{position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;}
+  .cal-mark.hol{background:#E0564B;}
+  .cal-mark.makeup{background:var(--accent);}
+  .cal-day.makeup{font-weight:700;}
   .cal-day.empty{visibility:hidden;cursor:default;}
   .cal-day.locked{background:#FBEBEA;color:#B3324A;text-decoration:line-through;}
   .cal-day.locked:hover{background:#F6D9D6;}
@@ -792,6 +801,8 @@
   .lock-dot{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:5px;}
   .lock-dot.locked{background:#FBEBEA;box-shadow:inset 0 0 0 1px #B3324A;}
   .lock-dot.has-case{background:#EAF1FF;box-shadow:inset 0 0 0 1px var(--accent);}
+  .lock-dot.holiday{background:#E0564B;border-radius:50%;width:7px;height:7px;}
+  .lock-dot.makeup{background:var(--accent);border-radius:50%;width:7px;height:7px;}
 </style>
 <script>
   // 儘早套用主題，避免畫面先閃一下亮色再切換成暗色
@@ -946,6 +957,8 @@
       <div class="lock-legend">
         <span><i class="lock-dot locked"></i>已封鎖</span>
         <span><i class="lock-dot has-case"></i>有案件</span>
+        <span><i class="lock-dot holiday"></i>國定假日</span>
+        <span><i class="lock-dot makeup"></i>補班日</span>
       </div>
 
       <div class="sel-bar" id="lockSelBar">
@@ -2698,11 +2711,42 @@ function normalizeDateStr(str){
 function openLockModal(){
   openModalOverlay('lockModalOverlay');
   clearLockSel();
+  loadLockHolidays();
   loadLockedDates();
 }
 
 function closeLockModal(){
   closeModalOverlay('lockModalOverlay', clearLockSel);
+}
+
+// 國定假日／補班日：資料來源是 holidays 資料表（行政院人事行政總處辦公日曆表），
+// 跟需求申請單那邊用同一份，避免兩邊規則對不上。整張表只有幾十筆，一次撈完快取起來。
+let lockHolidays = null;   // null = 還沒載入過
+function loadLockHolidays(){
+  if(lockHolidays) return;
+  fetch(sbUrl('holidays','select=date,name,is_workday'), { headers: SUPABASE_HEADERS })
+  .then(function(res){ return res.ok ? res.json() : []; })
+  .then(function(rows){
+    const map = {};
+    (rows || []).forEach(function(r){
+      if(r.date) map[r.date] = { name: r.name || '', isWorkday: !!r.is_workday };
+    });
+    lockHolidays = map;
+  })
+  .catch(function(){ lockHolidays = {}; })   // 撈不到就當作沒有假日，日曆照常能用
+  .finally(function(){
+    if(document.getElementById('lockModalOverlay').classList.contains('show')) renderLockCalendar();
+  });
+}
+
+// 這一天是不是休假（國定假日或週末），回傳顯示用的資訊
+function lockDayOffInfo(dateStr){
+  const hol = (lockHolidays || {})[dateStr];
+  if(hol && hol.isWorkday) return { off:false, makeup:true, name:(hol.name || '補班日') };
+  if(hol) return { off:true, holiday:true, name:(hol.name || '國定假日') };
+  const dow = new Date(dateStr + 'T00:00:00').getDay();
+  if(dow === 0 || dow === 6) return { off:true, name:'週末' };
+  return { off:false };
 }
 
 function loadLockedDates(){
@@ -2754,13 +2798,23 @@ function renderLockCalendar(slideDir){
     const dateStr = toDateStr(y, m, d);
     const isLocked = lockedDatesMap.hasOwnProperty(dateStr);
     const count = counts[dateStr] || 0;
+    const off = lockDayOffInfo(dateStr);
     let cls = 'cal-day';
+    if(off.off) cls += ' off';
+    if(off.makeup) cls += ' makeup';
     if(isLocked) cls += ' locked';
     if(dateStr === todayStr) cls += ' today';
     if(lockSelected.has(dateStr)) cls += ' sel';
-    html += '<div class="' + cls + '" data-date="' + dateStr + '">' +
+    const mark = off.holiday ? '<span class="cal-mark hol"></span>'
+               : off.makeup ? '<span class="cal-mark makeup"></span>' : '';
+    const tip = off.holiday ? '國定假日：' + off.name
+              : off.makeup ? '補班日：' + off.name + '（要上班）'
+              : off.off    ? '週末' : '';
+    html += '<div class="' + cls + '" data-date="' + dateStr + '"' +
+      (tip ? ' title="' + escapeHtml(tip) + '"' : '') + '>' +
       '<span>' + d + '</span>' +
       (count > 0 ? '<span class="case-count">' + count + '件</span>' : '') +
+      mark +
     '</div>';
   }
   const grid = document.getElementById('lockCalGrid');
